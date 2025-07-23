@@ -35,11 +35,11 @@ class MainServerSession:
                 mnt_packet = build_suntech_mnt_packet(self.dev_id)
 
                 self.sock.sendall(mnt_packet)
-                logger.info("Conexão e thread de escuta iniciadas", device_id=self.dev_id)
+                logger.info(f"Conexão e thread de escuta iniciadas device_id={self.dev_id}")
 
                 return True
             except Exception:
-                logger.exception("Falha ao conectar ao servidor principal", device_id=self.dev_id)
+                logger.exception(f"Falha ao conectar ao servidor principal device_id={self.dev_id}")
                 self._is_connected = False
                 return False
     
@@ -60,11 +60,11 @@ class MainServerSession:
                 continue
             
             except (ConnectionResetError, BrokenPipeError):
-                logger.warning("Conexão com servidor Suntech resetada (reader)", device_id=self.dev_id)
+                logger.warning(f"Conexão com servidor Suntech resetada (reader) device_id={self.dev_id}")
                 self.disconnect()
                 break
             except Exception:
-                logger.exception("Erro inesperado na thread de escuta", device_id=self.dev_id)
+                logger.exception(f"Erro inesperado na thread de escuta device_id={self.dev_id}")
                 self.disconnect()
                 break
     
@@ -78,10 +78,10 @@ class MainServerSession:
                     return
             
             try:
-                logger.info(f"Encaminhando pacote de {len(packet)} bytes", device_id=self.dev_id)
+                logger.info(f"Encaminhando pacote de {len(packet)} bytes device_id={self.dev_id}")
                 self.sock.sendall(packet + b'\r')
             except (ConnectionResetError, BrokenPipeError) as e:
-                logger.warning(f"Conexão com servidor Suntech caiu ao enviar ({type(e).__name__})", device_id=self.dev_id)
+                logger.warning(f"Conexão com servidor Suntech caiu ao enviar ({type(e).__name__}) device_id={self.dev_id}")
 
                 if self._conection_retries < 5:
                     if self.connect():
@@ -92,7 +92,7 @@ class MainServerSession:
                     return
 
             except Exception:
-                logger.exception("Erro inesperado ao enviar pacote", device_id=self.dev_id)
+                logger.exception(f"Erro inesperado ao enviar pacote device_id={self.dev_id}")
                 self.disconnect()
 
     def disconnect(self):
