@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Dict
+import threading
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -38,5 +39,8 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = '...'
     REDIS_HOST: str = '127.0.0.1'
     REDIS_PORT: int = 6379
+
+    jt808_clients = {}
+    jt808_clients_lock = threading.Lock()
 
 settings = Settings()
