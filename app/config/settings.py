@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     REDIS_HOST: str = '127.0.0.1'
     REDIS_PORT: int = 6379
 
-    jt808_clients = {}
-    jt808_clients_lock = threading.Lock()
+    jt808_clients: dict = {}
+    jt808_clients_lock: threading.Lock = threading.Lock()
 
 settings = Settings()
