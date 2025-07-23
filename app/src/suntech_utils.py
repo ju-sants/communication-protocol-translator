@@ -1,7 +1,13 @@
-# --- CODIFICADORES SUNTECH ---
+from app.core.logger import get_logger
 
-def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, is_realtime: bool, alert_id: int = None) -> str:
-    """Função central para construir pacotes Suntech STT e ALT."""
+logger = get_logger(__name__)
+
+def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, is_realtime: bool, alert_id: int = None, geo_fence_id: int = None) -> str:
+    """Função central para construir pacotes Suntech STT e ALT, agora com suporte a ID de geocerca."""
+    logger.debug(
+        f"Construindo pacote Suntech: HDR={hdr}, DevID={dev_id}, Realtime={is_realtime}, "
+        f"AlertID={alert_id}, GeoFenceID={geo_fence_id}, LocationData={location_data}"
+    )
     
     # Campos básicos sempre presentes
     msg_type = "1" if is_realtime else "0"
@@ -16,26 +22,32 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, is_realtime
     ign_on = (location_data['status_bits'] & 0b1)
     in_state = f"0000000{int(ign_on)}"
     
-    # Campos que dependem do tipo de pacote
     fields = [hdr, dev_id]
     
     if hdr in ["STT", "ALT"]:
         fields.extend([msg_type, date, time, lat, lon, spd, crs, satt, fix, in_state])
         if hdr == "ALT":
+            alert_mod = ""
+            # Se for um alerta de geocerca e tivermos o ID, usamos como ALERT_MOD
+            if alert_id in [5, 6] and geo_fence_id is not None:
+                alert_mod = str(geo_fence_id)
+            
             fields.append(str(alert_id)) # ALERT_ID
-            fields.append("") # ALERT_MOD
-            fields.append("") # ALERT_DATA
+            fields.append(alert_mod)     # ALERT_MOD
+            fields.append("")            # ALERT_DATA
     
-    # Adiciona odômetro se disponível, usando Assign Header
     if 'gps_odometer' in location_data:
         gps_odom_meters = int(location_data['gps_odometer'])
-        # M_ASSIGN1 (ID 1) = GPS_ODOM 
         fields.append(str(gps_odom_meters))
 
-    return ";".join(fields)
+    packet = ";".join(fields)
+    logger.debug(f"Pacote Suntech construído: {packet}")
+    return packet
 
 
 def build_suntech_alv_packet(dev_id: str) -> str:
     """Constrói um pacote Keep-Alive (ALV) da Suntech."""
-    return f"ALV;{dev_id}"
+    packet = f"ALV;{dev_id}"
+    logger.debug(f"Construído pacote Suntech ALV: {packet}")
+    return packet
 
