@@ -4,7 +4,7 @@ import time
 
 from app.core.logger import get_logger
 from app.config.settings import settings
-from app.src.suntech_utils import build_suntech_mnt_packet
+from app.src.suntech_utils import build_suntech_mnt_packet, process_suntech_command
 
 logger = get_logger(__name__)
 

@@ -55,7 +55,9 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int
         ign_on = (location_data.get('status_bits', 0) & 0b1)
         mode = "1" if ign_on else "0"
         stt_rpt_type = "1"
-        msg_num = f"{serial:04d}"
+
+        suntech_serial = serial % 10000
+        msg_num = f"{suntech_serial:04d}"
         reserved = ""
         
         fields.extend([mode, stt_rpt_type, msg_num, reserved])
@@ -80,3 +82,7 @@ def build_suntech_alv_packet(dev_id: str) -> str:
     logger.debug(f"Construído pacote Suntech ALV: {packet}")
     return packet
 
+
+
+def process_suntech_command(command: str, dev_id: str):
+    pass
