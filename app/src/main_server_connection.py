@@ -47,11 +47,19 @@ def send_to_main_server(dev_id_str: str, packet_data: bytes):
             # Envia o pacote de monitoramento para o servidor principal
             monitor_packet = build_suntech_mnt_packet(dev_id_str)
             s.sendall(monitor_packet)
-            logger.debug(f"Pacote de monitoramento enviado para {host}:{port}")
-            
+            logger.info(f"Pacote de monitoramento enviado para {host}:{port}")
+
         logger.info(f"Enviando pacote de {len(packet_data)} bytes para {host}:{port}")
         s.sendall(packet_data)
-        logger.debug(f"Pacote enviado com sucesso para {host}:{port}")
+
+        resposta = None
+        try:
+            resposta = s.recv(1024)
+        except TimeoutError:
+            logger.warning(f"Nenhuma resposta recebida do servidor Suntech.")
+        
+        if resposta:
+            logger.info(f"RESPOSTA RECEBIDA DO SERVIDOR SUNTECH resposta_raw={resposta}, resposta_texto={resposta.decode('ascii', errors='ignore')}")
     
     except Exception:
         logger.exception(f"Falha ao enviar dados para o servidor principal para {dev_id_str} em {host}:{port}")
