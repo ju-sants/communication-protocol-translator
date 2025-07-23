@@ -42,7 +42,7 @@ def handle_jt808_connection(conn: socket.socket, addr):
                 
                 display_output = format_jt808_packet_for_display(unescaped_packet)
                 logger.info(f"Pacote Formatado Recebido de {addr}:\n{display_output}")
-                
+
                 header_bytes = unescaped_packet[:12]
                 msg_id, _, terminal_phone_bcd, serial = struct.unpack('>HH6sH', header_bytes)
                 body = unescaped_packet[12:-1]
@@ -52,7 +52,7 @@ def handle_jt808_connection(conn: socket.socket, addr):
                 conn.sendall(response_to_device)
                 logger.debug(f"ACK enviado ao dispositivo {dev_id_str}: {response_to_device.hex()}")
 
-                process_jt808_packet(msg_id, body, dev_id_str)
+                process_jt808_packet(msg_id, body, serial, dev_id_str)
 
     except (ConnectionResetError, BrokenPipeError, TimeoutError):
         logger.warning(f"Conexão fechada abruptamente por {addr} (Device: {dev_id_str})")
