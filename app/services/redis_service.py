@@ -32,10 +32,10 @@ def get_redis(db: int | None = None, host: str | None = None, port: int | None =
         line_number = caller_frame.f_lineno
         function_name = caller_frame.f_code.co_name
         
-        print(f"Chamada de: {filename}:{line_number} na função '{function_name}'")
+        logger.info(f"Chamada de: {filename}:{line_number} na função '{function_name}'")
 
         logger.error(f"Failed to connect to Redis DB {db} at {host}:{port}; {e}")
-        print(traceback.format_exc())
+        logger.info(traceback.format_exc())
         exit(1)
 
     return redis_conn
