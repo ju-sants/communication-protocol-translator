@@ -53,7 +53,7 @@ class MainServerSession:
                     break
                 
                 command = data.decode("ascii", errors="ignore").strip()
-                logger.info("Recebido comando {command} do server iniciando processamento.")
+                logger.info(f"Recebido comando {command} do server iniciando processamento.")
                 process_suntech_command(command, self.dev_id)
 
             except socket.timeout:
