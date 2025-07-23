@@ -115,7 +115,7 @@ class MainServerSessionsManager:
         with self.lock:
             if dev_id not in self._sessions:
                 logger.info(f"Nenhuma sessão encontrada. Criando Sessão, dev_id={dev_id}")
-                self._sessions[dev_id] = MainServerSession()
+                self._sessions[dev_id] = MainServerSession(dev_id)
             
             session = self._sessions[dev_id]
             session.connect()
