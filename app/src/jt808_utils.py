@@ -8,6 +8,12 @@ def unescape_data(data: bytes) -> bytes:
     data = data.replace(b'\x7d\x02', b'\x7e')
     return data
 
+def escape_data(data: bytes) -> bytes:
+    data = data.replace(b"\x7d", b"\x7d\x01")
+    data = data.replace(b"\x7e", b"\x7d\x02")
+
+    return data
+
 def verify_checksum(raw_msg: bytes) -> bool:
     """Calcula e verifica o checksum (XOR) de uma mensagem JT/T 808."""
     message_data = raw_msg[:-1]
@@ -18,6 +24,13 @@ def verify_checksum(raw_msg: bytes) -> bool:
         calculated_checksum ^= byte
         
     return calculated_checksum == expected_checksum
+
+def calculate_checksum(raw_message: bytes):
+    checksum = 0
+    for byte in raw_message:
+        checksum ^= byte
+
+    return struct.pack(">B", checksum)
 
 def build_jt808_response(terminal_phone: bytes, terminal_serial: int, msg_id: int, result: int) -> bytes:
     """Constrói uma resposta padrão (0x8001) para o dispositivo JT/T 808."""
@@ -139,3 +152,25 @@ def format_jt808_packet_for_display(unescaped_packet: bytes) -> str:
 
    except Exception as e:
        return f"Erro ao formatar pacote: {e}\nPacote (raw): {unescaped_packet.hex()}"
+   
+
+
+def build_lock_jt80_command(dev_id: str, serial: str):
+    msg_id = 0x8105
+    msg_body = b"\x64"
+    msg_body_properties = len(msg_body) & 0x03FF # Adicioanndo máscara de seguraça
+    dev_id_bcd = bytes.fromhex(dev_id)
+
+    header = struct.pack(">HH6sH", msg_id, msg_body_properties, dev_id_bcd, serial)
+
+    raw_message = header + msg_body
+
+    checksum = calculate_checksum(raw_message)
+    
+    message_w_checksum = raw_message + checksum
+
+    escaped_message = escape_data(message_w_checksum)
+
+    command = b"\x7e" + escaped_message + b"\x7e"
+
+    return command
