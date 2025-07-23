@@ -7,61 +7,68 @@ def build_suntech_mnt_packet(dev_id_str: str) -> bytes:
     """Constrói um pacote de Manutenção (MNT) para 'apresentar' o dispositivo."""
     sw_ver = "JT808_Translator_1.0"
     packet_str = f"MNT;{dev_id_str};{sw_ver}"
-    logger.info("Construído pacote de apresentação MNT", pacote=packet_str)
+    logger.info(f"Construído pacote de apresentação MNT, pacote={packet_str}")
     return packet_str.encode('ascii')
 
-def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, is_realtime: bool, alert_id: int = None, geo_fence_id: int = None, include_report_map: bool = False) -> str:
+def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int, is_realtime: bool, alert_id: int = None, geo_fence_id: int = None) -> str:
     """Função central para construir pacotes Suntech STT e ALT, agora com suporte a ID de geocerca."""
     logger.debug(
         f"Construindo pacote Suntech: HDR={hdr}, DevID={dev_id}, Realtime={is_realtime}, "
         f"AlertID={alert_id}, GeoFenceID={geo_fence_id}, LocationData={location_data}"
     )
     
-    # Campos básicos sempre presentes
-    msg_type = "1" if is_realtime else "0"
-    date = location_data['timestamp'].strftime('%Y%m%d')
-    time = location_data['timestamp'].strftime('%H:%M:%S')
-    lat = f"+{location_data['latitude']:.6f}" if location_data['latitude'] >= 0 else f"{location_data['latitude']:.6f}"
-    lon = f"+{location_data['longitude']:.6f}" if location_data['longitude'] >= 0 else f"{location_data['longitude']:.6f}"
-    spd = f"{location_data['speed_kmh']:.2f}"
-    crs = f"{location_data['direction']:.2f}"
-    satt = "10" # Valor padrão
-    fix = "1" if (location_data['status_bits'] & 0b10) else "0"
-    ign_on = (location_data['status_bits'] & 0b1)
-    in_state = f"0000000{int(ign_on)}"
-    out_state = "00000000"
+    # Campos básicos (comuns a todos)
+    base_fields = [
+        hdr,
+        dev_id[-10:],
+        "FFF83F",
+        "218",
+        "1.0.12",
+        "1" if is_realtime else "0",
+        location_data['timestamp'].strftime('%Y%m%d'),
+        location_data['timestamp'].strftime('%H:%M:%S'),
+        f"{location_data['latitude']:.6f}",
+        f"{location_data['longitude']:.6f}",
+        f"{location_data['speed_kmh']:.2f}",
+        f"{location_data['direction']:.2f}",
+        str(location_data.get('satellites', 15)),
+        "1" if (location_data.get('status_bits', 0) & 0b10) else "0",
+        f"0000000{int(location_data.get('status_bits', 0) & 0b1)}",
+        "00000001"
+    ]
     
-    cutted_dev_id = dev_id[-10:]
-    fields = [hdr, cutted_dev_id]
+    # Campos de telemetria extra (Assign Headers)
+    assign_map = "00028003"
     
-    if include_report_map:
-        report_map_value = 0b10011000000111111001
-        
-        if hdr == "ALT":
-            report_map_value |= 0b00000011111000000000
-            
-        report_map = f"{report_map_value:X}" # Converte o valor para Hexadecimal
-        fields.append(report_map)
+    telemetry_fields = [
+        assign_map,
+        "12.43", # PWR_VOLT
+        "0.0",   # BCK_VOLT
+        str(int(location_data.get('gps_odometer', 0))), # GPS_ODOM
+        "69647"  # H_METER
+    ]
 
-    if hdr in ["STT", "ALT"]:
-        fields.extend([msg_type, date, time, lat, lon, spd, crs, satt, fix, in_state])
-        if hdr == "ALT":
-            fields.append(out_state)
-            alert_mod = ""
-            # Se for um alerta de geocerca e tivermos o ID, usamos como ALERT_MOD
-            if alert_id in [5, 6] and geo_fence_id is not None:
-                alert_mod = str(geo_fence_id)
-            
-            fields.append(str(alert_id)) # ALERT_ID
-            fields.append(alert_mod)     # ALERT_MOD
-            fields.append("")            # ALERT_DATA
+    # Montagem    
+    fields = base_fields
+
+    if hdr == "STT":
+        ign_on = (location_data.get('status_bits', 0) & 0b1)
+        mode = "1" if ign_on else "0"
+        stt_rpt_type = "1"
+        msg_num = f"{serial:04d}"
+        reserved = ""
+        
+        fields.extend([mode, stt_rpt_type, msg_num, reserved])
+        fields.extend(telemetry_fields)
     
-    if 'gps_odometer' in location_data:
-        gps_odom_meters = int(location_data['gps_odometer'])
-        fields.append(str(gps_odom_meters))
+    elif hdr == "ALT":
+        alert_mod = str(geo_fence_id) if alert_id in [5, 6] and geo_fence_id is not None else ""
+        
+        fields.extend([str(alert_id), alert_mod, "", ""]) # ALERT_ID, ALERT_MOD, ALERT_DATA, RESERVED
+        fields.extend(telemetry_fields)
 
     packet = ";".join(fields)
-    logger.debug(f"Pacote Suntech construído: {packet}")
+    logger.debug(f"Pacote Suntech final construído: {packet}")
     return packet
 
 
