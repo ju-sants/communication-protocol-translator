@@ -87,7 +87,7 @@ def build_suntech_alv_packet(dev_id: str) -> str:
 
 
 
-def process_suntech_command(command: str, dev_id: str):
+def process_suntech_command(command: str, dev_id: str, serial: str):
     logger.info(f"Processando comando suntech, dev_id={dev_id}")
 
     command_mapping = {
@@ -99,7 +99,7 @@ def process_suntech_command(command: str, dev_id: str):
     jt808_command = None
     if command in command_mapping:
         builder_func = command_mapping[command]
-        jt808_command = builder_func()
+        jt808_command = builder_func(dev_id, serial)
 
     if jt808_command:
         with settings.jt808_clients_lock:
