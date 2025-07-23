@@ -28,6 +28,7 @@ def send_to_main_server(dev_id_str: str, packet_data: bytes):
             logger.debug(f"Reutilizando conexão existente para {host}:{port}")
     
     if s is None:
+        logger.info(f"Criando nova conexão para {host}:{port}")
         try:
             s = socket.create_connection((host, port), timeout=5)
 
