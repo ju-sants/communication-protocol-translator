@@ -9,7 +9,7 @@ from app.src.suntech_utils import build_suntech_mnt_packet
 logger = get_logger(__name__)
 
 
-class MainServerConnection:
+class MainServerSession:
     def __init__(self, dev_id: str):
         self.dev_id = dev_id
         self.sock: socket.socket = None
@@ -96,7 +96,32 @@ class MainServerConnection:
                 self.disconnect()
 
     def disconnect(self):
-        pass
+        with self.lock:
+            if self._is_connected:
+                logger.info(f"Desconectando do server principal, dev_id={self.dev_id}")
+                self._is_connected = False
+
+                if self.sock:
+                    self.sock.close()
+
+                self.sock = None
+
+class MainServerSessionsManager:
+    def __init__(self):
+        self._sessions: dict[str, MainServerSession] = {}
+        self.lock = threading.Lock()
+
+    def get_session(self, dev_id: str):
+        with self.lock:
+            if dev_id not in self._sessions:
+                logger.info(f"Nenhuma sessão encontrada. Criando Sessão, dev_id={dev_id}")
+                self._sessions[dev_id] = MainServerSession()
+            
+            session = self._sessions[dev_id]
+            session.connect()
+
+            return session
+        
 # active_connections = {}
 # connection_lock = threading.Lock()
 
