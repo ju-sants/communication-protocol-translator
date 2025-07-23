@@ -2,7 +2,7 @@ from app.core.logger import get_logger
 
 logger = get_logger(__name__)
 
-def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, is_realtime: bool, alert_id: int = None, geo_fence_id: int = None) -> str:
+def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, is_realtime: bool, alert_id: int = None, geo_fence_id: int = None, include_report_map: bool = False) -> str:
     """Função central para construir pacotes Suntech STT e ALT, agora com suporte a ID de geocerca."""
     logger.debug(
         f"Construindo pacote Suntech: HDR={hdr}, DevID={dev_id}, Realtime={is_realtime}, "
@@ -21,12 +21,24 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, is_realtime
     fix = "1" if (location_data['status_bits'] & 0b10) else "0"
     ign_on = (location_data['status_bits'] & 0b1)
     in_state = f"0000000{int(ign_on)}"
+    out_state = "00000000"
     
-    fields = [hdr, dev_id]
+    cutted_dev_id = dev_id[-10:]
+    fields = [hdr, cutted_dev_id]
     
+    if include_report_map:
+        report_map_value = 0b10011000000111111001
+        
+        if hdr == "ALT":
+            report_map_value |= 0b00000011111000000000
+            
+        report_map = f"{report_map_value:X}" # Converte o valor para Hexadecimal
+        fields.append(report_map)
+
     if hdr in ["STT", "ALT"]:
         fields.extend([msg_type, date, time, lat, lon, spd, crs, satt, fix, in_state])
         if hdr == "ALT":
+            fields.append(out_state)
             alert_mod = ""
             # Se for um alerta de geocerca e tivermos o ID, usamos como ALERT_MOD
             if alert_id in [5, 6] and geo_fence_id is not None:
@@ -47,7 +59,9 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, is_realtime
 
 def build_suntech_alv_packet(dev_id: str) -> str:
     """Constrói um pacote Keep-Alive (ALV) da Suntech."""
-    packet = f"ALV;{dev_id}"
+    cutted_dev_id = dev_id[-10:]
+
+    packet = f"ALV;{cutted_dev_id}"
     logger.debug(f"Construído pacote Suntech ALV: {packet}")
     return packet
 
