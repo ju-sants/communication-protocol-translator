@@ -9,6 +9,9 @@ from app.core.logger import get_logger
 
 logger = get_logger(__name__)
 
+jt808_clients = {}
+jt808_clients_lock = threading.Lock()
+
 def handle_jt808_connection(conn: socket.socket, addr):
     """Lida com uma única conexão de cliente JT/T 808."""
     logger.info(f"Conexão aceita de {addr}")
@@ -47,7 +50,10 @@ def handle_jt808_connection(conn: socket.socket, addr):
                 msg_id, _, terminal_phone_bcd, serial = struct.unpack('>HH6sH', header_bytes)
                 body = unescaped_packet[12:-1]
                 dev_id_str = terminal_phone_bcd.hex()
- 
+
+                with jt808_clients_lock:
+                    jt808_clients[dev_id_str] = conn
+                    
                 response_to_device = build_jt808_response(terminal_phone_bcd, serial, msg_id, 0)
                 conn.sendall(response_to_device)
                 logger.debug(f"ACK enviado ao dispositivo {dev_id_str}: {response_to_device.hex()}")
@@ -59,6 +65,11 @@ def handle_jt808_connection(conn: socket.socket, addr):
     except Exception:
         logger.exception(f"Erro fatal na conexão de {addr} (Device: {dev_id_str})")
     finally:
+        with jt808_clients_lock:
+            if dev_id_str in jt808_clients:
+                del jt808_clients[dev_id_str]
+
+        logger.info(f"Fechando conexão e thread, dev_id={dev_id_str}, addr={addr}")
         conn.close()
 
 def start_translator_server():
