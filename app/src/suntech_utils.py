@@ -1,4 +1,5 @@
 from app.core.logger import get_logger
+from app.config.settings import settings
 
 logger = get_logger(__name__)
 
@@ -85,4 +86,24 @@ def build_suntech_alv_packet(dev_id: str) -> str:
 
 
 def process_suntech_command(command: str, dev_id: str):
-    pass
+    logger.info(f"Processando comando suntech, dev_id={dev_id}")
+
+    fields = command.split(";")
+    hdr = fields[0]
+
+    jt808_command = None
+    if hdr == "DEX":
+        pass
+
+    if jt808_command:
+        with settings.jt808_clients_lock:
+            if dev_id in settings.jt808_clients:
+                tracker_socket = settings.jt808_clients[dev_id]
+
+                try:
+                    tracker_socket.sendall(jt808_command)
+                    logger.info(f"Comando JT/T 808 enviado para o rastreador device_id={dev_id}")
+                except Exception:
+                    logger.exception(f"Falha ao enviar comando para o rastreador device_id={dev_id}")
+            else:
+                logger.warning(f"Rastreador não está conectado, não foi possível enviar comando device_id={dev_id}")
