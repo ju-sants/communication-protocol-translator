@@ -2,3 +2,4 @@ tests*.py
 __pycache__
 .env
 *.txt
+suntech_server_test.py
