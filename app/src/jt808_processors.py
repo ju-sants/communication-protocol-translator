@@ -3,7 +3,7 @@ from datetime import datetime
 
 from app.config.settings import settings
 from app.src.suntech_utils import build_suntech_packet, build_suntech_alv_packet
-from app.src.tcp_connection import send_to_main_server
+from app.src.main_server_connection import send_to_main_server
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 
