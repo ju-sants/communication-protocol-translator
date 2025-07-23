@@ -15,7 +15,7 @@ class MainServerConnection:
         self.sock: socket.socket = None
         self.lock = threading.Lock()
         self._is_connected = False
-        self._reader_thread = None
+        self._conection_retries = 0
     
     def connect(self):
         with self.lock:
@@ -67,6 +67,36 @@ class MainServerConnection:
                 logger.exception("Erro inesperado na thread de escuta", device_id=self.dev_id)
                 self.disconnect()
                 break
+    
+    def send(self, packet: bytes):
+        with self.lock:
+            if not self._is_connected:
+                logger.warning("Conexão perdida, tentando reconectar...")
+
+                if not self.connect():
+                    logger.error("Não foi possível conectar ao servidor principal. Pacote descartado.")
+                    return
+            
+            try:
+                logger.info(f"Encaminhando pacote de {len(packet)} bytes", device_id=self.dev_id)
+                self.sock.sendall(packet + b'\r')
+            except (ConnectionResetError, BrokenPipeError) as e:
+                logger.warning(f"Conexão com servidor Suntech caiu ao enviar ({type(e).__name__})", device_id=self.dev_id)
+
+                if self._conection_retries < 5:
+                    if self.connect():
+                        self.send(packet)
+                else:
+                    logger.error("Número máximo de tentativas de conexão para essa sessão atingida")
+                    self._conection_retries = 0
+                    return
+
+            except Exception:
+                logger.exception("Erro inesperado ao enviar pacote", device_id=self.dev_id)
+                self.disconnect()
+
+    def disconnect(self):
+        pass
 # active_connections = {}
 # connection_lock = threading.Lock()
 
