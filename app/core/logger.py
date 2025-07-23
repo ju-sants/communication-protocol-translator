@@ -1,33 +1,29 @@
 import logging
 import sys
-import structlog
 from app.config.settings import settings
 
-def get_logger(name: str) -> structlog.stdlib.BoundLogger:
+def get_logger(name: str) -> logging.Logger:
     """
-    Configures and returns a structlog logger.
+    Configures and returns a standard Python logger.
     """
-    logging.basicConfig(
-        level=settings.LOG_LEVEL.upper(),
-        format="%(message)s",  # structlog will handle the formatting
-        stream=sys.stdout,
-    )
+    log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+
+    # Prevent duplicate handlers if get_logger is called multiple times
+    logger = logging.getLogger(name)
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    logger.setLevel(log_level)
     
-    structlog.configure(
-        processors=[
-            structlog.stdlib.filter_by_level,
-            structlog.stdlib.add_logger_name,
-            structlog.stdlib.add_log_level,
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.StackInfoRenderer(),
-            structlog.processors.format_exc_info,
-            structlog.processors.UnicodeDecoder(),
-            structlog.processors.JSONRenderer()
-        ],
-        context_class=dict,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        wrapper_class=structlog.stdlib.BoundLogger,
-        cache_logger_on_first_use=True,
-    )
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(log_level)
     
-    return structlog.get_logger(name)
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    handler.setFormatter(formatter)
+    
+    logger.addHandler(handler)
+    logger.propagate = False
+    
+    return logger
