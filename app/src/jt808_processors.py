@@ -1,5 +1,5 @@
 import struct
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from app.config.settings import settings
 from app.src.suntech_utils import build_suntech_packet, build_suntech_alv_packet
@@ -10,7 +10,7 @@ from app.services.redis_service import get_redis
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-def handle_ignition_change(dev_id_str: str, location_data: dict):
+def handle_ignition_change(dev_id_str: str, serial, location_data: dict):
     """
     Verifica se houve mudança no status da ignição e envia o alerta correspondente.
     """
@@ -32,7 +32,7 @@ def handle_ignition_change(dev_id_str: str, location_data: dict):
                 alert_id = settings.SUNTECH_IGNITION_ON_ALERT_ID
                 logger.info(f"EVENTO DETECTADO: Ignição Ligada para device_id={dev_id_str}")
                 ignition_alert_packet = build_suntech_packet(
-                    "ALT", dev_id_str, location_data, is_realtime=True, alert_id=alert_id
+                    "ALT", dev_id_str, location_data, serial, is_realtime=True, alert_id=alert_id
                 )
 
             else:
@@ -40,7 +40,7 @@ def handle_ignition_change(dev_id_str: str, location_data: dict):
                 alert_id = settings.SUNTECH_IGNITION_OFF_ALERT_ID
                 logger.info(f"EVENTO DETECTADO: Ignição Desligada para device_id={dev_id_str}")
                 ignition_alert_packet = build_suntech_packet(
-                    "ALT", dev_id_str, location_data, is_realtime=True, alert_id=alert_id
+                    "ALT", dev_id_str, location_data, serial, is_realtime=True, alert_id=alert_id
                 )
             
             # Envia o pacote de alerta de ignição para o servidor principal
@@ -53,7 +53,7 @@ def handle_ignition_change(dev_id_str: str, location_data: dict):
     except Exception:
         logger.exception(f"Erro ao processar mudança de ignição para device_id={dev_id_str}")
 
-def handle_power_change(dev_id_str: str, location_data: dict):
+def handle_power_change(dev_id_str: str, serial, location_data: dict):
     """Verifica se houve mudança no status da alimentação e envia o alerta correspondente."""
     try:
         # Bit 11: 0 = normal, 1 = desconectado
@@ -70,14 +70,14 @@ def handle_power_change(dev_id_str: str, location_data: dict):
                 alert_id = settings.SUNTECH_POWER_DISCONNECTED_ALERT_ID # Alerta 41
                 logger.info(f"EVENTO DETECTADO: Alimentação Principal Desconectada para device_id={dev_id_str}")
                 power_alert_packet = build_suntech_packet(
-                    "ALT", dev_id_str, location_data, is_realtime=True, alert_id=alert_id
+                    "ALT", dev_id_str, location_data, serial, is_realtime=True, alert_id=alert_id
                 )
             else:
                 # Mudou de Desconectado (1) para Conectado (0)
                 alert_id = settings.SUNTECH_POWER_CONNECTED_ALERT_ID # Alerta 40
                 logger.info(f"EVENTO DETECTADO: Alimentação Principal Conectada para device_id={dev_id_str}")
                 power_alert_packet = build_suntech_packet(
-                    "ALT", dev_id_str, location_data, is_realtime=True, alert_id=alert_id
+                    "ALT", dev_id_str, location_data, serial, is_realtime=True, alert_id=alert_id
                 )
             
             if power_alert_packet:
@@ -95,11 +95,26 @@ def decode_jt808_location_packet(body: bytes) -> dict:
         # 1. Decodificar a parte básica (28 bytes)
         alert_mark, status, lat, lon, height, speed, direction, time_bcd = struct.unpack('>IIIIHHH6s', body[:28])
         time_str = time_bcd.hex()
+
+        longitude = lon / 1_000_000.0
+        latitude = lat / 1_000_000.0
+
+        if (status >> 2) & 1:
+            latitude = -latitude
+        if (status >> 3) & 1:
+            longitude = -longitude
+
+        time_str = time_bcd.hex()
+        naive_dt = datetime.strptime(time_str, '%y%m%d%H%M%S')
+        timezone_tracker = timezone(timedelta(hours=8))
+        localized_dt = naive_dt.replace(tzinfo=timezone_tracker)
+        utc_dt = localized_dt.astimezone(timezone.utc)
+
         data.update({
             "alert_mark": alert_mark, "status_bits": status,
-            "latitude": lat / 1_000_000.0, "longitude": lon / 1_000_000.0,
+            "latitude": latitude, "longitude": longitude,
             "altitude": height, "speed_kmh": speed / 10.0, "direction": direction,
-            "timestamp": datetime.strptime(time_str, '%y%m%d%H%M%S')
+            "timestamp": utc_dt
         })
         logger.debug(f"Decodificação básica do pacote de localização bem-sucedida: {data}")
 
@@ -133,7 +148,7 @@ def decode_jt808_location_packet(body: bytes) -> dict:
     return data
 
 
-def process_jt808_packet(msg_id: int, body: bytes, dev_id_str: str):
+def process_jt808_packet(msg_id: int, body: bytes, serial: int, dev_id_str: str):
     """Processa um pacote JT/T 808 decodificado e o traduz para o formato Suntech."""
     suntech_packet = None  # Usar um nome de variável genérico
     logger.info(f"Processando pacote JT/T 808: msg_id={hex(msg_id)}, device_id={dev_id_str}")
@@ -151,8 +166,8 @@ def process_jt808_packet(msg_id: int, body: bytes, dev_id_str: str):
             return
         
         # Funções que geram eventos adicionais (enviam seus próprios pacotes)
-        handle_ignition_change(dev_id_str, location_data)
-        handle_power_change(dev_id_str, location_data)
+        handle_ignition_change(dev_id_str, serial, location_data)
+        handle_power_change(dev_id_str, serial, location_data)
 
         # Agora, gera o pacote principal para a localização/alerta atual
         alert_triggered = False
@@ -165,20 +180,20 @@ def process_jt808_packet(msg_id: int, body: bytes, dev_id_str: str):
             alert_id = settings.SUNTECH_GEOFENCE_ENTER_ALERT_ID if direction == 0 else settings.SUNTECH_GEOFENCE_EXIT_ALERT_ID
             
             logger.info(f"Tradução: Localização COM ALERTA de Geocerca para device_id={dev_id_str}, suntech_alert_id={alert_id}, geo_id={geo_id}")
-            suntech_packet = build_suntech_packet("ALT", dev_id_str, location_data, is_realtime=True, alert_id=alert_id, geo_fence_id=geo_id)
+            suntech_packet = build_suntech_packet("ALT", dev_id_str, location_data, serial, is_realtime=True, alert_id=alert_id, geo_fence_id=geo_id)
             alert_triggered = True
 
         if not alert_triggered:
             for bit_pos, alert_id in settings.JT808_TO_SUNTECH_ALERT_MAP.items():
                 if (jt808_alert_mark >> bit_pos) & 1:
                     logger.info(f"Tradução: Localização COM ALERTA para device_id={dev_id_str}, bit_pos={bit_pos}, suntech_alert_id={alert_id}")
-                    suntech_packet = build_suntech_packet("ALT", dev_id_str, location_data, is_realtime=True, alert_id=alert_id)
+                    suntech_packet = build_suntech_packet("ALT", dev_id_str, location_data, serial, is_realtime=True, alert_id=alert_id)
                     alert_triggered = True
                     break
         
         if not alert_triggered:
             logger.info(f"Tradução: Localização para Status (STT) para device_id={dev_id_str}")
-            suntech_packet = build_suntech_packet("STT", dev_id_str, location_data, is_realtime=True)
+            suntech_packet = build_suntech_packet("STT", dev_id_str, location_data, serial, is_realtime=True)
 
     elif msg_id == 0x0704:
         logger.info(f"Tradução: Pacote de Dados de Área Cega (múltiplos STT/ALT) para device_id={dev_id_str}")
@@ -195,7 +210,7 @@ def process_jt808_packet(msg_id: int, body: bytes, dev_id_str: str):
             loc_data = decode_jt808_location_packet(report_body)
             if loc_data:
                 # Trata como não-tempo-real
-                historical_suntech_packet = build_suntech_packet("STT", dev_id_str, loc_data, is_realtime=False)
+                historical_suntech_packet = build_suntech_packet("STT", dev_id_str, loc_data, serial, is_realtime=False)
                 if historical_suntech_packet:
                     logger.debug(f"Encaminhando pacote histórico {i+1}/{total_reports} para device_id={dev_id_str}: {historical_suntech_packet}")
                     send_to_main_server(dev_id_str, historical_suntech_packet.encode('ascii'))
