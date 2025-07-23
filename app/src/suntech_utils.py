@@ -1,6 +1,8 @@
 from app.core.logger import get_logger
 from app.config.settings import settings
 
+from app.src.jt808_utils import build_lock_jt80_command, build_unlock_jt808_command, build_ping_jt808_command
+
 logger = get_logger(__name__)
 
 
@@ -88,12 +90,16 @@ def build_suntech_alv_packet(dev_id: str) -> str:
 def process_suntech_command(command: str, dev_id: str):
     logger.info(f"Processando comando suntech, dev_id={dev_id}")
 
-    fields = command.split(";")
-    hdr = fields[0]
+    command_mapping = {
+        "CMD;6823021412;04;01": build_lock_jt80_command,
+        "CMD;6823021412;04;02": build_unlock_jt808_command,
+        "CMD;6823021412;03;01": build_ping_jt808_command
+    }
 
     jt808_command = None
-    if hdr == "DEX":
-        pass
+    if command in command_mapping:
+        builder_func = command_mapping[command]
+        jt808_command = builder_func()
 
     if jt808_command:
         with settings.jt808_clients_lock:

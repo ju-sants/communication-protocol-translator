@@ -10,8 +10,9 @@ logger = get_logger(__name__)
 
 
 class MainServerSession:
-    def __init__(self, dev_id: str):
+    def __init__(self, dev_id: str, serial: str):
         self.dev_id = dev_id
+        self.serial = serial
         self.sock: socket.socket = None
         self.lock = threading.Lock()
         self._is_connected = False
@@ -111,11 +112,11 @@ class MainServerSessionsManager:
         self._sessions: dict[str, MainServerSession] = {}
         self.lock = threading.Lock()
 
-    def get_session(self, dev_id: str):
+    def get_session(self, dev_id: str, serial: str):
         with self.lock:
             if dev_id not in self._sessions:
                 logger.info(f"Nenhuma sessão encontrada. Criando Sessão, dev_id={dev_id}")
-                self._sessions[dev_id] = MainServerSession(dev_id)
+                self._sessions[dev_id] = MainServerSession(dev_id, serial)
             
             session = self._sessions[dev_id]
             session.connect()
@@ -124,6 +125,6 @@ class MainServerSessionsManager:
 
 sessions_manager = MainServerSessionsManager()
 
-def send_to_main_server(dev_id_str: str, packet_data: bytes):
-    session = sessions_manager.get_session(dev_id_str)
+def send_to_main_server(dev_id_str: str, serial: str, packet_data: bytes):
+    session = sessions_manager.get_session(dev_id_str, serial)
     session.send(packet_data)

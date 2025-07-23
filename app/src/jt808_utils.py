@@ -174,3 +174,9 @@ def build_lock_jt80_command(dev_id: str, serial: str):
     command = b"\x7e" + escaped_message + b"\x7e"
 
     return command
+
+def build_unlock_jt808_command(dev_id: str, serial: str):
+    pass
+
+def build_ping_jt808_command(dev_id: str, serial: str):
+    pass

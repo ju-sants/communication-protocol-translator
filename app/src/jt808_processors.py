@@ -45,7 +45,7 @@ def handle_ignition_change(dev_id_str: str, serial, location_data: dict):
             
             # Envia o pacote de alerta de ignição para o servidor principal
             if ignition_alert_packet:
-                send_to_main_server(dev_id_str, ignition_alert_packet.encode('ascii'))
+                send_to_main_server(dev_id_str, serial, ignition_alert_packet.encode('ascii'))
 
         # Atualiza o estado no Redis para a próxima verificação
         redis_client.hset(dev_id_str, 'acc_status', current_acc_status)
@@ -81,7 +81,7 @@ def handle_power_change(dev_id_str: str, serial, location_data: dict):
                 )
             
             if power_alert_packet:
-                send_to_main_server(dev_id_str, power_alert_packet.encode('ascii'))
+                send_to_main_server(dev_id_str, serial, power_alert_packet.encode('ascii'))
 
         redis_client.hset(dev_id_str, 'power_status', current_power_disconnected)
     except Exception:
@@ -213,7 +213,7 @@ def process_jt808_packet(msg_id: int, body: bytes, serial: int, dev_id_str: str)
                 historical_suntech_packet = build_suntech_packet("STT", dev_id_str, loc_data, serial, is_realtime=False)
                 if historical_suntech_packet:
                     logger.debug(f"Encaminhando pacote histórico {i+1}/{total_reports} para device_id={dev_id_str}: {historical_suntech_packet}")
-                    send_to_main_server(dev_id_str, historical_suntech_packet.encode('ascii'))
+                    send_to_main_server(dev_id_str, serial, historical_suntech_packet.encode('ascii'))
         suntech_packet = None # Garante que nada extra seja enviado no final
 
     else:
@@ -221,6 +221,6 @@ def process_jt808_packet(msg_id: int, body: bytes, serial: int, dev_id_str: str)
 
     if suntech_packet:
         logger.info(f"Pacote Suntech gerado para encaminhamento para device_id={dev_id_str}: {suntech_packet}")
-        send_to_main_server(dev_id_str, suntech_packet.encode('ascii'))
+        send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'))
 
     
