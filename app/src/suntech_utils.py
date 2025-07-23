@@ -2,6 +2,14 @@ from app.core.logger import get_logger
 
 logger = get_logger(__name__)
 
+
+def build_suntech_mnt_packet(dev_id_str: str) -> bytes:
+    """Constrói um pacote de Manutenção (MNT) para 'apresentar' o dispositivo."""
+    sw_ver = "JT808_Translator_1.0"
+    packet_str = f"MNT;{dev_id_str};{sw_ver}"
+    logger.info("Construído pacote de apresentação MNT", pacote=packet_str)
+    return packet_str.encode('ascii')
+
 def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, is_realtime: bool, alert_id: int = None, geo_fence_id: int = None, include_report_map: bool = False) -> str:
     """Função central para construir pacotes Suntech STT e ALT, agora com suporte a ID de geocerca."""
     logger.debug(

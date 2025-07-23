@@ -3,6 +3,7 @@ import threading
 
 from app.core.logger import get_logger
 from app.config.settings import settings
+from app.src.suntech_utils import build_suntech_mnt_packet
 
 logger = get_logger(__name__)
 
@@ -21,6 +22,7 @@ def send_to_main_server(dev_id_str: str, packet_data: bytes):
     # return
 
     s = None
+    is_new_connection = False
     packet_data = packet_data + b'\r'
 
     with connection_lock:
@@ -32,7 +34,7 @@ def send_to_main_server(dev_id_str: str, packet_data: bytes):
         logger.info(f"Criando nova conexão para {host}:{port}")
         try:
             s = socket.create_connection((host, port), timeout=5)
-
+            is_new_connection = True
             with connection_lock:
                 active_connections[dev_id_str] = s
             logger.debug(f"Nova conexão criada para {host}:{port}")
@@ -41,6 +43,12 @@ def send_to_main_server(dev_id_str: str, packet_data: bytes):
             return
 
     try:
+        if is_new_connection:
+            # Envia o pacote de monitoramento para o servidor principal
+            monitor_packet = build_suntech_mnt_packet(dev_id_str)
+            s.sendall(monitor_packet)
+            logger.debug(f"Pacote de monitoramento enviado para {host}:{port}")
+            
         logger.info(f"Enviando pacote de {len(packet_data)} bytes para {host}:{port}")
         s.sendall(packet_data)
         logger.debug(f"Pacote enviado com sucesso para {host}:{port}")
