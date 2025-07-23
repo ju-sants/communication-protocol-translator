@@ -3,52 +3,62 @@ import threading
 import struct
 
 from app.config.settings import settings
-from app.src.jt808_utils import unescape_data, verify_checksum, build_jt808_response
+from app.src.jt808_utils import unescape_data, verify_checksum, build_jt808_response, format_jt808_packet_for_display
 from app.src.jt808_processors import process_jt808_packet
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 def handle_jt808_connection(conn: socket.socket, addr):
     """Lida com uma única conexão de cliente JT/T 808."""
-    print(f"[*] Conexão JT/T 808 aceita de {addr}")
+    logger.info(f"Conexão aceita de {addr}")
     buffer = b''
+    dev_id_str = "desconhecido"
     try:
         while True:
             data = conn.recv(1024)
             if not data:
                 break
-            
+
+            logger.debug(f"Dados brutos recebidos de {addr}: {data.hex()}")
             buffer += data
+            
             while b'\x7e' in buffer:
                 start_index = buffer.find(b'\x7e')
                 end_index = buffer.find(b'\x7e', start_index + 1)
                 if end_index == -1:
                     break
-                
+
+                raw_packet = buffer[start_index : end_index + 1]
                 packet = buffer[start_index + 1 : end_index]
                 buffer = buffer[end_index + 1:]
-                
+
+                logger.debug(f"Processando pacote de {addr}: {raw_packet.hex()}")
+
                 unescaped_packet = unescape_data(packet)
                 if not verify_checksum(unescaped_packet):
-                    print(f"[!] Checksum inválido de {addr}.")
+                    logger.warning(f"Checksum inválido para pacote de {addr}: {raw_packet.hex()}")
                     continue
+                
+                display_output = format_jt808_packet_for_display(unescaped_packet)
+                logger.info(f"Pacote Formatado Recebido de {addr}:\n{display_output}")
                 
                 header_bytes = unescaped_packet[:12]
                 msg_id, _, terminal_phone_bcd, serial = struct.unpack('>HH6sH', header_bytes)
                 body = unescaped_packet[12:-1]
                 dev_id_str = terminal_phone_bcd.hex()
-
-                # Responder ao dispositivo JT/T 808
+ 
                 response_to_device = build_jt808_response(terminal_phone_bcd, serial, msg_id, 0)
                 conn.sendall(response_to_device)
+                logger.debug(f"ACK enviado ao dispositivo {dev_id_str}: {response_to_device.hex()}")
 
-                # Processar o pacote
                 process_jt808_packet(msg_id, body, dev_id_str)
 
-    except (ConnectionResetError, BrokenPipeError):
-        print(f"[*] Conexão com {addr} foi fechada pelo cliente.")
-    except Exception as e:
-        print(f"[!] Erro fatal na conexão com {addr}: {e}")
+    except (ConnectionResetError, BrokenPipeError, TimeoutError):
+        logger.warning(f"Conexão fechada abruptamente por {addr} (Device: {dev_id_str})")
+    except Exception:
+        logger.exception(f"Erro fatal na conexão de {addr} (Device: {dev_id_str})")
     finally:
-        print(f"[*] Finalizando thread para {addr}")
         conn.close()
 
 def start_translator_server():
@@ -57,7 +67,7 @@ def start_translator_server():
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind(('', settings.JT808_LISTENER_PORT))
     server_socket.listen(10)
-    print(f"[*] Servidor Tradutor de Protocolo escutando em *:{settings.JT808_LISTENER_PORT}")
+    logger.info(f"[*] Servidor Tradutor de Protocolo escutando em *:{settings.JT808_LISTENER_PORT}")
     
     while True:
         conn, addr = server_socket.accept()
