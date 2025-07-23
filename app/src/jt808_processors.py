@@ -143,7 +143,7 @@ def process_jt808_packet(msg_id: int, body: bytes, dev_id_str: str):
 
     elif msg_id == 0x0002:
         logger.info(f"Traduzindo Heartbeat para Keep-Alive (ALV) para device_id={dev_id_str}")
-        suntech_packet = build_suntech_alv_packet(dev_id_str) # CORREÇÃO: Atribui à variável correta
+        suntech_packet = build_suntech_alv_packet(dev_id_str)
 
     elif msg_id == 0x0200:
         location_data = decode_jt808_location_packet(body)

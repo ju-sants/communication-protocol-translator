@@ -21,6 +21,7 @@ def send_to_main_server(dev_id_str: str, packet_data: bytes):
     # return
 
     s = None
+    packet_data = packet_data + b'\r'
 
     with connection_lock:
         if dev_id_str in active_connections:
