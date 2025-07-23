@@ -176,7 +176,41 @@ def build_lock_jt80_command(dev_id: str, serial: str):
     return command
 
 def build_unlock_jt808_command(dev_id: str, serial: str):
-    pass
+    msg_id = 0x8105
+    msg_body = b"\x65"
+    msg_body_properties = len(msg_body) & 0x03FF # Adicioanndo máscara de seguraça
+    dev_id_bcd = bytes.fromhex(dev_id)
+
+    header = struct.pack(">HH6sH", msg_id, msg_body_properties, dev_id_bcd, serial)
+
+    raw_message = header + msg_body
+
+    checksum = calculate_checksum(raw_message)
+    
+    message_w_checksum = raw_message + checksum
+
+    escaped_message = escape_data(message_w_checksum)
+
+    command = b"\x7e" + escaped_message + b"\x7e"
+
+    return command
 
 def build_ping_jt808_command(dev_id: str, serial: str):
-    pass
+    msg_id = 0x8201
+    msg_body = b""
+    msg_body_properties = len(msg_body) & 0x03FF # Adicioanndo máscara de seguraça
+    dev_id_bcd = bytes.fromhex(dev_id)
+
+    header = struct.pack(">HH6sH", msg_id, msg_body_properties, dev_id_bcd, serial)
+
+    raw_message = header + msg_body
+
+    checksum = calculate_checksum(raw_message)
+    
+    message_w_checksum = raw_message + checksum
+
+    escaped_message = escape_data(message_w_checksum)
+
+    command = b"\x7e" + escaped_message + b"\x7e"
+
+    return command
