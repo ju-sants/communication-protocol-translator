@@ -37,7 +37,7 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int
         str(location_data.get('satellites', 15)),
         "1" if (location_data.get('status_bits', 0) & 0b10) else "0",
         f"0000000{int(location_data.get('status_bits', 0) & 0b1)}",
-        "00000001"
+        f"0000000{int((location_data.get("status_bits", 0) >> 10) & 1)}"
     ]
     
     # Campos de telemetria extra (Assign Headers)
