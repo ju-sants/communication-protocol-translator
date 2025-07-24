@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import SkipValidation
 from typing import Dict
 import threading
 
@@ -41,6 +42,6 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
 
     jt808_clients: dict = {}
-    jt808_clients_lock: threading.Lock = threading.Lock()
+    jt808_clients_lock: SkipValidation[threading.Lock] = threading.Lock()
 
 settings = Settings()
