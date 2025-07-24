@@ -106,7 +106,7 @@ def decode_jt808_location_packet(body: bytes) -> dict:
 
         time_str = time_bcd.hex()
         naive_dt = datetime.strptime(time_str, '%y%m%d%H%M%S')
-        timezone_tracker = timezone(timedelta(hours=8))
+        timezone_tracker = timezone(timedelta(hours=-3))
         localized_dt = naive_dt.replace(tzinfo=timezone_tracker)
         utc_dt = localized_dt.astimezone(timezone.utc)
 

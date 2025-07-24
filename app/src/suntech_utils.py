@@ -104,7 +104,7 @@ def process_suntech_command(command: str, dev_id: str, serial: str):
 
     jt808_command = None
     if command_key in command_mapping:
-        params = command_mapping[command]
+        params = command_mapping[command_key]
         jt808_command = build_jt808_command(dev_id, int(serial), *params)
 
     if jt808_command:
