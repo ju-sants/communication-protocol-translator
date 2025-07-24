@@ -3,9 +3,11 @@ import struct
 from app.core.logger import get_logger
 from .processor import process_packet, unescape_data, verify_checksum, format_jt808_packet_for_display
 from app.src.protocols.session_manager import tracker_sessions_manager
+from app.services.redis_service import get_redis
+
 
 logger = get_logger("jt808_handler")
-
+redis_client = get_redis()
 
 def handle_connection(conn: socket.socket, addr):
     """Lida com uma única conexão de cliente JT/T 808."""
@@ -41,6 +43,7 @@ def handle_connection(conn: socket.socket, addr):
 
                 # Registra o cliente no gerenciador de sessão
                 tracker_sessions_manager.register_client(dev_id_str, conn)
+                redis_client.hset(dev_id_str, "protocol", "jt808")
 
                 logger.info(f"Pacote Formatado Recebido de {addr}:\n{format_jt808_packet_for_display(unescaped_packet, dev_id_str)}")
 
