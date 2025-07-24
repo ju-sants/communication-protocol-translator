@@ -6,7 +6,7 @@ from app.src.connection.main_server_connection import send_to_main_server
 from app.services.redis_service import get_redis
 from app.core.logger import get_logger
 
-logger = get_logger("jt808_mapper")
+logger = get_logger(__name__)
 redis_client = get_redis()
 
 def handle_ignition_change(dev_id_str: str, serial, location_data: dict):
