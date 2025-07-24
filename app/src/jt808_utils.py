@@ -152,29 +152,6 @@ def format_jt808_packet_for_display(unescaped_packet: bytes) -> str:
 
    except Exception as e:
        return f"Erro ao formatar pacote: {e}\nPacote (raw): {unescaped_packet.hex()}"
-   
-
-
-def build_lock_jt80_command(dev_id: str, serial: str):
-    serial = int(serial)
-    msg_id = 0x8105
-    msg_body = b"\x64"
-    msg_body_properties = len(msg_body) & 0x03FF # Adicioanndo máscara de seguraça
-    dev_id_bcd = bytes.fromhex(dev_id)
-
-    header = struct.pack(">HH6sH", msg_id, msg_body_properties, dev_id_bcd, serial)
-
-    raw_message = header + msg_body
-
-    checksum = calculate_checksum(raw_message)
-    
-    message_w_checksum = raw_message + checksum
-
-    escaped_message = escape_data(message_w_checksum)
-
-    command = b"\x7e" + escaped_message + b"\x7e"
-
-    return command
 
 def build_jt808_command(dev_id: str, serial: int, msg_id: int, msg_body: bytes) -> bytes:
     dev_id_bcd = bytes.fromhex(dev_id[-12:])
