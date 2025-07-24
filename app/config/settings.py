@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import SkipValidation
-from typing import Dict
+from typing import Dict, Any
 import threading
 
 class Settings(BaseSettings):
@@ -12,9 +12,21 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
 
-    JT808_LISTENER_PORT: int = 65432
+    # --- Configurações de Rede ---
     MAIN_SERVER_HOST: str = '127.0.0.1'
     MAIN_SERVER_PORT: int = 12345
+
+    # --- Módulos de Protocolo a serem Carregados ---
+    PROTOCOLS: Dict[str, Dict[str, Any]] = {
+        "jt808": {
+            "port": 65432,
+            "handler_path": "app.src.protocols.jt808.handler.handle_connection"
+        },
+        "gt06": {
+            "port": 65433,
+            "handler_path": "app.src.protocols.gt06.handler.handle_connection"
+        }
+    }
 
     JT808_TO_SUNTECH_ALERT_MAP: Dict[int, int] = {
         0: 42,  # Bit 0 (SOS) -> Alert 42 (Panic Button)
