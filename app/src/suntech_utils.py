@@ -1,7 +1,7 @@
+import socket
+
 from app.core.logger import get_logger
 from app.config.settings import settings
-
-from app.src.jt808_utils import build_lock_jt80_command, build_unlock_jt808_command, build_ping_jt808_command
 
 logger = get_logger(__name__)
 
@@ -88,23 +88,29 @@ def build_suntech_alv_packet(dev_id: str) -> str:
 
 
 def process_suntech_command(command: str, dev_id: str, serial: str):
+    from app.src.jt808_utils import build_jt808_command
+
     logger.info(f"Processando comando suntech, dev_id={dev_id}")
 
+    parts = command.split(';')
+
+    command_key = f"{parts[0]};{parts[2]};{parts[3]}"
+
     command_mapping = {
-        "CMD;6823021412;04;01": build_lock_jt80_command,
-        "CMD;6823021412;04;02": build_unlock_jt808_command,
-        "CMD;6823021412;03;01": build_ping_jt808_command
+        "CMD;04;01": (0x8105, b"\x64"),
+        "CMD;04;02": (0x8105, b"\x65"),
+        "CMD;03;01": (0x8201, b""),
     }
 
     jt808_command = None
-    if command in command_mapping:
-        builder_func = command_mapping[command]
-        jt808_command = builder_func(dev_id, serial)
+    if command_key in command_mapping:
+        params = command_mapping[command]
+        jt808_command = build_jt808_command(dev_id, int(serial), *params)
 
     if jt808_command:
         with settings.jt808_clients_lock:
             if dev_id in settings.jt808_clients:
-                tracker_socket = settings.jt808_clients[dev_id]
+                tracker_socket: socket.socket = settings.jt808_clients[dev_id]
 
                 try:
                     tracker_socket.sendall(jt808_command)
