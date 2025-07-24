@@ -60,6 +60,7 @@ graph LR
 
 Para comunicação **Server Principal -> Tradutor -> Rastreador:**
 
+```mermaid
 graph LR
     subgraph "Plataforma de Destino"
         A[Servidor Principal Suntech]
