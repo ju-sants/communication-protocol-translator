@@ -4,7 +4,7 @@ from . import builder, mapper
 from app.core.logger import get_logger
 from app.src.protocols.jt808.mapper import decode_location_packet
 
-logger = get_logger("jt808_processor")
+logger = get_logger(__name__)
 
 def format_jt808_packet_for_display(unescaped_packet: bytes) -> str:
    """Formata um pacote JT/T 808 para exibição legível."""
