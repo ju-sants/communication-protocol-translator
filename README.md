@@ -25,50 +25,29 @@ O principal objetivo é resolver o problema de integração de hardware heterog�
 O sistema foi projetado para ser modular e desacoplado. A comunicação flui de forma organizada através de componentes com responsabilidades únicas.
 
 ```mermaid
-graph TD
-    subgraph Dispositivos
-        D1(JT/T 808)
-        D2(GT06)
-        D3(...)
+graph LR
+    subgraph Dispositivo
+        D1(Rastreador JT/T 808)
     end
 
-    subgraph Servidor Tradutor
-        L1(Listener Porta 65432)
-        L2(Listener Porta 65433)
-        L3(Listener Porta XXXX)
-
-        subgraph "Módulo JT/T 808"
+    subgraph "Servidor Tradutor"
+        L1[Listener na Porta 65432]
+        
+        subgraph "Módulo de Protocolo JT/T 808"
+            direction LR
             H1[Handler] --> P1[Processor]
             P1 --> M1[Mapper]
         end
 
-        subgraph "Módulo GT06"
-            H2[Handler] --> P2[Processor]
-            P2 --> M2[Mapper]
-        end
-
-        subgraph "Módulo ..."
-            H3[Handler] --> P3[Processor]
-            P3 --> M3[Mapper]
-        end
-        
-        M1 -- Dados Unificados --> S
-        M2 -- Dados Unificados --> S
-        M3 -- Dados Unificados --> S
-
-        S[Connection Manager]
-        R((Redis))
-        C{Command Router}
-
-        S <--> R
-        S <--> PF(Plataforma Suntech)
-        PF -- Comando --> S
-        S -- Comando --> C
-        C -- Consulta Protocolo --> R
-        C -- Roteia Comando --> B1(JT/T 808 Builder)
-        B1 --> D1
+        CM[Connection Manager]
+        PF(Plataforma Suntech)
     end
 
-    D1 --> L1 --> H1
-    D2 --> L2 --> H2
-    D3 --> L3 --> H3
+    D1 -- "Pacote Binário" --> L1
+    L1 --> H1
+    M1 -- "Dados Unificados (Dicionário Python)" --> CM
+    CM -- "Pacote Suntech (ASCII)" --> PF
+
+    style D1 fill:#d4edda,stroke:#155724
+    style PF fill:#cce5ff,stroke:#004085
+    style M1 fill:#fff3cd,stroke:#856404
