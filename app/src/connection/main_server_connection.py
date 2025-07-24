@@ -3,12 +3,17 @@ import threading
 import time
 
 from app.core.logger import get_logger
+from app.services.redis_service import get_redis
 from app.config.settings import settings
-from app.src.suntech_utils import build_suntech_mnt_packet, process_suntech_command
+from app.src.suntech.utils import build_suntech_mnt_packet
+from app.src.protocols.jt808.builder import process_suntech_command as process_suntech_command_to_jt808
 
 logger = get_logger(__name__)
+redis_client = get_redis()
 
-
+COMMAND_PROCESSORS = {
+    "jt808": process_suntech_command_to_jt808,
+    }
 class MainServerSession:
     def __init__(self, dev_id: str, serial: str):
         self.dev_id = dev_id
@@ -53,9 +58,22 @@ class MainServerSession:
                     self.disconnect()
                     break
                 
-                command = data.decode("ascii", errors="ignore").strip()
-                logger.info(f"Recebido comando {command} do server iniciando processamento.")
-                process_suntech_command(command, self.dev_id, self.serial)
+                device_info = redis_client.hgetall(self.dev_id)
+                protocol_type = device_info.get("protocol")
+
+                if not protocol_type:
+                    logger.error(f"Protocolo não encontrado no Redis para o device_id={self.dev_id}. Impossível traduzir comando.")
+                    continue
+
+                processor_func = COMMAND_PROCESSORS.get(protocol_type)
+
+                if not processor_func:
+                    logger.error(f"Processador de comando para o protocolo '{protocol_type}' não encontrado.")
+                    continue
+
+                logger.info(f"Roteando comando para o processador do protocolo: '{protocol_type}'")
+                processor_func(data, self.dev_id)
+
 
             except socket.timeout:
                 continue
