@@ -29,3 +29,10 @@ def precompute_crc_table():
         CRC_TABLE.append(crc & 0xFFFF)
 
 precompute_crc_table()
+
+
+def crc16_itu(data: bytes) -> int:
+    crc = 0
+    for byte in data:
+        crc = ((crc << 8) & 0xFF00) ^ CRC_TABLE[((crc >> 8) & 0xFF) ^ byte]
+    return crc & 0xFFFF
