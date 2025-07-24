@@ -24,30 +24,68 @@ O principal objetivo é resolver o problema de integração de hardware heterog�
 
 O sistema foi projetado para ser modular e desacoplado. A comunicação flui de forma organizada através de componentes com responsabilidades únicas.
 
+
+Para comunicação **Rastreador -> Tradutor -> Server Principal:**
+
 ```mermaid
 graph LR
-    subgraph Dispositivo
-        D1(Rastreador JT/T 808)
+    subgraph "Sistema Externo"
+        A[Dispositivo Rastreador]
     end
 
-    subgraph "Servidor Tradutor"
-        L1[Listener na Porta 65432]
-        
-        subgraph "Módulo de Protocolo JT/T 808"
-            direction LR
-            H1[Handler] --> P1[Processor]
-            P1 --> M1[Mapper]
-        end
-
-        CM[Connection Manager]
-        PF(Plataforma Suntech)
+    subgraph "Nosso Servidor Tradutor"
+        B(Porta TCP)
+        C[Função de Conexão <br> <i>handler.py</i>]
+        D[Decodificação de Pacotes <br> <i>processor.py</i>]
+        E{Tradução de Pacotes <br> <i>mapper.py</i>}
+        F[Envio para Servidor Principal <br> <i>connection_manager.py</i>]
     end
 
-    D1 -- "Pacote Binário" --> L1
-    L1 --> H1
-    M1 -- "Dados Unificados (Dicionário Python)" --> CM
-    CM -- "Pacote Suntech (ASCII)" --> PF
+    subgraph "Plataforma de Destino"
+        G[Servidor Principal Suntech]
+    end
 
-    style D1 fill:#d4edda,stroke:#155724
-    style PF fill:#cce5ff,stroke:#004085
-    style M1 fill:#fff3cd,stroke:#856404
+    A -- "1. Envia pacote binário" --> B
+    B -- "2. Aceita conexão" --> C
+    C -- "3. Passa pacote bruto" --> D
+    D -- "4. Passa dados decodificados" --> E
+    E -- "5. Passa dicionário traduzido" --> F
+    F -- "6. Envia pacote Suntech ASCII" --> G
+
+    style A fill:#d4edda,stroke:#155724
+    style G fill:#cce5ff,stroke:#004085
+    style E fill:#fff3cd,stroke:#856404
+```
+
+
+Para comunicação **Server Principal -> Tradutor -> Rastreador:**
+
+graph LR
+    subgraph "Plataforma de Destino"
+        A[Servidor Principal Suntech]
+    end
+
+    subgraph "Nosso Servidor Tradutor"
+        B[Escuta de Comandos <br> <i>connection_manager.py</i>]
+        C{Roteador de Comandos}
+        D[(Redis <br><i>'Qual o protocolo?'</i>)]
+        E[Tradução Reversa <br> <i>builder.py do protocolo</i>]
+        F[Envio para Dispositivo <br> <i>session_manager.py</i>]
+    end
+
+    subgraph "Sistema Externo"
+        G[Dispositivo Rastreador]
+    end
+
+    A -- "1. Envia comando ASCII" --> B
+    B -- "2. Recebe e passa ao roteador" --> C
+    C -- "3. Consulta protocolo do device" --> D
+    D -- "4. Retorna protocolo" --> C
+    C -- "5. Chama tradutor correto" --> E
+    E -- "6. Constrói pacote de comando binário" --> F
+    F -- "7. Envia pela conexão ativa" --> G
+
+    style A fill:#cce5ff,stroke:#004085
+    style G fill:#d4edda,stroke:#155724
+    style C fill:#fff3cd,stroke:#856404
+    style D fill:#f8d7da,stroke:#721c24
