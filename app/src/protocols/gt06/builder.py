@@ -69,7 +69,7 @@ def build_command(command_content_str: str, serial_number: int):
 
     return command_packet
 
-def process_suntech_command_to_gt06(command: str, dev_id: str):
+def process_suntech_command(command: str, dev_id: str):
     logger.info(f"Iniciando tradução de comando Suntech para GT06 device_id={dev_id}, comando={command}")
     parts = command.split(';')
 
