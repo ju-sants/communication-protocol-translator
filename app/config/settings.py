@@ -27,17 +27,7 @@ class Settings(BaseSettings):
             "handler_path": "app.src.protocols.gt06.handler.handle_connection"
         }
     }
-
-    # IDs de Alerta Suntech que são INFERIDOS, não traduzidos diretamente
-    SUNTECH_IGNITION_ON_ALERT_ID: int = 33
-    SUNTECH_IGNITION_OFF_ALERT_ID: int = 34
-    SUNTECH_POWER_CONNECTED_ALERT_ID: int = 40
-    SUNTECH_POWER_DISCONNECTED_ALERT_ID: int = 41
-
-    # IDs de Alerta Suntech para Geocerca (baseado na direção)
-    SUNTECH_GEOFENCE_ENTER_ALERT_ID: int = 6
-    SUNTECH_GEOFENCE_EXIT_ALERT_ID: int = 5
-    
+ 
     REDIS_DB_MAIN: int = 2
     REDIS_PASSWORD: str = '...'
     REDIS_HOST: str = '127.0.0.1'

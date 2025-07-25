@@ -20,6 +20,17 @@ JT808_TO_SUNTECH_ALERT_MAP = {
     21: 5,  # Bit 21 (in/out routine) -> Usaremos 5 (Exit) ou 6 (Enter)
 }
 
+# IDs de Alerta Suntech que são INFERIDOS, não traduzidos diretamente
+SUNTECH_IGNITION_ON_ALERT_ID: int = 33
+SUNTECH_IGNITION_OFF_ALERT_ID: int = 34
+SUNTECH_POWER_CONNECTED_ALERT_ID: int = 40
+SUNTECH_POWER_DISCONNECTED_ALERT_ID: int = 41
+
+# IDs de Alerta Suntech para Geocerca (baseado na direção)
+SUNTECH_GEOFENCE_ENTER_ALERT_ID: int = 6
+SUNTECH_GEOFENCE_EXIT_ALERT_ID: int = 5
+
+
 def handle_ignition_change(dev_id_str: str, serial, location_data: dict):
     """
     Verifica se houve mudança no status da ignição e envia o alerta correspondente.
