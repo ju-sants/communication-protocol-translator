@@ -31,3 +31,40 @@ def build_generic_response(protocol_number: str, serial_number: int):
     logger.debug(f"Construido pacote de resposta GTO6: {response_packet.hex()}")
 
     return response_packet
+
+def build_command(command_content_str: str, serial_number: int):
+    """
+    Cria comandos no padrão GT06 para envio ao dispositivo
+    """
+
+    protocol_number = 0x80
+
+    server_flag = b'\x00\x00\x00\x01'
+    command_bytes = command_content_str.encode("ascii")
+
+    command_body = server_flag + command_bytes
+
+    command_length = len(command_body)
+
+    packet_length = 1 + 1 + command_length + 2 + 2
+
+    data_for_crc = (
+        struct.pack(">B", packet_length) +
+        struct.pack(">B", protocol_number) +
+        struct.pack(">B", command_length) +
+        command_body + 
+        struct.pack(">H", serial_number)
+    )
+
+    crc = crc16_itu(data_for_crc)
+
+    command_packet = (
+        b'\x78\x78' +
+        data_for_crc + 
+        struct.pack(">H", crc) +
+        b'\x0d\x0a'
+        )
+    
+    logger.info(f"Construído comando GT06: {command_packet.hex()}")
+
+    return command_packet
