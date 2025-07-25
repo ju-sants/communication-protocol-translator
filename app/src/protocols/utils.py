@@ -4,7 +4,7 @@ from app.src.suntech.utils import build_suntech_packet
 from app.src.connection.main_server_connection import send_to_main_server
 
 redis_client = get_redis()
-logger = get_logger()
+logger = get_logger(__name__)
 
 # IDs de Alerta Suntech que são INFERIDOS, não traduzidos diretamente
 SUNTECH_IGNITION_ON_ALERT_ID: int = 33
