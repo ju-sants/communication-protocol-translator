@@ -87,3 +87,31 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
 
     if suntech_packet:
         send_to_main_server(dev_id_str, serial, suntech_packet)
+
+def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
+
+    location_data = decode_location_packet(body[0:32])
+
+    if not location_data:
+        return
+    
+    alarm_language_byte = body[32]
+    alarm_code = alarm_language_byte
+
+    suntech_alert_id = GT06_TO_SUNTECH_ALERT_MAP.get(alarm_code)
+
+    
+    if suntech_alert_id:
+        logger.info(f"Alarme GT06 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
+        suntech_packet = build_suntech_packet(
+            hdr="ALT",
+            dev_id=dev_id_str,
+            location_data=location_data,
+            serial=serial,
+            is_realtime=location_data.get('is_realtime', True),
+            alert_id=suntech_alert_id
+        )
+        if suntech_packet:
+            send_to_main_server(dev_id_str, suntech_packet.encode('ascii'))
+    else:
+        logger.warning(f"Alarme GT06 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
