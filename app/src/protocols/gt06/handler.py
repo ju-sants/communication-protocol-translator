@@ -14,13 +14,13 @@ def handle_connection(conn: socket.socket, addr):
     """
     logger.info("Nova conexão GT06 recebida", endereco=addr)
     buffer = b''
-    dev_id_da_sessao = None
+    dev_id_session = None
 
     try:
         while True:
             data = conn.recv(1024)
             if not data:
-                logger.info("Conexão GT06 fechada pelo cliente", endereco=addr, device_id=dev_id_da_sessao)
+                logger.info("Conexão GT06 fechada pelo cliente", endereco=addr, device_id=dev_id_session)
                 break
             
             buffer += data
@@ -44,14 +44,14 @@ def handle_connection(conn: socket.socket, addr):
                         packet_body = raw_packet[2:-2]
                         
                         # Chama o processador, passando o ID da sessão
-                        response_packet, newly_logged_in_dev_id = process_packet(dev_id_da_sessao, packet_body)
+                        response_packet, newly_logged_in_dev_id = process_packet(dev_id_session, packet_body)
                         
                         # Se era um pacote de login, o processor retornou o novo ID. Guardamos ele.
-                        if newly_logged_in_dev_id and not dev_id_da_sessao:
-                            dev_id_da_sessao = newly_logged_in_dev_id
-                            tracker_sessions_manager.register_tracker_client(dev_id_da_sessao, conn)
-                            redis_client.hset(dev_id_da_sessao, "protocol", "gt06")
-                            logger.info(f"Dispositivo GT06 autenticado na sessão device_id={dev_id_da_sessao}, endereco={addr}")
+                        if newly_logged_in_dev_id and not dev_id_session:
+                            dev_id_session = newly_logged_in_dev_id
+                            tracker_sessions_manager.register_tracker_client(dev_id_session, conn)
+                            redis_client.hset(dev_id_session, "protocol", "gt06")
+                            logger.info(f"Dispositivo GT06 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
 
                         if response_packet:
                             conn.sendall(response_packet)
@@ -69,11 +69,11 @@ def handle_connection(conn: socket.socket, addr):
                         buffer = b''
     
     except (ConnectionResetError, BrokenPipeError):
-        logger.warning(f"Conexão GT06 fechada abruptamente endereco={addr}, device_id={dev_id_da_sessao}")
+        logger.warning(f"Conexão GT06 fechada abruptamente endereco={addr}, device_id={dev_id_session}")
     except Exception:
-        logger.exception(f"Erro fatal na conexão GT06 endereco={addr}, device_id={dev_id_da_sessao}")
+        logger.exception(f"Erro fatal na conexão GT06 endereco={addr}, device_id={dev_id_session}")
     finally:
-        if dev_id_da_sessao:
-            tracker_sessions_manager.remove_tracker_client(dev_id_da_sessao)
-        logger.info(f"Fechando conexão e thread GT06 endereco={addr}, device_id={dev_id_da_sessao}")
+        if dev_id_session:
+            tracker_sessions_manager.remove_tracker_client(dev_id_session)
+        logger.info(f"Fechando conexão e thread GT06 endereco={addr}, device_id={dev_id_session}")
         conn.close()
