@@ -18,4 +18,16 @@ GT06_TO_SUNTECH_ALERT_MAP = {
 }
 
 
+def decode_location_packet(body: bytes):
 
+    try:
+        data = {}
+
+        year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
+        data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second)
+
+        sats_byte = body[6]
+        data["satellites"] = sats_byte & 0x0F
+    except Exception as e:
+        logger.exception(f"Falha ao decodificar pacote de localização GT06 body_hex={body.hex()}")
+        return None
