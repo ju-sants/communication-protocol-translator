@@ -86,7 +86,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
     )
 
     if suntech_packet:
-        send_to_main_server(dev_id_str, serial, suntech_packet)
+        send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"))
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
 
@@ -115,3 +115,16 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
             send_to_main_server(dev_id_str, suntech_packet.encode('ascii'))
     else:
         logger.warning(f"Alarme GT06 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
+
+def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
+    # O pacote de Heartbeat (0x13) contém informações de status
+    terminal_info = body[0]
+    acc_status = terminal_info & 0b10 
+    
+    # Atualiza o status da ignição no Redis
+    redis_client.hset(dev_id_str, 'acc_status', 1 if acc_status else 0)
+
+    # Keep-Alive da Suntech
+    suntech_packet = build_suntech_alv_packet(dev_id_str)
+    if suntech_packet:
+        send_to_main_server(dev_id_str, suntech_packet.encode('ascii'))
