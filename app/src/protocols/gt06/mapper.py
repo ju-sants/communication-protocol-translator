@@ -46,8 +46,9 @@ def decode_location_packet(body: bytes):
 
         gps_fixed = (course_status >> 4) & 1
 
-        # Pulando informações de LBS por enquanto
-        acc_status = body[26]
+        # LBS (8 bytes) e ACC (1 byte) - Pulamos LBS por enquanto
+        # MCC(2) + MNC(1) + LAC(2) + CellID(3) = 8 bytes
+        acc_status = body[26] # Posição 18 + 8 = 26
 
         status_bits = 0
         if gps_fixed == 1:
@@ -68,3 +69,21 @@ def decode_location_packet(body: bytes):
     except Exception as e:
         logger.exception(f"Falha ao decodificar pacote de localização GT06 body_hex={body.hex()}")
         return None
+
+
+def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
+    location_data = decode_location_packet(body)
+
+    if not location_data:
+        return
+    
+    suntech_packet = build_suntech_packet(
+        "STT",
+        dev_id_str,
+        location_data,
+        serial,
+        location_data.get("is_realtime", True)
+    )
+
+    if suntech_packet:
+        send_to_main_server(dev_id_str, serial, suntech_packet)
