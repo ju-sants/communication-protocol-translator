@@ -2,7 +2,7 @@ import struct
 from app.core.logger import get_logger
 
 from .processor import crc16_itu
-
+from app.src.protocols.session_manager import tracker_sessions_manager
 
 logger = get_logger(__name__)
 
@@ -68,3 +68,36 @@ def build_command(command_content_str: str, serial_number: int):
     logger.info(f"Construído comando GT06: {command_packet.hex()}")
 
     return command_packet
+
+def process_suntech_command_to_gt06(command: str, dev_id: str):
+    logger.info(f"Iniciando tradução de comando Suntech para GT06 device_id={dev_id}, comando={command}")
+    parts = command.split(';')
+
+    if len(parts) < 3:
+        logger.warning(f"Comando Suntech mal formatado, ignorando. comando={command}")
+        return
+
+    command_key = f"{parts[0]};{parts[1]};{parts[2]}"
+
+    command_mapping = {
+        "CMD;04;01": "RELAY,1#",
+        "CMD;04;02": "RELAY,0#",
+        "CMD;03;01": "GPRS,GET,LOCATION#",
+    }
+
+    gt06_text_command = command_mapping.get(command_key)
+    if not gt06_text_command:
+        logger.warning(f"Nenhum mapeamento GT06 encontrado para o comando Suntech comando={command_key}")
+        return
+
+    gt06_binary_command = build_command(gt06_text_command)
+
+    tracker_socket = tracker_sessions_manager.get_tracker_client_socket(dev_id)
+    if tracker_socket:
+        try:
+            tracker_socket.sendall(gt06_binary_command)
+            logger.info(f"Comando GT06 enviado com sucesso device_id={dev_id}, comando_hex={gt06_binary_command.hex()}")
+        except Exception:
+            logger.exception(f"Falha ao enviar comando para o rastreador GT06 device_id={dev_id}")
+    else:
+        logger.warning(f"Rastreador GT06 não está conectado. Impossível enviar comando. device_id={dev_id}")
