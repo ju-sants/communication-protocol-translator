@@ -7,12 +7,14 @@ from app.services.redis_service import get_redis
 from app.config.settings import settings
 from app.src.suntech.utils import build_suntech_mnt_packet
 from app.src.protocols.jt808.builder import process_suntech_command as process_suntech_command_to_jt808
+from app.src.protocols.gt06.builder import process_suntech_command as process_suntech_command_to_gt06
 
 logger = get_logger(__name__)
 redis_client = get_redis()
 
 COMMAND_PROCESSORS = {
     "jt808": process_suntech_command_to_jt808,
+    "gt06": process_suntech_command_to_gt06
     }
 class MainServerSession:
     def __init__(self, dev_id: str, serial: str):
