@@ -28,16 +28,6 @@ class Settings(BaseSettings):
         }
     }
 
-    JT808_TO_SUNTECH_ALERT_MAP: Dict[int, int] = {
-        0: 42,  # Bit 0 (SOS) -> Alert 42 (Panic Button)
-        1: 1,   # Bit 1 (Over-speed) -> Alert 1 (Over Speed)
-        5: 3,   # Bit 5 (GNSS Antenna not connected) -> Alert 3 (GPS Antenna Disconnected)
-        8: 41,  # Bit 8 (Main power cut off) -> Alert 41 (Power Disconnected)
-        27: 73, # Bit 27 (Illegal fire) -> Alert 73 (Anti-Theft)
-        20: 5,  # Bit 20 (in/out area) -> Usaremos 5 (Exit) ou 6 (Enter)
-        21: 5,  # Bit 21 (in/out routine) -> Usaremos 5 (Exit) ou 6 (Enter)
-    }
-
     # IDs de Alerta Suntech que são INFERIDOS, não traduzidos diretamente
     SUNTECH_IGNITION_ON_ALERT_ID: int = 33
     SUNTECH_IGNITION_OFF_ALERT_ID: int = 34

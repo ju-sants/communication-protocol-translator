@@ -9,6 +9,17 @@ from app.core.logger import get_logger
 logger = get_logger(__name__)
 redis_client = get_redis()
 
+
+JT808_TO_SUNTECH_ALERT_MAP = {
+    0: 42,  # Bit 0 (SOS) -> Alert 42 (Panic Button)
+    1: 1,   # Bit 1 (Over-speed) -> Alert 1 (Over Speed)
+    5: 3,   # Bit 5 (GNSS Antenna not connected) -> Alert 3 (GPS Antenna Disconnected)
+    8: 41,  # Bit 8 (Main power cut off) -> Alert 41 (Power Disconnected)
+    27: 73, # Bit 27 (Illegal fire) -> Alert 73 (Anti-Theft)
+    20: 5,  # Bit 20 (in/out area) -> Usaremos 5 (Exit) ou 6 (Enter)
+    21: 5,  # Bit 21 (in/out routine) -> Usaremos 5 (Exit) ou 6 (Enter)
+}
+
 def handle_ignition_change(dev_id_str: str, serial, location_data: dict):
     """
     Verifica se houve mudança no status da ignição e envia o alerta correspondente.
@@ -182,7 +193,7 @@ def map_and_forward(dev_id_str: str, serial: int, msg_id: int, body: bytes):
             alert_triggered = True
 
         if not alert_triggered:
-            for bit_pos, alert_id in settings.JT808_TO_SUNTECH_ALERT_MAP.items():
+            for bit_pos, alert_id in JT808_TO_SUNTECH_ALERT_MAP.items():
                 if (jt808_alert_mark >> bit_pos) & 1:
                     logger.info(f"Tradução: Localização COM ALERTA para device_id={dev_id_str}, bit_pos={bit_pos}, suntech_alert_id={alert_id}")
                     suntech_packet = build_suntech_packet("ALT", dev_id_str, location_data, serial, is_realtime=True, alert_id=alert_id)
