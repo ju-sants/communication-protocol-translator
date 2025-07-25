@@ -28,6 +28,43 @@ def decode_location_packet(body: bytes):
 
         sats_byte = body[6]
         data["satellites"] = sats_byte & 0x0F
+
+        lat_raw, lon_raw = struct.pack(">II", body[7:15])
+        lat = lat_raw / 1800000.0
+        lon = lon_raw / 1800000.0
+
+        data["speed_km"] = body[15]
+
+        course_status = struct.unpack(">H", body[16:18])[0]
+
+        if (course_status >> 2) & 1: lat = -lat
+        if (course_status >> 3) & 1: lon = -lon
+
+        data["latitude"], data["longitude"] = lat, lon
+
+        data["direction"] = course_status & 0x03FF
+
+        gps_fixed = (course_status >> 4) & 1
+
+        # Pulando informações de LBS por enquanto
+        acc_status = body[26]
+
+        status_bits = 0
+        if gps_fixed == 1:
+            status_bits |= 0b10
+        if acc_status == 1:
+            status_bits |= 0b1
+        data["status_bits"] = status_bits
+
+        is_realtime = body[27] == 0x00
+
+        data["is_realtime"] = is_realtime
+
+        mileage_km = struct.unpack(">I", body[28:32])[0]
+        data["gps_odometer"] = mileage_km * 1000
+
+        return data
+
     except Exception as e:
         logger.exception(f"Falha ao decodificar pacote de localização GT06 body_hex={body.hex()}")
         return None
