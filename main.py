@@ -19,7 +19,7 @@ def start_listener(port: int, handler_func):
             thread = threading.Thread(target=handler_func, args=(conn, addr), daemon=True)
             thread.start()
     except Exception as e:
-        logger.critical(f"❌ Falha ao iniciar listener na porta {port}", error=e)
+        logger.critical(f"❌ Falha ao iniciar listener na porta {port} error={e}")
 
 
 def main():
@@ -43,9 +43,9 @@ def main():
             logger.info(f"Thread para protocolo '{protocol_name}' iniciada.")
             
         except (ImportError, AttributeError) as e:
-            logger.error(f"Não foi possível carregar o handler para o protocolo '{protocol_name}'", error=e)
+            logger.error(f"Não foi possível carregar o handler para o protocolo '{protocol_name}' error={e}")
         except KeyError as e:
-            logger.error(f"Configuração inválida para o protocolo '{protocol_name}'", missing_key=str(e))
+            logger.error(f"Configuração inválida para o protocolo '{protocol_name}' missing_key={str(e)}")
 
     # Mantém a thread principal viva
     try:
