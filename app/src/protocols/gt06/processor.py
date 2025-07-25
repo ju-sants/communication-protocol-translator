@@ -1,42 +1,10 @@
 import struct
 
-from . import builder, mapper
+from . import builder, mapper, utils
 from app.core.logger import get_logger
 
 
 logger = get_logger(__name__)
-
-CRC_TABLE = []
-
-def precompute_crc_table():
-    global CRC_TABLE
-
-    if len(CRC_TABLE) == 256:
-        return
-    
-    polynomial = 0x1021
-    for i in range(256):
-        crc = 0
-        c = i << 8
-
-        for j in range(8):
-            if (crc ^ c) & 0x8000:
-                crc = (crc << 1) ^ polynomial
-            else:
-                crc = crc << 1
-            
-            c = c << 1
-        CRC_TABLE.append(crc & 0xFFFF)
-
-precompute_crc_table()
-
-
-def crc16_itu(data: bytes) -> int:
-    crc = 0
-    for byte in data:
-        crc = ((crc << 8) & 0xFF00) ^ CRC_TABLE[((crc >> 8) & 0xFF) ^ byte]
-    return crc & 0xFFFF
-
 
 def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | None, str | None]:
     """
@@ -52,7 +20,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | 
     # CRC
     data_to_check = packet_body[:-2]
     received_crc = struct.unpack('>H', packet_body[-2:])[0]
-    calculated_crc = crc16_itu(data_to_check)
+    calculated_crc = utils.crc16_itu(data_to_check)
 
     if received_crc != calculated_crc:
         logger.warning("Checksum GT06 inválido!", pacote=packet_body.hex(), crc_recebido=hex(received_crc), crc_calculado=hex(calculated_crc))

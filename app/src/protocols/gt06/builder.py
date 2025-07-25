@@ -1,7 +1,7 @@
 import struct
 from app.core.logger import get_logger
 
-from .processor import crc16_itu
+from . import utils
 from app.src.protocols.session_manager import tracker_sessions_manager
 
 logger = get_logger(__name__)
@@ -19,7 +19,7 @@ def build_generic_response(protocol_number: str, serial_number: int):
 
     data_for_crc = struct.pack(">B", packet_length) + packet_content
 
-    crc = crc16_itu(data_for_crc)
+    crc = utils.crc16_itu(data_for_crc)
 
     response_packet = (
         b"\x78\x78" +
@@ -56,7 +56,7 @@ def build_command(command_content_str: str, serial_number: int):
         struct.pack(">H", serial_number)
     )
 
-    crc = crc16_itu(data_for_crc)
+    crc = utils.crc16_itu(data_for_crc)
 
     command_packet = (
         b'\x78\x78' +
