@@ -46,11 +46,9 @@ def decode_location_packet(body: bytes):
             
         data["direction"] = course_status & 0x03FF
 
-        gps_fixed = (course_status >> 4) & 1
+        gps_fixed = (course_status >> 12) & 1
 
-        # LBS (8 bytes) e ACC (1 byte) - Pulamos LBS por enquanto
-        # MCC(2) + MNC(1) + LAC(2) + CellID(3) = 8 bytes
-        acc_status = body[26] # Posição 18 + 8 = 26
+        acc_status = body[26]
 
         status_bits = 0
         if gps_fixed == 1:
@@ -59,11 +57,11 @@ def decode_location_packet(body: bytes):
             status_bits |= 0b1
         data["status_bits"] = status_bits
 
-        is_realtime = body[27] == 0x00
+        is_realtime = body[28] == 0x00
 
         data["is_realtime"] = is_realtime
 
-        mileage_km = struct.unpack(">I", body[28:32])[0]
+        mileage_km = struct.unpack(">I", body[29:33])[0]
         data["gps_odometer"] = mileage_km * 1000
 
         return data
