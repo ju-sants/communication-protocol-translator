@@ -69,15 +69,17 @@ def build_command(command_content_str: str, serial_number: int):
 
     return command_packet
 
-def process_suntech_command(command: str, dev_id: str):
+def process_suntech_command(command: bytes, dev_id: str, serial: int):
     logger.info(f"Iniciando tradução de comando Suntech para GT06 device_id={dev_id}, comando={command}")
-    parts = command.split(';')
 
-    if len(parts) < 3:
+    command_str = command.decode("ascii", errors="ignore")
+    parts = command_str.split(';')
+
+    if len(parts) < 4:
         logger.warning(f"Comando Suntech mal formatado, ignorando. comando={command}")
         return
 
-    command_key = f"{parts[0]};{parts[1]};{parts[2]}"
+    command_key = f"{parts[0]};{parts[2]};{parts[3]}"
 
     command_mapping = {
         "CMD;04;01": "RELAY,1#",
@@ -90,7 +92,7 @@ def process_suntech_command(command: str, dev_id: str):
         logger.warning(f"Nenhum mapeamento GT06 encontrado para o comando Suntech comando={command_key}")
         return
 
-    gt06_binary_command = build_command(gt06_text_command)
+    gt06_binary_command = build_command(gt06_text_command, serial)
 
     tracker_socket = tracker_sessions_manager.get_tracker_client_socket(dev_id)
     if tracker_socket:
