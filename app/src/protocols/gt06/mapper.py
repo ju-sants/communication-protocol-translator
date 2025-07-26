@@ -62,7 +62,7 @@ def decode_location_packet(body: bytes):
         data["is_realtime"] = is_realtime
 
         mileage_km = struct.unpack(">I", body[29:33])[0]
-        data["gps_odometer"] = mileage_km * 1000
+        data["gps_odometer"] = mileage_km
 
         return data
 
