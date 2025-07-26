@@ -86,6 +86,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
     )
 
     if suntech_packet:
+        logger.info(f"Pacote Localização SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
         send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"))
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
