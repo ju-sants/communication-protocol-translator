@@ -34,6 +34,6 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
 
     jt808_clients: dict = {}
-    jt808_clients_lock: SkipValidation[threading.Lock] = threading.Lock()
+    jt808_clients_lock: SkipValidation = threading.Lock()
 
 settings = Settings()
