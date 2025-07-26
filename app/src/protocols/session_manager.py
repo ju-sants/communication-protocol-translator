@@ -9,17 +9,16 @@ class TrackerSessionsManager:
     _instance = None
     _lock = threading.Lock()
 
-    active_trackers: dict[str, socket.socket]
-
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
+            cls._instance.active_trackers = {}
 
         return cls._instance
     
     def register_tracker_client(self, dev_id: str, conn: socket.socket):
         with self._lock:
-            self._active_clients[dev_id] = conn
+            self.active_trackers[dev_id] = conn
             logger.info(f"Rastreador registrado na sessão: dev_id={dev_id}")
 
     def remove_tracker_client(self, dev_id: str):
