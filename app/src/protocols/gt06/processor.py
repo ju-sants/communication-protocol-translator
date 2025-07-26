@@ -23,7 +23,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | 
     calculated_crc = utils.crc16_itu(data_to_check)
 
     if received_crc != calculated_crc:
-        logger.warning("Checksum GT06 inválido!", pacote=packet_body.hex(), crc_recebido=hex(received_crc), crc_calculado=hex(calculated_crc))
+        logger.warning(f"Checksum GT06 inválido! pacote={packet_body.hex()}, crc_recebido={hex(received_crc)}, crc_calculado={hex(calculated_crc)}")
         return None, None
     
     protocol_number = packet_body[1]
@@ -42,25 +42,25 @@ def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | 
         if dev_id_str:
             mapper.handle_location_packet(dev_id_str, serial_number, content_body)
         else:
-            logger.warning("Pacote de localização GT06 recebido antes do login. Ignorando.", pacote=packet_body.hex())
+            logger.warning(f"Pacote de localização GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_packet = None
 
     elif protocol_number == 0x13: # Pacote de Heartbeat/Status
         if dev_id_str:
             mapper.handle_heartbeat_packet(dev_id_str, serial_number, content_body)
         else:
-            logger.warning("Pacote de heartbeat GT06 recebido antes do login. Ignorando.", pacote=packet_body.hex())
+            logger.warning(f"Pacote de heartbeat GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_packet = builder.build_generic_response(protocol_number, serial_number)
 
     elif protocol_number == 0x16: # Pacote de Alarme
         if dev_id_str:
             mapper.handle_alarm_packet(dev_id_str, serial_number, content_body)
         else:
-            logger.warning("Pacote de alarme GT06 recebido antes do login. Ignorando.", pacote=packet_body.hex())
+            logger.warning(f"Pacote de alarme GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_packet = builder.build_generic_response(protocol_number, serial_number)
         
     else:
-        logger.warning(f"Protocolo GT06 não mapeado: {hex(protocol_number)}", device_id=dev_id_str)
+        logger.warning(f"Protocolo GT06 não mapeado: {hex(protocol_number)} device_id={dev_id_str}")
         response_packet = builder.build_generic_response(protocol_number, serial_number)
 
     return (response_packet, newly_logged_in_dev_id)
