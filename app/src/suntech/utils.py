@@ -1,6 +1,8 @@
 from app.core.logger import get_logger
+from app.services.redis_service import get_redis
 
 logger = get_logger(__name__)
+redis_client = get_redis()
 
 def build_suntech_mnt_packet(dev_id_str: str) -> bytes:
     """Constrói um pacote de Manutenção (MNT) para 'apresentar' o dispositivo."""
