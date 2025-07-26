@@ -29,7 +29,7 @@ def decode_location_packet(body: bytes):
         sats_byte = body[6]
         data["satellites"] = sats_byte & 0x0F
 
-        lat_raw, lon_raw = struct.pack(">II", body[7:15])
+        lat_raw, lon_raw = struct.unpack(">II", body[7:15])
         lat = lat_raw / 1800000.0
         lon = lon_raw / 1800000.0
 
