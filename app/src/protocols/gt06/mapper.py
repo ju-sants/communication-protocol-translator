@@ -112,7 +112,9 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
             alert_id=suntech_alert_id
         )
         if suntech_packet:
-            send_to_main_server(dev_id_str, suntech_packet.encode('ascii'))
+            logger.info(f"Pacote Alerta SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
+
+            send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'))
     else:
         logger.warning(f"Alarme GT06 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
@@ -131,4 +133,5 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     # Keep-Alive da Suntech
     suntech_packet = build_suntech_alv_packet(dev_id_str)
     if suntech_packet:
-        send_to_main_server(dev_id_str, suntech_packet.encode('ascii'))
+        logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
+        send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'))
