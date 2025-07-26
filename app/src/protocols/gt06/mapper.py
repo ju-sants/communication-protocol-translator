@@ -37,11 +37,13 @@ def decode_location_packet(body: bytes):
 
         course_status = struct.unpack(">H", body[16:18])[0]
 
-        if (course_status >> 2) & 1: lat = -lat
-        if (course_status >> 3) & 1: lon = -lon
-
-        data["latitude"], data["longitude"] = lat, lon
-
+        # Hemisférios (Bit 11 para Latitude Sul, Bit 12 para Longitude Oeste)
+        is_latitude_north = (course_status >> 10) & 1
+        is_longitude_west = (course_status >> 11) & 1
+        
+        data['latitude'] = -abs(lat) if not is_latitude_north else abs(lat)
+        data['longitude'] = -abs(lon) if is_longitude_west else abs(lon)
+            
         data["direction"] = course_status & 0x03FF
 
         gps_fixed = (course_status >> 4) & 1
