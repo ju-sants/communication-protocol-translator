@@ -14,7 +14,7 @@ def handle_connection(conn: socket.socket, addr):
     """
     Lida com uma única conexão de cliente GT06, gerenciando o estado da sessão.
     """
-    logger.info("Nova conexão GT06 recebida", endereco=addr)
+    logger.info(f"Nova conexão GT06 recebida endereco={addr}")
     buffer = b''
     dev_id_session = None
 
@@ -22,7 +22,7 @@ def handle_connection(conn: socket.socket, addr):
         while True:
             data = conn.recv(1024)
             if not data:
-                logger.info("Conexão GT06 fechada pelo cliente", endereco=addr, device_id=dev_id_session)
+                logger.info(f"Conexão GT06 fechada pelo cliente endereco={addr}, device_id={dev_id_session}")
                 break
             
             buffer += data
