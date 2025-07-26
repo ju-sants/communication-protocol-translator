@@ -4,7 +4,15 @@ logger = get_logger(__name__)
 
 def build_suntech_mnt_packet(dev_id_str: str) -> bytes:
     """Constrói um pacote de Manutenção (MNT) para 'apresentar' o dispositivo."""
-    sw_ver = "JT808_Translator_1.0"
+
+    device_info = redis_client.hgetall(dev_id_str)
+
+    sw_ver = "Poliglot"
+    if device_info and device_info.get("protocol"):
+        sw_ver = str(device_info.get("protocol", "")).upper()
+    
+    sw_ver += "_Translator_2.0"
+
     packet_str = f"MNT;{dev_id_str};{sw_ver}"
     logger.info(f"Construído pacote de apresentação MNT, pacote={packet_str}")
     return packet_str.encode('ascii')
