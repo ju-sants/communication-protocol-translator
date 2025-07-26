@@ -20,7 +20,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | 
     # CRC
     data_to_check = packet_body[:-2]
     received_crc = struct.unpack('>H', packet_body[-2:])[0]
-    calculated_crc = utils.crc16_itu(data_to_check)
+    calculated_crc = utils.crc_itu(data_to_check)
 
     if received_crc != calculated_crc:
         logger.warning(f"Checksum GT06 inválido! pacote={packet_body.hex()}, crc_recebido={hex(received_crc)}, crc_calculado={hex(calculated_crc)}")
