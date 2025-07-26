@@ -19,12 +19,12 @@ def build_generic_response(protocol_number: str, serial_number: int):
 
     data_for_crc = struct.pack(">B", packet_length) + packet_content
 
-    crc = utils.crc16_itu(data_for_crc)
+    crc = utils.crc_itu(data_for_crc)
 
     response_packet = (
         b"\x78\x78" +
         data_for_crc + 
-        struct.pack(">B", crc) +
+        struct.pack(">H", crc) +
         b"\x0d\x0a"
     )
 
@@ -56,7 +56,7 @@ def build_command(command_content_str: str, serial_number: int):
         struct.pack(">H", serial_number)
     )
 
-    crc = utils.crc16_itu(data_for_crc)
+    crc = utils.crc_itu(data_for_crc)
 
     command_packet = (
         b'\x78\x78' +
