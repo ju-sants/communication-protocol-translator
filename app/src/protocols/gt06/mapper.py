@@ -33,7 +33,7 @@ def decode_location_packet(body: bytes):
         lat = lat_raw / 1800000.0
         lon = lon_raw / 1800000.0
 
-        data["speed_km"] = body[15]
+        data["speed_kmh"] = body[15]
 
         course_status = struct.unpack(">H", body[16:18])[0]
 
