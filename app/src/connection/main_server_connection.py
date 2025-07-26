@@ -74,7 +74,7 @@ class MainServerSession:
                     continue
 
                 logger.info(f"Roteando comando para o processador do protocolo: '{protocol_type}'")
-                processor_func(data, self.dev_id)
+                processor_func(data, self.dev_id, self.serial)
 
 
             except socket.timeout:
