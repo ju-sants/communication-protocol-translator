@@ -1,92 +1,157 @@
-# 🚀 Servidor Tradutor de Protocolos de Rastreamento
+# Servidor Gateway Poliglota para Rastreamento Veicular: O Tradutor Universal
 
-![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+Este não é apenas um servidor de rastreamento. É um **gateway de tradução universal**, projetado para resolver um dos maiores desafios no setor de telemétria: a **fragmentação de protocolos**. Com uma arquitetura modular e de alto desempenho, este projeto atua como a ponte definitiva entre centenas de modelos de rastreadores e a sua plataforma central.
 
-Um gateway de telemetria de alta performance, assíncrono e poliglota, construído em Python. Este projeto atua como um servidor intermediário (proxy/tradutor) capaz de receber conexões de diversos modelos de rastreadores veiculares, cada um com seu próprio protocolo, e traduzir seus dados para um formato unificado antes de encaminhá-los para uma plataforma de destino.
+## O Poder do Gateway Poliglota
 
-O principal objetivo é resolver o problema de integração de hardware heterogêneo, permitindo que uma única plataforma de software receba dados de inúmeros dispositivos diferentes de forma transparente.
+A força deste projeto reside em sua arquitetura inteligente e desacoplada, que oferece funcionalidades muito além de uma simples tradução de dados.
 
----
+*   **Arquitetura "Plug-and-Play"**: Adicionar suporte a um novo protocolo é tão simples quanto criar um novo diretório. A estrutura modular isola completamente a lógica de cada protocolo, permitindo que o sistema cresça sem complexidade adicional. O orquestrador em [`main.py`](main.py) carrega dinamicamente cada protocolo configurado em [`app/config/settings.py`](app/config/settings.py), iniciando listeners dedicados em threads separadas.
 
-## ✨ Funcionalidades Principais
+*   **Tradução para um Dicionário Universal**: A genialidade do sistema está na sua camada de `mapper` (ex: [`app/src/protocols/gt06/mapper.py`](app/src/protocols/gt06/mapper.py)). Cada `mapper` converte o dialeto específico de seu protocolo para um **dicionário Python padronizado**. Isso significa que a lógica de saída (o módulo Suntech) não precisa saber nada sobre os protocolos de entrada, garantindo um desacoplamento total.
 
-* **Arquitetura Poliglota "Plug-and-Play"**: Adicionar suporte a um novo protocolo de rastreador é tão simples quanto criar um novo módulo, sem a necessidade de alterar o núcleo do sistema.
-* **Tradução Bidirecional**: Não apenas recebe e traduz dados dos rastreadores, mas também é capaz de receber comandos da plataforma final, traduzi-los para o protocolo específico do dispositivo e enviá-los de volta.
-* **Gerenciador de Sessão Persistente**: Mantém conexões TCP persistentes e individuais tanto com os rastreadores quanto com a plataforma de destino, imitando o comportamento real dos dispositivos e garantindo a estabilidade da comunicação.
-* **Geração de Eventos com Estado (Stateful)**: Utiliza Redis para armazenar o estado anterior dos dispositivos, permitindo a geração de eventos cruciais que não existem no protocolo original, como "Ignição Ligada/Desligada" e "Alimentação Principal Cortada/Restaurada".
-* **Alta Performance e Escalabilidade**: Construído com uma arquitetura multithreading, onde cada conexão (seja de um rastreador ou para a plataforma) é gerenciada em sua própria thread, garantindo que o servidor seja responsivo e capaz de lidar com centenas de conexões simultâneas.
-* **Configuração Centralizada**: Gerenciamento de todas as configurações sensíveis e de ambiente através de um arquivo `.env` e um módulo de settings robusto com Pydantic.
+*   **Geração de Eventos com Estado (Inteligência Agregada)**: O gateway não é um tradutor "burro". Utilizando o Redis ([`app/services/redis_service.py`](app/services/redis_service.py)), ele armazena o estado de cada dispositivo (como ignição ligada/desligada). Ao receber um novo pacote, ele compara o estado atual com o anterior e pode **gerar novos eventos de alerta** (ex: "Alerta de Ignição Ligada") que não existiam no protocolo original, agregando valor e inteligência aos dados brutos.
 
----
+*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente inteligente. Quando a plataforma principal envia um comando no formato Suntech, o [`app/src/connection/main_server_connection.py`](app/src/connection/main_server_connection.py) usa o Redis para identificar o protocolo de origem do dispositivo de destino. Em seguida, ele invoca o `builder` específico daquele protocolo (ex: [`app/src/protocols/gt06/builder.py`](app/src/protocols/gt06/builder.py)) para construir e enviar o comando no "idioma" nativo do rastreador.
 
-## 🏗️ Arquitetura do Sistema
+## Arquitetura do Sistema
 
-O sistema foi projetado para ser modular e desacoplado. A comunicação flui de forma organizada através de componentes com responsabilidades únicas.
+A arquitetura foi desenhada para máxima clareza, escalabilidade e manutenibilidade.
 
+### Fluxo de Dados (Uplink: Dispositivo -> Plataforma)
 
-Para comunicação **Rastreador -> Tradutor -> Server Principal:**
+Este diagrama mostra como os dados de um rastreador são recebidos, traduzidos e encaminhados para a plataforma final.
 
 ```mermaid
-graph LR
-    subgraph "Sistema Externo"
-        A[Dispositivo Rastreador]
+graph TD
+    A[Dispositivo Rastreador] -- Pacote TCP --> B(Listener de Protocolo);
+    B -- Bytes Brutos --> C{Handler};
+    C -- Pacote Bruto --> D(Processor);
+    D -- Dados Dissecados --> E(Mapper);
+    E -- Dicionário Padrão --> F(Suntech Utils);
+    F -- String Formato Suntech --> G(Main Server Connection);
+    G -- Pacote TCP --> H[Plataforma Principal];
+
+    subgraph "Módulo de Protocolo (Ex: GT06, JT808)"
+        C
+        D
+        E
     end
 
-    subgraph "Nosso Servidor Tradutor"
-        B(Porta TCP)
-        C[Função de Conexão <br> <i>handler.py</i>]
-        D[Decodificação de Pacotes <br> <i>processor.py</i>]
-        E{Tradução de Pacotes <br> <i>mapper.py</i>}
-        F[Envio para Servidor Principal <br> <i>connection_manager.py</i>]
+    subgraph "Serviços Centrais"
+        F
+        G
     end
-
-    subgraph "Plataforma de Destino"
-        G[Servidor Principal Suntech]
-    end
-
-    A -- "1. Envia pacote binário" --> B
-    B -- "2. Aceita conexão" --> C
-    C -- "3. Passa pacote bruto" --> D
-    D -- "4. Passa dados decodificados" --> E
-    E -- "5. Passa dicionário traduzido" --> F
-    F -- "6. Envia pacote Suntech ASCII" --> G
-
-    style A fill:#d4edda,stroke:#155724
-    style G fill:#cce5ff,stroke:#004085
-    style E fill:#fff3cd,stroke:#856404
 ```
 
+### Fluxo de Comandos (Downlink: Plataforma -> Dispositivo)
 
-Para comunicação **Server Principal -> Tradutor -> Rastreador:**
+Este diagrama ilustra como os comandos são enviados da plataforma de volta para o dispositivo correto, na linguagem correta.
 
 ```mermaid
-graph LR
-    subgraph "Plataforma de Destino"
-        A[Servidor Principal Suntech]
+graph TD
+    A[Plataforma Principal] -- Comando Suntech --> B(Main Server Connection);
+    B -- Consulta Protocolo (DevID) --> C{Redis};
+    C -- Retorna Protocolo (ex: 'gt06') --> B;
+    B -- Comando + Protocolo --> D(Roteador de Comandos);
+    D -- Comando para Builder Específico --> E{Builder do Protocolo};
+    E -- Pacote Binário Nativo --> F(Socket do Dispositivo);
+    F -- Pacote TCP --> G[Dispositivo Rastreador];
+
+    subgraph "Serviços Centrais"
+        B
+        C
+        D
     end
 
-    subgraph "Nosso Servidor Tradutor"
-        B[Escuta de Comandos <br> <i>connection_manager.py</i>]
-        C{Roteador de Comandos}
-        D[(Redis <br><i>'Qual o protocolo?'</i>)]
-        E[Tradução Reversa <br> <i>builder.py do protocolo</i>]
-        F[Envio para Dispositivo <br> <i>session_manager.py</i>]
+    subgraph "Módulo de Protocolo (Ex: GT06, JT808)"
+        E
     end
+```
 
-    subgraph "Sistema Externo"
-        G[Dispositivo Rastreador]
-    end
+## Protocolos Suportados
 
-    A -- "1. Envia comando ASCII" --> B
-    B -- "2. Recebe e passa ao roteador" --> C
-    C -- "3. Consulta protocolo do device" --> D
-    D -- "4. Retorna protocolo" --> C
-    C -- "5. Chama tradutor correto" --> E
-    E -- "6. Constrói pacote de comando binário" --> F
-    F -- "7. Envia pela conexão ativa" --> G
+*   **GT06**: Um dos protocolos mais comuns em dispositivos de rastreamento genéricos.
+*   **JT/T 808**: Um protocolo padrão robusto, amplamente utilizado em veículos comerciais.
 
-    style A fill:#cce5ff,stroke:#004085
-    style G fill:#d4edda,stroke:#155724
-    style C fill:#fff3cd,stroke:#856404
-    style D fill:#f8d7da,stroke:#721c24
+## Como Começar
+
+### Pré-requisitos
+
+*   Python 3.9+
+*   Redis
+
+### Instalação e Configuração
+
+1.  **Clone o repositório:**
+    ```bash
+    git clone <url-do-seu-repositorio>
+    cd <nome-do-repositorio>
+    ```
+
+2.  **Crie e ative um ambiente virtual:**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # No Windows: `venv\Scripts\activate`
+    ```
+
+3.  **Instale as dependências:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4.  **Configure seu ambiente:**
+    Crie um arquivo `.env` na raiz do projeto e preencha as variáveis de ambiente. Você pode usar o arquivo `.env.example` como modelo.
+    ```
+    LOG_LEVEL=INFO
+    MAIN_SERVER_HOST=127.0.0.1
+    MAIN_SERVER_PORT=12345
+    REDIS_DB_MAIN=2
+    REDIS_PASSWORD=...
+    REDIS_HOST=127.0.0.1
+    REDIS_PORT=6379
+    ```
+
+### Executando o Servidor
+
+Para iniciar o servidor, execute o arquivo [`main.py`](main.py):
+
+```bash
+python main.py
+```
+O servidor iniciará os listeners para todos os protocolos definidos em [`app/config/settings.py`](app/config/settings.py).
+
+## Como Adicionar um Novo Protocolo
+
+A arquitetura foi pensada para que a adição de novos protocolos seja um processo simples e direto:
+
+1.  **Crie o Diretório do Protocolo:**
+    Dentro de `app/src/protocols/`, crie um novo diretório com o nome do seu protocolo (ex: `novo_protocolo`).
+
+2.  **Implemente os Módulos Essenciais:**
+    Crie os seguintes arquivos dentro do novo diretório, seguindo a estrutura dos módulos `gt06` ou `jt808`:
+    *   `handler.py`: Gerencia o ciclo de vida da conexão TCP.
+    *   `processor.py`: Valida a integridade e disseca a estrutura dos pacotes.
+    *   `mapper.py`: **O coração da tradução**. Converte os dados do protocolo para o dicionário Python padronizado.
+    *   `builder.py`: Constrói pacotes no idioma nativo do protocolo para enviar respostas e comandos.
+
+3.  **Registre o Protocolo:**
+    Abra o arquivo [`app/config/settings.py`](app/config/settings.py) e adicione a configuração do seu novo protocolo no dicionário `PROTOCOLS`:
+    ```python
+    PROTOCOLS = {
+        # ... protocolos existentes
+        "novo_protocolo": {
+            "port": 65434,  # Escolha uma porta livre
+            "handler_path": "app.src.protocols.novo_protocolo.handler.handle_connection"
+        }
+    }
+    ```
+
+4.  **Habilite a Tradução Reversa de Comandos:**
+    Em [`app/src/connection/main_server_connection.py`](app/src/connection/main_server_connection.py), importe a função `process_suntech_command` do seu novo `builder` e adicione-a ao dicionário `COMMAND_PROCESSORS`.
+
+## Tecnologias Utilizadas
+
+*   **Python**: Linguagem principal do projeto.
+*   **Redis**: Utilizado como uma memória de curto prazo para gerenciamento de estado das sessões e dos dispositivos.
+*   **Pydantic**: Para gerenciamento de configurações e validação de dados.
