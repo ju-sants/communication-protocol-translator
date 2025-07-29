@@ -87,7 +87,20 @@ def process_suntech_command(command: bytes, dev_id: str, serial: int):
         "CMD;03;01": "GPRS,GET,LOCATION#",
     }
 
-    gt06_text_command = command_mapping.get(command_key)
+    gt06_text_command = None
+    if command_key.startswith("CMD;05;03"):
+        meters = command_key.split(";")[-1]
+        if not meters.isdigit():
+            logger.info(f"Comando com metragem incorreta: {command_key}")
+            return
+        
+        kilometers = int(meters) / 1000
+
+        gt06_text_command = f"MILEAGE={kilometers}#"
+    
+    else:
+        gt06_text_command = command_mapping.get(command_key)
+
     if not gt06_text_command:
         logger.warning(f"Nenhum mapeamento GT06 encontrado para o comando Suntech comando={command_key}")
         return
