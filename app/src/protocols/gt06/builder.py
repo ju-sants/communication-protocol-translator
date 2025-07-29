@@ -79,7 +79,7 @@ def process_suntech_command(command: bytes, dev_id: str, serial: int):
         logger.warning(f"Comando Suntech mal formatado, ignorando. comando={command}")
         return
 
-    command_key = f"{parts[0]};{parts[2]};{parts[3]}"
+    command_key = f"{parts[0]};{';'.join(parts[2:])}"
 
     command_mapping = {
         "CMD;04;01": "RELAY,1#",
