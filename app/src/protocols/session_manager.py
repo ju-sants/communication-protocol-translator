@@ -11,8 +11,10 @@ class TrackerSessionsManager:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance.active_trackers = {}
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance.active_trackers = {}
 
         return cls._instance
     
@@ -32,7 +34,15 @@ class TrackerSessionsManager:
         with self._lock:
             return self.active_trackers.get(dev_id)
 
-    def exists(self, dev_id: str):
-        return dev_id in self.active_trackers and self.active_trackers[dev_id] and self.active_trackers[dev_id].fileno()
+    def exists(self, dev_id: str) -> bool:
+        with self._lock:
+            socket_obj = self.active_trackers.get(dev_id)
+            if socket_obj is None:
+                return False
+            
+            try:
+                return socket_obj.fileno() != -1 
+            except OSError:
+                return False
 
 tracker_sessions_manager = TrackerSessionsManager()
