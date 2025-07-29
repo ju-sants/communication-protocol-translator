@@ -170,7 +170,7 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
     
-    location_data = decode_location_packet(body[0:32])
+    location_data = decode_location_packet_v3(body[0:32])
 
     if not location_data:
         return
