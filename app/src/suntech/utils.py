@@ -26,10 +26,12 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int
         f"AlertID={alert_id}, GeoFenceID={geo_fence_id}, LocationData={location_data}"
     )
     
+    dev_id_normalized = ''.join(filter(str.isdigit, dev_id))
+
     # Campos básicos (comuns a todos)
     base_fields = [
         hdr,
-        dev_id[-10:],
+        dev_id_normalized[-10:],
         "FFF83F",
         "218",
         "1.0.12",
@@ -85,7 +87,8 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int
 
 def build_suntech_alv_packet(dev_id: str) -> str:
     """Constrói um pacote Keep-Alive (ALV) da Suntech."""
-    cutted_dev_id = dev_id[-10:]
+    dev_id_normalized = ''.join(filter(str.isdigit, dev_id))
+    cutted_dev_id = dev_id_normalized[-10:]
 
     packet = f"ALV;{cutted_dev_id}"
     logger.debug(f"Construído pacote Suntech ALV: {packet}")
