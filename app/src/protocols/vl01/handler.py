@@ -50,20 +50,12 @@ def handle_connection(conn: socket.socket, addr):
                         # Chama o processador, passando o ID da sessão
                         response_packet, newly_logged_in_dev_id = process_packet(dev_id_session, packet_body)
                         
-                        register = False
-                        # Se era um pacote de login, o processor retornou o novo ID. Guardamos ele.
-                        if dev_id_session:
-                            if not tracker_sessions_manager.exists(dev_id_session):
-                                register = True
-                                
-                        else:
-                            if newly_logged_in_dev_id and not tracker_sessions_manager.exists(newly_logged_in_dev_id):
-                                register = True
-                                dev_id_session = newly_logged_in_dev_id
+                        if newly_logged_in_dev_id:
+                            dev_id_session = newly_logged_in_dev_id
 
-                        if register:
+                        if dev_id_session and not tracker_sessions_manager.exists(dev_id_session):
                             tracker_sessions_manager.register_tracker_client(dev_id_session, conn)
-                            redis_client.hset(dev_id_session, "protocol", "vl01")
+                            redis_client.hset(dev_id_session, "protocol", "gt06")
                             logger.info(f"Dispositivo GT06 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
 
                         if response_packet:
