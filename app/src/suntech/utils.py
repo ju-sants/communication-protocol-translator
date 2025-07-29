@@ -53,7 +53,7 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int
     
     telemetry_fields = [
         assign_map,
-        "12.43", # PWR_VOLT
+        str(location_data.get("voltage", "12.43")), # PWR_VOLT
         "0.0",   # BCK_VOLT
         str(int(location_data.get('gps_odometer', 0))), # GPS_ODOM
         "69647"  # H_METER
