@@ -63,7 +63,7 @@ def handle_connection(conn: socket.socket, addr):
 
                         if register:
                             tracker_sessions_manager.register_tracker_client(dev_id_session, conn)
-                            redis_client.hset(dev_id_session, "protocol", "gt06")
+                            redis_client.hset(dev_id_session, "protocol", "vl01")
                             logger.info(f"Dispositivo GT06 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
 
                         if response_packet:
