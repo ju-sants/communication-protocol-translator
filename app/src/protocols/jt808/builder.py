@@ -4,6 +4,7 @@ import socket
 from app.config.settings import settings
 from app.core.logger import get_logger
 from app.src.protocols.jt808.utils import calculate_checksum, escape_data
+from app.src.protocols.session_manager import tracker_sessions_manager
 
 logger = get_logger("jt808_builder")
 
@@ -67,14 +68,17 @@ def process_suntech_command(data: bytes, dev_id: str, serial: str):
         jt808_command = build_command(dev_id, int(serial), *params)
 
     if jt808_command:
-        with settings.jt808_clients_lock:
-            if dev_id in settings.jt808_clients:
-                tracker_socket: socket.socket = settings.jt808_clients[dev_id]
 
+        if tracker_sessions_manager.exists(dev_id):
+            tracker_socket: socket.socket = tracker_sessions_manager.get_tracker_client_socket[dev_id]
+
+            if tracker_socket:
                 try:
                     tracker_socket.sendall(jt808_command)
                     logger.info(f"Comando JT/T 808 enviado para o rastreador device_id={dev_id}")
                 except Exception:
                     logger.exception(f"Falha ao enviar comando para o rastreador device_id={dev_id}")
             else:
-                logger.warning(f"Rastreador não está conectado, não foi possível enviar comando device_id={dev_id}")
+                logger.warning(f"Conexão do dispositivo dev_id={dev_id} foi encontrada mas já foi fechada")
+        else:
+            logger.warning(f"Dispositivo não registrado na sessão: dev_id={dev_id}")
