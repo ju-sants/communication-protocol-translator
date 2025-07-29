@@ -25,7 +25,7 @@ GT06_TO_SUNTECH_ALERT_MAP = {
 }
 
 
-def decode_location_packet(body: bytes):
+def decode_location_packet_v3(body: bytes):
 
     try:
         data = {}
