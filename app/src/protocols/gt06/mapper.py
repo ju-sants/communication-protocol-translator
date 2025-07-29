@@ -4,17 +4,24 @@ from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.src.suntech.utils import build_suntech_packet, build_suntech_alv_packet
 from app.src.connection.main_server_connection import send_to_main_server
-from app.config.settings import settings
-
+from app.src.protocols.utils import handle_ignition_change, handle_power_change
 
 logger = get_logger("gt06_mapper")
 redis_client = get_redis()
 
 
 GT06_TO_SUNTECH_ALERT_MAP = {
-    0x01: 42,  # SOS -> Panic Button
-    0x02: 41,  # Power Cut Alarm -> Power Disconnected
-    0x06: 1,   # Overspeed Alarm -> Over Speed
+    0x01: 42,  # SOS -> Suntech: Panic Button
+    0x02: 41,  # Power Cut Alarm -> Suntech: Power Disconnected
+    0x19: 14,  # Battery low voltage alarm -> Suntech: Battery Low
+    0x03: 15,  # Shock Alarm -> Suntech: Shocked
+    0x06: 1,   # Overspeed Alarm -> Suntech: Over Speed
+    0xF0: 46,  # Urgent acceleration alarm -> Suntech: Harsh Acceleration
+    0xF1: 47,  # Rapid deceleration alarm -> Suntech: Harsh Braking
+    0x04: 6,   # Fence In Alarm -> Suntech: Enter Geo-Fence
+    0x05: 5,   # Fence Out Alarm -> Suntech: Exit Geo-Fence
+    0x13: 147, # Remove alarm -> Suntech: Absent Device Recovered
+    0x14: 73,  # car door alarm -> Suntech: Anti-theft
 }
 
 
