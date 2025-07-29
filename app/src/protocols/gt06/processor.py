@@ -40,7 +40,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | 
     
     elif protocol_number in [0x12, 0x22, 0xA0, 0x32]: # Pacotes de Localização
         if dev_id_str:
-            mapper.handle_location_packet(dev_id_str, serial_number, content_body)
+            mapper.handle_location_packet(dev_id_str, serial_number, content_body, protocol_number)
         else:
             logger.warning(f"Pacote de localização GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_packet = None
