@@ -1,4 +1,4 @@
-# Servidor Gateway Poliglota para Rastreamento Veicular: O Tradutor Universal
+# Servidor Gateway Poliglota para Rastreamento Veicular
 
 Este não é apenas um servidor de rastreamento. É um **gateway de tradução universal**, projetado para resolver um dos maiores desafios no setor de telemétria: a **fragmentação de protocolos**. Com uma arquitetura modular e de alto desempenho, este projeto atua como a ponte definitiva entre centenas de modelos de rastreadores e a sua plataforma central.
 
