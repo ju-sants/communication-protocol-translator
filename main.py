@@ -44,7 +44,10 @@ def main():
             logger.info(f"Thread para protocolo '{protocol_name}' iniciada.")
             
         except (ImportError, AttributeError) as e:
+            import traceback
+
             logger.error(f"Não foi possível carregar o handler para o protocolo '{protocol_name}' error={e}")
+            logger.error(f"Traceback: \n{traceback.format_exc()}")
         except KeyError as e:
             logger.error(f"Configuração inválida para o protocolo '{protocol_name}' missing_key={str(e)}")
 
