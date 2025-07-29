@@ -6,7 +6,7 @@ from app.src.suntech.utils import build_suntech_packet, build_suntech_alv_packet
 from app.src.connection.main_server_connection import send_to_main_server
 from app.src.protocols.utils import handle_ignition_change, handle_power_change
 
-logger = get_logger("gt06_mapper")
+logger = get_logger(__name__)
 redis_client = get_redis()
 
 

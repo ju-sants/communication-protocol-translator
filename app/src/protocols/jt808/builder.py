@@ -6,7 +6,7 @@ from app.core.logger import get_logger
 from app.src.protocols.jt808.utils import calculate_checksum, escape_data
 from app.src.protocols.session_manager import tracker_sessions_manager
 
-logger = get_logger("jt808_builder")
+logger = get_logger(__name__)
 
 def build_ack_response(terminal_phone: bytes, terminal_serial: int, msg_id: int, result: int) -> bytes:
     """Constrói uma resposta padrão (0x8001) para o dispositivo JT/T 808."""

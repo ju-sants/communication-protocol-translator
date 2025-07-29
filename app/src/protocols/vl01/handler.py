@@ -6,7 +6,7 @@ from .utils import format_gt06_packet_for_display
 from app.src.protocols.session_manager import tracker_sessions_manager
 from app.services.redis_service import get_redis
 
-logger = get_logger("gt06_handler")
+logger = get_logger(__name__)
 redis_client = get_redis()
 
 def handle_connection(conn: socket.socket, addr):
