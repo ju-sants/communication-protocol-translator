@@ -29,6 +29,7 @@ def main():
         try:
             port = config['port']
             module_path, func_name = config['handler_path'].rsplit('.', 1)
+            logger.info(f"Config: port={port}, handler_path={config['handler_path']}, module_path={module_path}, func_name={func_name}")
             
             # Importa dinamicamente a função de handler
             module = importlib.import_module(module_path)
