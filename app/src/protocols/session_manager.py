@@ -31,5 +31,8 @@ class TrackerSessionsManager:
     def get_tracker_client_socket(self, dev_id: str):
         with self._lock:
             return self.active_trackers.get(dev_id)
+        
+    def exists(self, dev_id: str):
+        return dev_id in self.active_trackers
 
 tracker_sessions_manager = TrackerSessionsManager()
