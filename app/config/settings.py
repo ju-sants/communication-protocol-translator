@@ -37,7 +37,4 @@ class Settings(BaseSettings):
     REDIS_HOST: str = '127.0.0.1'
     REDIS_PORT: int = 6379
 
-    jt808_clients: dict = {}
-    jt808_clients_lock: SkipValidation = threading.Lock()
-
 settings = Settings()
