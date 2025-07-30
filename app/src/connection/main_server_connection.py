@@ -90,8 +90,15 @@ class MainServerSession:
                 logger.warning(f"Conexão com servidor Suntech resetada (reader) device_id={self.dev_id}")
                 self.disconnect()
                 break
-            except Exception:
-                logger.exception(f"Erro inesperado na thread de escuta device_id={self.dev_id}")
+            except OSError as e:
+                if e.errno == 9:
+                    logger.warning(f"Caught 'Bad file descriptor' for device_id={self.dev_id}. Socket was likely closed.")
+                else:
+                    logger.exception(f"Caught OSError in reader thread for device_id={self.dev_id}: {e}")
+                self.disconnect()
+                break
+            except Exception as e:
+                logger.exception(f"Unexpected error in reader thread for device_id={self.dev_id}: {e}")
                 self.disconnect()
                 break
     
