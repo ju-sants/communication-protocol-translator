@@ -5,6 +5,8 @@ from .utils import format_gt06_packet_for_display
 
 from app.src.protocols.session_manager import tracker_sessions_manager
 from app.services.redis_service import get_redis
+from app.src.connection.main_server_connection import sessions_manager
+
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -22,6 +24,8 @@ def handle_connection(conn: socket.socket, addr):
             data = conn.recv(1024)
             if not data:
                 logger.info(f"Conexão GT06 fechada pelo cliente endereco={addr}, device_id={dev_id_session}")
+                if dev_id_session:
+                    sessions_manager.delete_session(dev_id_session)
                 break
             
             buffer += data
