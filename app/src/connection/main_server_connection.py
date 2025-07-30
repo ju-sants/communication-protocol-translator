@@ -166,6 +166,13 @@ class MainServerSessionsManager:
             session.connect()
 
             return session
+    
+    def delete_session(self, dev_id: str):
+        with self.lock:
+            if dev_id in self._sessions:
+                session = self._sessions[dev_id]
+                session.disconnect()
+                del self._sessions[dev_id]
 
 sessions_manager = MainServerSessionsManager()
 
