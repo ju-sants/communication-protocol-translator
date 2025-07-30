@@ -1,10 +1,12 @@
 import struct
 from datetime import datetime
+import json
+import copy
+
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.src.suntech.utils import build_suntech_packet, build_suntech_alv_packet
 from app.src.connection.main_server_connection import send_to_main_server
-from app.src.protocols.utils import handle_ignition_change, handle_power_change
 
 logger = get_logger(__name__)
 redis_client = get_redis()
