@@ -56,6 +56,10 @@ class MainServerSession:
     def _reader_loop(self):
         while self._is_connected:
             try:
+                if not self.sock:
+                    logger.warning(f"Socket is None, exiting reader loop for device_id={self.dev_id}")
+                    break
+
                 data = self.sock.recv(1024)
                 if not data:
                     logger.warning(f"Conexão fechada pelo servidor Suntech (recv vazio) device_id={self.dev_id}")
