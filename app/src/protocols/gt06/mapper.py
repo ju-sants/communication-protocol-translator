@@ -12,7 +12,7 @@ redis_client = get_redis()
 
 GT06_TO_SUNTECH_ALERT_MAP = {
     0x01: 42,  # SOS -> Suntech: Panic Button
-    0x02: 41,  # Power Cut Alarm -> Suntech: Power Disconnected
+    0x02: 45,  # Power Cut Alarm -> Suntech: Backup Battery Disconnected
     0x19: 14,  # Battery low voltage alarm -> Suntech: Battery Low
     0x03: 15,  # Shock Alarm -> Suntech: Shocked
     0x06: 1,   # Overspeed Alarm -> Suntech: Over Speed
@@ -22,6 +22,8 @@ GT06_TO_SUNTECH_ALERT_MAP = {
     0x05: 5,   # Fence Out Alarm -> Suntech: Exit Geo-Fence
     0x13: 147, # Remove alarm -> Suntech: Absent Device Recovered
     0x14: 73,  # car door alarm -> Suntech: Anti-theft
+    0xFE: 33,  # ACC On -> Suntech: Ignition On
+    0xFF: 34   # ACC Off -> Suntech: Ignition Off
 }
 
 
