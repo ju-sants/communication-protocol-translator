@@ -132,18 +132,29 @@ class MainServerSession:
     def disconnect(self):
         with self.lock:
             if self._is_connected:
-                logger.info(f"Desconectando do server principal, dev_id={self.dev_id}")
+                logger.info(f"Disconnecting from main server, dev_id={self.dev_id}")
                 self._is_connected = False
-
                 if self.sock:
+                    try:
+                        self.sock.shutdown(socket.SHUT_RDWR)
+                    except OSError:
+                        pass
                     self.sock.close()
-
                 self.sock = None
 
 class MainServerSessionsManager:
-    def __init__(self):
-        self._sessions: dict[str, MainServerSession] = {}
-        self.lock = threading.Lock()
+    _lock = threading.Lock()
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._sessions = {}
+                    cls._instance.lock = threading.Lock()
+
+        return cls._instance
 
     def get_session(self, dev_id: str, serial: str):
         with self.lock:
