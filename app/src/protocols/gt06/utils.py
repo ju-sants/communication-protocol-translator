@@ -16,7 +16,7 @@ def crc_itu(data_bytes: bytes) -> int:
     crc_value = calculator.checksum(data_bytes)
     return crc_value
 
-def _format_location_content(content_body: bytes) -> list[str]:
+def _format_location_content(content_body: bytes, protocol: int) -> list[str]:
     """Função auxiliar para formatar os campos de um pacote de localização/alarme."""
     try:
         parts = []
@@ -50,6 +50,34 @@ def _format_location_content(content_body: bytes) -> list[str]:
         # Velocidade
         speed = content_body[15]
         parts.append(f"    - Velocidade: {speed} km/h")
+
+        acc_status = ""
+        if protocol == 0x22:
+            acc_status = "Ligada" if content_body[26] == 1 else "Desligada"
+        elif protocol == 0x32:
+            acc_status = "Ligada" if content_body[27] == 1 else "Desligada"
+            
+        elif protocol == 0xA0:
+            mcc_raw = struct.unpack(">H", content_body[18:20])[0]
+            mcc_highest_bit = (mcc_raw >> 15) & 1
+            
+            mnc_len = 2 if mcc_highest_bit == 1 else 1 # 
+            
+            if mnc_len == 1:
+                lac_start = 21
+            else:
+                lac_start = 22
+                
+            lac_end = lac_start + 2
+            cell_id_end = lac_end + 4
+            
+            acc_at = cell_id_end
+            acc = content_body[acc_at]
+
+            acc_status = "Ligada" if acc == 1 else "Desligada"
+
+        if acc_status:
+            parts.append(f"    - Ignição (ACC): {acc_status}")
 
         return parts
     except Exception as e:
@@ -112,7 +140,7 @@ def format_gt06_packet_for_display(packet_body: bytes) -> str:
        
        elif protocol in [0x12, 0x22, 0xA0, 0x32]: # Localização
            display_str.append(f"  Tipo: Pacote de Localização ({hex(protocol)})")
-           display_str.extend(_format_location_content(content_body))
+           display_str.extend(_format_location_content(content_body, protocol))
 
        elif protocol == 0x13: # Heartbeat
            display_str.append("  Tipo: Pacote de Heartbeat (Status)")
@@ -123,7 +151,7 @@ def format_gt06_packet_for_display(packet_body: bytes) -> str:
            location_part = content_body[:27]
            status_part = content_body[27:]
            display_str.append("  [Dados de Localização do Alarme]")
-           display_str.extend(_format_location_content(location_part))
+           display_str.extend(_format_location_content(location_part, protocol))
            display_str.append("  [Dados de Status do Alarme]")
            display_str.extend(_format_status_content(status_part))
 
