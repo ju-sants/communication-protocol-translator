@@ -51,11 +51,6 @@ def _format_location_content(content_body: bytes) -> list[str]:
         speed = content_body[15]
         parts.append(f"    - Velocidade: {speed} km/h")
 
-        # ACC (se for um pacote V3 '0x22' ou superior)
-        if len(content_body) >= 27:
-            acc_status = "Ligada" if content_body[26] == 1 else "Desligada"
-            parts.append(f"    - Ignição (ACC): {acc_status}")
-
         return parts
     except Exception as e:
         return [f"    - Erro ao formatar conteúdo de localização: {e}"]
