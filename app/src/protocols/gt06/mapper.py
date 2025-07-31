@@ -256,7 +256,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
 
-    if len(body) < 33:
+    if len(body) < 32:
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
     
@@ -270,8 +270,7 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
     if not definitive_location_data:
         return
     
-    alarm_language_byte = body[32]
-    alarm_code = alarm_language_byte
+    alarm_code = body[30]
 
     suntech_alert_id = GT06_TO_SUNTECH_ALERT_MAP.get(alarm_code)
 
