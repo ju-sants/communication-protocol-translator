@@ -304,3 +304,11 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     if suntech_packet:
         logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
         send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'))
+
+def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
+    logger.info("PACOTE 0x15")
+    command_content = body[5:-4]
+
+    command_content_str = command_content.decode("ascii", errors="ignore")
+
+    print(command_content_str)
