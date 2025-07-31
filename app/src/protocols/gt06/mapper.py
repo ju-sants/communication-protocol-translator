@@ -260,9 +260,14 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
     
-    location_data = decode_location_packet_v3(body[0:32])
+    alarm_location_data = decode_location_packet_v3(body[0:32])
+    
+    last_location_data_str = redis_client.hget(dev_id_str, "last_location_data")
+    last_location_data = json.loads(last_location_data_str)
 
-    if not location_data:
+    definitive_location_data = {**last_location_data, **alarm_location_data}
+
+    if not definitive_location_data:
         return
     
     alarm_language_byte = body[32]
@@ -276,9 +281,9 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
         suntech_packet = build_suntech_packet(
             hdr="ALT",
             dev_id=dev_id_str,
-            location_data=location_data,
+            location_data=definitive_location_data,
             serial=serial,
-            is_realtime=location_data.get('is_realtime', True),
+            is_realtime=True,
             alert_id=suntech_alert_id
         )
         if suntech_packet:
