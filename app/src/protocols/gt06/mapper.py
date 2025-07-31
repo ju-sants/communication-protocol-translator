@@ -235,8 +235,12 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     if not location_data:
         return
     
-    handle_ignition_change(dev_id_str, serial, location_data)
-    handle_power_change(dev_id_str, serial, location_data)
+    last_location_data = copy.deepcopy(location_data)
+    
+    last_location_data["timestamp"] = last_location_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
+
+    # Salvando para uso em caso de alarmes
+    redis_client.hset(dev_id_str, "last_location_data", json.dumps(last_location_data))
 
     suntech_packet = build_suntech_packet(
         "STT",
