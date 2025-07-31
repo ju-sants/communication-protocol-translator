@@ -97,9 +97,6 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
     if not location_data:
         return
     
-    handle_ignition_change(dev_id_str, serial, location_data)
-    handle_power_change(dev_id_str, serial, location_data)
-
     suntech_packet = build_suntech_packet(
         "STT",
         dev_id_str,
