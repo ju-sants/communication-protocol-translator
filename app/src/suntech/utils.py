@@ -65,8 +65,7 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int
     fields = base_fields
 
     if hdr == "STT":
-        ign_on = (location_data.get('status_bits', 0) & 0b1)
-        mode = "1" if ign_on else "0"
+        mode = "0" if redis_client.hget(dev_id, 'last_output_status') else "1"
         stt_rpt_type = "1"
 
         suntech_serial = serial % 10000
@@ -81,7 +80,7 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int
         
         fields.extend([str(alert_id), alert_mod, "", ""]) # ALERT_ID, ALERT_MOD, ALERT_DATA, RESERVED
         fields.extend(telemetry_fields)
-
+    
     packet = ";".join(fields)
     logger.debug(f"Pacote Suntech final construído: {packet}")
     return packet
