@@ -157,14 +157,9 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     # O pacote de Heartbeat (0x13) contém informações de status
     terminal_info = body[0]
-    acc_status = terminal_info & 0b10 
 
-    power_alarm_flag = (terminal_info >> 3) & 0b111
-    current_power_status = 1 if power_alarm_flag == 0b010 else 0 # 1 = desconectado
-
-    # Atualiza o status da ignição no Redis
-    redis_client.hset(dev_id_str, 'acc_status', 1 if acc_status else 0)
-    redis_client.hset(dev_id_str, "power_status", current_power_status)
+    output_status = (terminal_info >> 7) & 0b1
+    redis_client.hset(dev_id_str, "last_output_status", output_status)
 
     # Keep-Alive da Suntech
     suntech_packet = build_suntech_alv_packet(dev_id_str)
