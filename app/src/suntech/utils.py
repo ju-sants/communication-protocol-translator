@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 
@@ -92,4 +94,44 @@ def build_suntech_alv_packet(dev_id: str) -> str:
 
     packet = f"ALV;{cutted_dev_id}"
     logger.debug(f"Construído pacote Suntech ALV: {packet}")
+    return packet
+
+def build_suntech_res_packet(dev_id: str, command_parts: list, location_data: dict) -> str:
+    """
+    Constrói um pacote de Resposta (RES) rico em dados, como o observado nos logs.
+    """
+    cmd_group = command_parts[2]
+    cmd_action = command_parts[3]
+
+    # O formato de timestamp no RES é diferente do STT
+    ts = location_data.get('timestamp', datetime.now())
+    date_fields = [ts.strftime('%Y'), ts.strftime('%m'), ts.strftime('%d'), ts.strftime('%H:%M:%S')]
+
+    mode = "0" if redis_client.hget(dev_id, 'last_output_status') else "1"
+
+    dev_id_normalized = ''.join(filter(str.isdigit, dev_id))
+
+    packet_fields = [
+        "RES",
+        dev_id_normalized[-10:],
+        cmd_group,
+        cmd_action,
+        *date_fields,
+        location_data.get('cell_id', '0'),
+        f"{location_data.get('latitude', 0.0):.6f}",
+        f"{location_data.get('longitude', 0.0):.6f}",
+        f"{location_data.get('speed_kmh', 0.0):.2f}",
+        f"{location_data.get('direction', 0.0):.2f}",
+        str(location_data.get('satellites', 0)),
+        "1" if (location_data.get('status_bits', 0) & 0b10) else "0",
+        str(int(location_data.get('gps_odometer', 0))),
+        str(location_data.get('power_voltage', 0.0)),
+        f"0000000{int(location_data.get('status_bits', 0) & 0b1)}",
+        f"0000000{redis_client.hget(dev_id, 'last_output_status') if redis_client.hget(dev_id, 'last_output_status') else '0'}",
+        mode,
+        "0"  # ERR_CODE
+    ]
+    
+    packet = ";".join(packet_fields)
+    logger.info(f"Construído pacote de Resposta (RES): {packet}")
     return packet
