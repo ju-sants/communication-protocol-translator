@@ -139,13 +139,91 @@ def decode_location_packet_v4(body: bytes):
     except Exception as e:
         logger.exception(f"Falha ao decodificar pacote de localização GT06 body_hex={body.hex()}")
         return None
-    
-def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int):
-    if protocol_number == 0x32:
-        location_data = decode_location_packet_v4(body)
-    elif protocol_number == 0x22:
-        location_data = decode_location_packet_v3(body)
 
+def decode_location_packet_4g(body: bytes):
+    """
+    Decodifica o pacote de localização do protocolo 4G (0xA0) do rastreador GT06.
+    """
+    try:
+        data = {}
+
+        # Decodifica o timestamp (6 bytes)
+        year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
+        data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second)
+
+        # Quantidade de satélites (1 byte)
+        sats_byte = body[6]
+        data["satellites"] = sats_byte & 0x0F
+
+        # Latitude e Longitude (8 bytes)
+        lat_raw, lon_raw = struct.unpack(">II", body[7:15])
+        lat = lat_raw / 1800000.0
+        lon = lon_raw / 1800000.0
+
+        data["speed_kmh"] = body[15]
+
+        course_status = struct.unpack(">H", body[16:18])[0]
+        
+        is_latitude_north = (course_status >> 10) & 1
+        is_longitude_west = (course_status >> 11) & 1
+        
+        data['latitude'] = -abs(lat) if not is_latitude_north else abs(lat)
+        data['longitude'] = -abs(lon) if is_longitude_west else abs(lon)
+            
+        data["direction"] = course_status & 0x03FF
+
+        gps_fixed = (course_status >> 12) & 1
+
+        mcc_raw = struct.unpack(">H", body[18:20])[0]
+        mcc_highest_bit = (mcc_raw >> 15) & 1
+        
+        mnc_len = 2 if mcc_highest_bit == 1 else 1 # 
+        
+        if mnc_len == 1:
+            lac_start = 21
+        else:
+            lac_start = 22
+            
+        lac_end = lac_start + 2
+        cell_id_end = lac_end + 4
+        
+        acc_status_at = cell_id_end
+        acc_status = body[acc_status_at]
+        
+        status_bits = 0
+        if gps_fixed == 1:
+            status_bits |= 0b10
+        if acc_status == 1:
+            status_bits |= 0b1
+        data["status_bits"] = status_bits
+
+        is_realtime_at = acc_status_at + 2
+        is_realtime = body[is_realtime_at] == 0x00
+        data["is_realtime"] = is_realtime
+
+        mileage_at = is_realtime_at + 1
+        mileage_km = struct.unpack(">I", body[mileage_at:mileage_at + 4])[0]
+        data["gps_odometer"] = mileage_km
+
+        voltage_at = mileage_at + 4
+        voltage_raw = struct.unpack(">H", body[voltage_at:voltage_at + 2])[0]
+        voltage = voltage_raw * 0.01 # 
+        data["voltage"] = round(voltage, 2)
+
+        return data
+
+    except Exception as e:
+        logger.exception(f"Falha ao decodificar pacote de localização 4G GT06 body_hex={body.hex()}")
+        return None
+
+
+def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int):
+    if protocol_number == 0x22:
+        location_data = decode_location_packet_v3(body)
+    elif protocol_number == 0x32:
+        location_data = decode_location_packet_v4(body)
+    elif protocol_number == 0xA0:
+        location_data = decode_location_packet_4g(body)
     else:
         logger.info("Tipo de protocolo não mapeado")
         location_data = None
