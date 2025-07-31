@@ -84,5 +84,6 @@ def handle_connection(conn: socket.socket, addr):
     finally:
         if dev_id_session:
             tracker_sessions_manager.remove_tracker_client(dev_id_session)
+        
         logger.info(f"Fechando conexão e thread GT06 endereco={addr}, device_id={dev_id_session}")
         conn.close()
