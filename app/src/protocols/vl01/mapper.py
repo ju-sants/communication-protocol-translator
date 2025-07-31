@@ -1,6 +1,7 @@
 import struct
 from datetime import datetime
 import json
+import copy
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -97,6 +98,13 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
     if not location_data:
         return
     
+    last_location_data = copy.deepcopy(location_data)
+    
+    last_location_data["timestamp"] = last_location_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
+
+    # Salvando para uso em caso de alarmes
+    redis_client.hset(dev_id_str, "last_location_data", json.dumps(last_location_data))
+
     suntech_packet = build_suntech_packet(
         "STT",
         dev_id_str,
