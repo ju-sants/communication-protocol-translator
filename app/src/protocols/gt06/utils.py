@@ -125,8 +125,8 @@ def format_gt06_packet_for_display(packet_body: bytes) -> str:
 
        elif protocol == 0x16: # Alarme
            display_str.append("  Tipo: Pacote de Alarme")
-           location_part = content_body[:32]
-           status_part = content_body[32:]
+           location_part = content_body[:27]
+           status_part = content_body[27:]
            display_str.append("  [Dados de Localização do Alarme]")
            display_str.extend(_format_location_content(location_part))
            display_str.append("  [Dados de Status do Alarme]")
