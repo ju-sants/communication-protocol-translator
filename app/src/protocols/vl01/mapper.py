@@ -58,27 +58,31 @@ def decode_location_packet(body: bytes):
 
         gps_fixed = (course_status >> 12) & 1
 
-        mcc = struct.unpack(">H", body[18:20])[0]
-        mnc_length = 1
-        if (mcc >> 15) & 1:
-            mnc_length = 2
+        try: # Colocando dentro de um try except pois essa funcao tbm recebe chamadas para decodificar pacotes de alerta, que não tem as infos abaixo, 
+            # Na ordem em que estão abaixo
+            mcc = struct.unpack(">H", body[18:20])[0]
+            mnc_length = 1
+            if (mcc >> 15) & 1:
+                mnc_length = 2
 
-        acc_at = 20 + mnc_length + 4 + 8
-        acc_status = body[acc_at]
-        status_bits = 0
-        if gps_fixed == 1:
-            status_bits |= 0b10
-        if acc_status == 1:
-            status_bits |= 0b1
-        data["status_bits"] = status_bits
+            acc_at = 20 + mnc_length + 4 + 8
+            acc_status = body[acc_at]
+            status_bits = 0
+            if gps_fixed == 1:
+                status_bits |= 0b10
+            if acc_status == 1:
+                status_bits |= 0b1
+            data["status_bits"] = status_bits
 
-        is_realtime = body[acc_at + 2] == 0x00
+            is_realtime = body[acc_at + 2] == 0x00
 
-        data["is_realtime"] = is_realtime
+            data["is_realtime"] = is_realtime
 
-        mileage_at = acc_at + 3
-        mileage_km = struct.unpack(">I", body[mileage_at:mileage_at + 4])[0]
-        data["gps_odometer"] = mileage_km
+            mileage_at = acc_at + 3
+            mileage_km = struct.unpack(">I", body[mileage_at:mileage_at + 4])[0]
+            data["gps_odometer"] = mileage_km
+        except:
+            pass
 
         return data
 
