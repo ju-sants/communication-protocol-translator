@@ -111,29 +111,32 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
 
-    if len(body) < 33:
+    if len(body) < 21:
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
     
-    location_data = decode_location_packet(body[0:32])
+    alarm_location_data = decode_location_packet(body[0:16])
 
-    if not location_data:
+    last_location_data_str = redis_client.hget(dev_id_str, "last_location_data")
+    last_location_data = json.loads(last_location_data_str)
+
+    definitive_location_data = {**last_location_data, **alarm_location_data}
+
+    if not definitive_location_data:
         return
     
-    alarm_language_byte = body[32]
-    alarm_code = alarm_language_byte
+    alarm_code = body[17]
 
     suntech_alert_id = GT06_TO_SUNTECH_ALERT_MAP.get(alarm_code)
 
-    
     if suntech_alert_id:
         logger.info(f"Alarme GT06 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
         suntech_packet = build_suntech_packet(
             hdr="ALT",
             dev_id=dev_id_str,
-            location_data=location_data,
+            location_data=definitive_location_data,
             serial=serial,
-            is_realtime=location_data.get('is_realtime', True),
+            is_realtime=True,
             alert_id=suntech_alert_id
         )
         if suntech_packet:
