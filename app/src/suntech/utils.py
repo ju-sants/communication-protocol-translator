@@ -47,9 +47,9 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int
         str(location_data.get('satellites', 15)),
         "1" if (location_data.get('status_bits', 0) & 0b10) else "0",
         f"0000000{int(location_data.get('status_bits', 0) & 0b1)}",
-        f"0000000{int((location_data.get('status_bits', 0) >> 10) & 1)}"
+        f"0000000{redis_client.hget(dev_id, 'last_output_status') if redis_client.hget(dev_id, 'last_output_status') else '0'}"
     ]
-    
+
     # Campos de telemetria extra (Assign Headers)
     assign_map = "00028003"
     
