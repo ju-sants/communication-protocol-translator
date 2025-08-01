@@ -87,7 +87,7 @@ def process_suntech_command(command: bytes, dev_id: str, serial: int):
         "CMD;03;01": "GPRS,GET,LOCATION#",
     }
 
-    gt06_text_command = None
+    vl01_text_command = None
     if command_key.startswith("CMD;05;03"):
         meters = command_key.split(";")[-1]
         if not meters.isdigit():
@@ -96,22 +96,22 @@ def process_suntech_command(command: bytes, dev_id: str, serial: int):
         
         kilometers = int(meters) / 1000
 
-        VL01_text_command = f"MILEAGE,ON,{kilometers}#"
+        vl01_text_command = f"MILEAGE,ON,{kilometers}#"
 
     else:
-        VL01_text_command = command_mapping.get(command_key)
+        vl01_text_command = command_mapping.get(command_key)
 
-    if not VL01_text_command:
+    if not vl01_text_command:
         logger.warning(f"Nenhum mapeamento VL01 encontrado para o comando Suntech comando={command_key}")
         return
 
-    VL01_binary_command = build_command(VL01_text_command, serial)
+    vl01_binary_command = build_command(vl01_text_command, serial)
 
     tracker_socket = tracker_sessions_manager.get_tracker_client_socket(dev_id)
     if tracker_socket:
         try:
-            tracker_socket.sendall(VL01_binary_command)
-            logger.info(f"Comando VL01 enviado com sucesso device_id={dev_id}, comando_hex={VL01_binary_command.hex()}")
+            tracker_socket.sendall(vl01_binary_command)
+            logger.info(f"Comando VL01 enviado com sucesso device_id={dev_id}, comando_hex={vl01_binary_command.hex()}")
         except Exception:
             logger.exception(f"Falha ao enviar comando para o rastreador VL01 device_id={dev_id}")
     else:
