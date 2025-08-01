@@ -322,6 +322,7 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
         command_content_str = command_content.decode("ascii", errors="ignore")
 
         if command_content_str:
+            command_content_str = command_content_str.strip().upper()
             last_location_data_str = redis_client.hget(dev_id, "last_location_data")
             last_location_data = json.loads(last_location_data_str)
             last_location_data["timestamp"] = datetime.now(timezone.utc)
@@ -337,7 +338,5 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
             
             if packet:
                 send_to_main_server(dev_id, serial, packet.encode("ascii"))
-
-            pass
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY")
