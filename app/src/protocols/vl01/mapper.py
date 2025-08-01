@@ -35,7 +35,7 @@ def decode_location_packet(body: bytes):
         data = {}
 
         year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
-        data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second)
+        data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second).replace(tzinfo=timezone.utc)
 
         sats_byte = body[6]
         data["satellites"] = sats_byte & 0x0F
@@ -124,6 +124,16 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
         return
     
     alarm_location_data = decode_location_packet(body[0:16])
+
+    alarm_datetime = alarm_location_data.get("timestamp")
+    if not alarm_datetime:
+        logger.info(f"Pacote de alarme sem data e hora, descartando... dev_id={dev_id_str}")
+        return
+    
+    limit = datetime.now(timezone.utc) - timedelta(minutes=2)
+
+    if not alarm_datetime > limit:
+        logger.info(f"Alarme da memória, descartando... dev_id={dev_id_str}")
 
     last_location_data_str = redis_client.hget(dev_id_str, "last_location_data")
     last_location_data = json.loads(last_location_data_str)
