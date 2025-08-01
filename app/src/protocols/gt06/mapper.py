@@ -188,8 +188,8 @@ def decode_location_packet_4g(body: bytes):
         else:
             lac_start = 22
             
-        lac_end = lac_start + 2
-        cell_id_end = lac_end + 4
+        lac_end = lac_start + 4
+        cell_id_end = lac_end + 8
         
         acc_status_at = cell_id_end
         acc_status = body[acc_status_at]
