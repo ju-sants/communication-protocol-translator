@@ -193,7 +193,9 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
                 packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "01"], last_location_data)
             elif command_content_str == "RELAY 0":
                 packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "02"], last_location_data)
-
+            else:
+                print(command_content_str)
+                
             if packet:
                 send_to_main_server(dev_id, serial, packet.encode("ascii"))
 
