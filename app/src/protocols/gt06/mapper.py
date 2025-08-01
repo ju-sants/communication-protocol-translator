@@ -262,6 +262,16 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
     
     alarm_location_data = decode_location_packet_v3(body[0:32])
     
+    alarm_datetime = alarm_location_data.get("timestamp")
+    if not alarm_datetime:
+        logger.info(f"Pacote de alarme sem data e hora, descartando... dev_id={dev_id_str}")
+        return
+    
+    limit = datetime.now(timezone.utc) - timedelta(minutes=2)
+
+    if not alarm_datetime > limit:
+        logger.info(f"Alarme da memória, descartando... dev_id={dev_id_str}")
+
     last_location_data_str = redis_client.hget(dev_id_str, "last_location_data")
     last_location_data = json.loads(last_location_data_str)
 
