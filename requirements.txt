@@ -9,3 +9,4 @@ redis==6.2.0
 structlog==25.4.0
 typing-inspection==0.4.1
 typing_extensions==4.14.1
+loguru==0.7.3
