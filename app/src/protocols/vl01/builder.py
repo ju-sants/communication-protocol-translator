@@ -9,7 +9,7 @@ logger = get_logger(__name__)
 
 def build_generic_response(protocol_number: str, serial_number: int):
     """
-    Constrói uma resposta genérica (ACK) para o dispositivo GT06.
+    Constrói uma resposta genérica (ACK) para o dispositivo VL01.
     """
 
     # Conteúdo
@@ -34,7 +34,7 @@ def build_generic_response(protocol_number: str, serial_number: int):
 
 def build_command(command_content_str: str, serial_number: int):
     """
-    Cria comandos no padrão GT06 para envio ao dispositivo
+    Cria comandos no padrão VL01 para envio ao dispositivo
     """
 
     protocol_number = 0x80
@@ -65,12 +65,12 @@ def build_command(command_content_str: str, serial_number: int):
         b'\x0d\x0a'
         )
     
-    logger.info(f"Construído comando GT06: {command_packet.hex()}")
+    logger.info(f"Construído comando VL01: {command_packet.hex()}")
 
     return command_packet
 
 def process_suntech_command(command: bytes, dev_id: str, serial: int):
-    logger.info(f"Iniciando tradução de comando Suntech para GT06 device_id={dev_id}, comando={command}")
+    logger.info(f"Iniciando tradução de comando Suntech para VL01 device_id={dev_id}, comando={command}")
 
     command_str = command.decode("ascii", errors="ignore")
     parts = command_str.split(';')
@@ -96,23 +96,23 @@ def process_suntech_command(command: bytes, dev_id: str, serial: int):
         
         kilometers = int(meters) / 1000
 
-        gt06_text_command = f"MILEAGE,ON,{kilometers}#"
+        VL01_text_command = f"MILEAGE,ON,{kilometers}#"
 
     else:
-        gt06_text_command = command_mapping.get(command_key)
+        VL01_text_command = command_mapping.get(command_key)
 
-    if not gt06_text_command:
-        logger.warning(f"Nenhum mapeamento GT06 encontrado para o comando Suntech comando={command_key}")
+    if not VL01_text_command:
+        logger.warning(f"Nenhum mapeamento VL01 encontrado para o comando Suntech comando={command_key}")
         return
 
-    gt06_binary_command = build_command(gt06_text_command, serial)
+    VL01_binary_command = build_command(VL01_text_command, serial)
 
     tracker_socket = tracker_sessions_manager.get_tracker_client_socket(dev_id)
     if tracker_socket:
         try:
-            tracker_socket.sendall(gt06_binary_command)
-            logger.info(f"Comando GT06 enviado com sucesso device_id={dev_id}, comando_hex={gt06_binary_command.hex()}")
+            tracker_socket.sendall(VL01_binary_command)
+            logger.info(f"Comando VL01 enviado com sucesso device_id={dev_id}, comando_hex={VL01_binary_command.hex()}")
         except Exception:
-            logger.exception(f"Falha ao enviar comando para o rastreador GT06 device_id={dev_id}")
+            logger.exception(f"Falha ao enviar comando para o rastreador VL01 device_id={dev_id}")
     else:
-        logger.warning(f"Rastreador GT06 não está conectado. Impossível enviar comando. device_id={dev_id}")
+        logger.warning(f"Rastreador VL01 não está conectado. Impossível enviar comando. device_id={dev_id}")
