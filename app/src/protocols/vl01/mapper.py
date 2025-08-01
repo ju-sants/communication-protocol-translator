@@ -164,5 +164,29 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     # Keep-Alive da Suntech
     suntech_packet = build_suntech_alv_packet(dev_id_str)
     if suntech_packet:
-        logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
+        logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote VL01:\n{suntech_packet}")
         send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'))
+
+def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
+    try:
+        command_content = body[5:-4]
+        command_content_str = command_content.decode("ascii", errors="ignore")
+
+        if command_content_str:
+            last_location_data_str = redis_client.hget(dev_id, "last_location_data")
+            last_location_data = json.loads(last_location_data_str)
+            last_location_data["timestamp"] = datetime.now(timezone.utc)
+
+            packet = None
+            
+            if command_content_str == "RELAY 1":
+                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "01"], last_location_data)
+            elif command_content_str == "RELAY 0":
+                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "02"], last_location_data)
+
+            if packet:
+                send_to_main_server(dev_id, serial, packet.encode("ascii"))
+
+            pass
+    except Exception as e:
+        logger.error(f"Erro ao decodificar comando de REPLY")
