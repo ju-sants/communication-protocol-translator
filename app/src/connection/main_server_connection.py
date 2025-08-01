@@ -135,7 +135,7 @@ class MainServerSession:
     def disconnect(self):
         with self.lock:
             if self._is_connected:
-                logger.info(f"Disconnecting from main server, dev_id={self.dev_id}")
+                logger.info(f"Desconectando do server principal, dev_id={self.dev_id}")
                 self._is_connected = False
                 if self.sock:
                     try:
@@ -162,7 +162,7 @@ class MainServerSessionsManager:
     def get_session(self, dev_id: str, serial: str):
         with self.lock:
             if dev_id not in self._sessions:
-                logger.info(f"Nenhuma sessão encontrada. Criando Sessão, dev_id={dev_id}")
+                logger.info(f"Nenhuma sessão encontrada no MainServerSessionsManager. Criando uma nova. dev_id={dev_id}")
                 self._sessions[dev_id] = MainServerSession(dev_id, serial)
             
             session = self._sessions[dev_id]
@@ -173,9 +173,11 @@ class MainServerSessionsManager:
     def delete_session(self, dev_id: str):
         with self.lock:
             if dev_id in self._sessions:
+                logger.info(f"Deletando sessão do MainServerSessionsManager para dev_id={dev_id}")
                 session = self._sessions[dev_id]
                 session.disconnect()
                 del self._sessions[dev_id]
+                logger.info(f"Sessão para dev_id={dev_id} deletada do MainServerSessionsManager.")
 
 sessions_manager = MainServerSessionsManager()
 
