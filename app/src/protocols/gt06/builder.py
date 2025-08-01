@@ -1,11 +1,10 @@
 import struct
-from app.core.logger import get_logger
 
+from app.core.logger import get_logger
 from . import utils
 from app.src.protocols.session_manager import tracker_sessions_manager
 
 logger = get_logger(__name__)
-
 
 def build_generic_response(protocol_number: str, serial_number: int):
     """
