@@ -52,7 +52,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | 
             logger.warning(f"Pacote de heartbeat VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_packet = builder.build_generic_response(protocol_number, serial_number)
 
-    elif protocol_number == 0x16: # Pacote de Alarme
+    elif protocol_number == 0x95: # Pacote de Alarme
         if dev_id_str:
             mapper.handle_alarm_packet(dev_id_str, serial_number, content_body)
         else:
