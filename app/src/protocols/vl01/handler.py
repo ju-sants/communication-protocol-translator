@@ -79,11 +79,19 @@ def handle_connection(conn: socket.socket, addr):
                         buffer = b''
     
     except (ConnectionResetError, BrokenPipeError):
-        logger.warning(f"Conexão GT06 fechada abruptamente endereco={addr}, device_id={dev_id_session}")
+        logger.warning(f"Conexão VL01 fechada abruptamente endereco={addr}, device_id={dev_id_session}")
     except Exception:
-        logger.exception(f"Erro fatal na conexão GT06 endereco={addr}, device_id={dev_id_session}")
+        logger.exception(f"Erro fatal na conexão VL01 endereco={addr}, device_id={dev_id_session}")
     finally:
         if dev_id_session:
+            logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}")
             tracker_sessions_manager.remove_tracker_client(dev_id_session)
-        logger.info(f"Fechando conexão e thread GT06 endereco={addr}, device_id={dev_id_session}")
-        conn.close()
+            sessions_manager.delete_session(dev_id_session)
+
+        logger.info(f"Fechando conexão e thread VL01 endereco={addr}, device_id={dev_id_session}")
+        try:
+            conn.shutdown(socket.SHUT_RDWR)
+            conn.close()
+            conn = None
+        except Exception as e:
+            logger.error(f"Impossível limpar conexão com rastreador dev_id={dev_id_session if dev_id_session in locals() else 'None'}")
