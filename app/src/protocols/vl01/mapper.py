@@ -5,7 +5,7 @@ import copy
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from app.src.suntech.utils import build_suntech_packet, build_suntech_alv_packet
+from app.src.suntech.utils import build_suntech_packet, build_suntech_alv_packet, build_suntech_res_packet
 from app.src.connection.main_server_connection import send_to_main_server
 
 logger = get_logger(__name__)
