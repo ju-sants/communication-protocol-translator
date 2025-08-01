@@ -1,7 +1,7 @@
 import socket
 from app.core.logger import get_logger
 from .processor import process_packet
-from .utils import format_gt06_packet_for_display 
+from .utils import format_vl01_packet_for_display 
 
 from app.src.protocols.session_manager import tracker_sessions_manager
 from app.services.redis_service import get_redis
@@ -13,9 +13,9 @@ redis_client = get_redis()
 
 def handle_connection(conn: socket.socket, addr):
     """
-    Lida com uma única conexão de cliente GT06, gerenciando o estado da sessão.
+    Lida com uma única conexão de cliente VL01, gerenciando o estado da sessão.
     """
-    logger.info(f"Nova conexão GT06 recebida endereco={addr}")
+    logger.info(f"Nova conexão VL01 recebida endereco={addr}")
     buffer = b''
     dev_id_session = None
 
@@ -23,9 +23,7 @@ def handle_connection(conn: socket.socket, addr):
         while True:
             data = conn.recv(1024)
             if not data:
-                logger.info(f"Conexão GT06 fechada pelo cliente endereco={addr}, device_id={dev_id_session}")
-                if dev_id_session:
-                    sessions_manager.delete_session(dev_id_session)
+                logger.info(f"Conexão VL01 fechada pelo cliente endereco={addr}, device_id={dev_id_session}")
                 break
             
             buffer += data
@@ -42,14 +40,14 @@ def handle_connection(conn: socket.socket, addr):
 
                         # Validação dos bits de parada
                         if not raw_packet.endswith(b'\x0d\x0a'):
-                            logger.warning(f"Pacote GT06 com stop bits inválidos, descartando. pacote={raw_packet.hex()}")
+                            logger.warning(f"Pacote VL01 com stop bits inválidos, descartando. pacote={raw_packet.hex()}")
                             continue
                         
                         # Corpo do pacote que vai para o processador: [Length(1) + Proto(1) + Conteúdo + Serial(2) + CRC(2)]
                         packet_body = raw_packet[2:-2]
                         
                         # Formatando pacote para display
-                        logger.info(f"Pacote Formatado Recebido de {addr}:\n{format_gt06_packet_for_display(packet_body)}")
+                        logger.info(f"Pacote Formatado Recebido de {addr}:\n{format_vl01_packet_for_display(packet_body)}")
 
                         # Chama o processador, passando o ID da sessão
                         response_packet, newly_logged_in_dev_id = process_packet(dev_id_session, packet_body)
@@ -60,7 +58,7 @@ def handle_connection(conn: socket.socket, addr):
                         if dev_id_session and not tracker_sessions_manager.exists(dev_id_session):
                             tracker_sessions_manager.register_tracker_client(dev_id_session, conn)
                             redis_client.hset(dev_id_session, "protocol", "vl01")
-                            logger.info(f"Dispositivo GT06 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
+                            logger.info(f"Dispositivo VL01 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
 
                         if response_packet:
                             conn.sendall(response_packet)
