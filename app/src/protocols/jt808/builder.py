@@ -8,7 +8,7 @@ from app.src.protocols.session_manager import tracker_sessions_manager
 
 logger = get_logger(__name__)
 
-def build_ack_response(terminal_phone: bytes, terminal_serial: int, msg_id: int, result: int) -> bytes:
+def build_generic_response(terminal_phone: bytes, terminal_serial: int, msg_id: int, result: int) -> bytes:
     """Constrói uma resposta padrão (0x8001) para o dispositivo JT/T 808."""
     msg_id_resp = 0x8001
     body_props = 5 # Corpo da resposta tem 5 bytes
