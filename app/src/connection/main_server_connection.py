@@ -118,8 +118,11 @@ class MainServerSession:
                 logger.warning(f"Conexão com servidor Suntech caiu ao enviar ({type(e).__name__}) device_id={self.dev_id}")
 
                 if self._conection_retries < 5:
+                    self._conection_retries += 1
+
                     if self.connect():
                         self.send(packet)
+                        
                 else:
                     logger.error("Número máximo de tentativas de conexão para essa sessão atingida")
                     self._conection_retries = 0
