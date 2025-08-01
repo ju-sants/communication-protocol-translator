@@ -38,7 +38,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | 
         newly_logged_in_dev_id = imei_bytes.hex()
         response_packet = builder.build_generic_response(protocol_number, serial_number)
     
-    elif protocol_number in [0x12, 0x22, 0xA0, 0x32]: # Pacotes de Localização
+    elif protocol_number == 0xA0: # Pacote de Localização
         if dev_id_str:
             mapper.handle_location_packet(dev_id_str, serial_number, content_body)
         else:
