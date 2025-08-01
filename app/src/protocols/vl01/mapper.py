@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 
-GT06_TO_SUNTECH_ALERT_MAP = {
+VL01_TO_SUNTECH_ALERT_MAP = {
     0x01: 42,  # SOS -> Suntech: Panic Button
     0x02: 41,  # Power Cut Alarm -> Suntech: Backup Battery Disconnected
     0x03: 15,  # Shock Alarm -> Suntech: Shocked
@@ -88,7 +88,7 @@ def decode_location_packet(body: bytes):
         return data
 
     except Exception as e:
-        logger.exception(f"Falha ao decodificar pacote de localização GT06 body_hex={body.hex()}")
+        logger.exception(f"Falha ao decodificar pacote de localização VL01 body_hex={body.hex()}")
         return None
 
 
@@ -114,7 +114,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
     )
 
     if suntech_packet:
-        logger.info(f"Pacote Localização SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
+        logger.info(f"Pacote Localização SUNTECH traduzido de pacote VL01:\n{suntech_packet}")
         send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"))
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
@@ -135,10 +135,10 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
     
     alarm_code = body[17]
 
-    suntech_alert_id = GT06_TO_SUNTECH_ALERT_MAP.get(alarm_code)
+    suntech_alert_id = VL01_TO_SUNTECH_ALERT_MAP.get(alarm_code)
 
     if suntech_alert_id:
-        logger.info(f"Alarme GT06 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
+        logger.info(f"Alarme VL01 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
         suntech_packet = build_suntech_packet(
             hdr="ALT",
             dev_id=dev_id_str,
@@ -148,11 +148,11 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
             alert_id=suntech_alert_id
         )
         if suntech_packet:
-            logger.info(f"Pacote Alerta SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
+            logger.info(f"Pacote Alerta SUNTECH traduzido de pacote VL01:\n{suntech_packet}")
 
             send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'))
     else:
-        logger.warning(f"Alarme GT06 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
+        logger.warning(f"Alarme VL01 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     # O pacote de Heartbeat (0x13) contém informações de status
