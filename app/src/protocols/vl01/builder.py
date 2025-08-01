@@ -38,21 +38,24 @@ def build_command(command_content_str: str, serial_number: int):
     """
 
     protocol_number = 0x80
-
     server_flag = b'\x00\x00\x00\x01'
     command_bytes = command_content_str.encode("ascii")
+    language = b'\x00\x02'
 
-    command_body = server_flag + command_bytes
+    m_len = len(command_bytes)
 
-    command_length = len(command_body)
+    command_length = 4 + m_len + 2
 
-    packet_length = 1 + 1 + command_length + 2 + 2
+    packet_length = m_len + 12
 
+    # Data for CRC is from Packet Length field to Serial Number field inclusive
     data_for_crc = (
         struct.pack(">B", packet_length) +
         struct.pack(">B", protocol_number) +
         struct.pack(">B", command_length) +
-        command_body + 
+        server_flag +
+        command_bytes +
+        language +
         struct.pack(">H", serial_number)
     )
 
@@ -60,11 +63,11 @@ def build_command(command_content_str: str, serial_number: int):
 
     command_packet = (
         b'\x78\x78' +
-        data_for_crc + 
+        data_for_crc +
         struct.pack(">H", crc) +
         b'\x0d\x0a'
         )
-    
+
     logger.info(f"Construído comando VL01: {command_packet.hex()}")
 
     return command_packet
