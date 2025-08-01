@@ -97,9 +97,9 @@ def _format_status_content(content_body: bytes) -> list[str]:
         return [f"    - Erro ao formatar conteúdo de status: {e}"]
 
 
-def format_gt06_packet_for_display(packet_body: bytes) -> str:
+def format_vl01_packet_for_display(packet_body: bytes) -> str:
    """
-   Formata o corpo de um pacote GT06 para exibição legível em logs.
+   Formata o corpo de um pacote VL01 para exibição legível em logs.
    """
    try:
        length = packet_body[0]
@@ -109,7 +109,7 @@ def format_gt06_packet_for_display(packet_body: bytes) -> str:
        content_body = packet_body[2:-4]
 
        display_str = [
-           "--- Pacote GT06 Recebido ---",
+           "--- Pacote VL01 Recebido ---",
            f"  Protocolo: {hex(protocol)}",
            f"  Tamanho Declarado: {length}",
            f"  Serial: {serial}",
@@ -146,4 +146,4 @@ def format_gt06_packet_for_display(packet_body: bytes) -> str:
        return "\n".join(display_str)
 
    except Exception as e:
-       return f"!!! Erro ao formatar pacote GT06: {e} | Pacote (raw): {packet_body.hex()} !!!"
+       return f"!!! Erro ao formatar pacote VL01: {e} | Pacote (raw): {packet_body.hex()} !!!"
