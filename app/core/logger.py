@@ -1,29 +1,24 @@
-import logging
 import sys
+from loguru import logger
 from app.config.settings import settings
 
-def get_logger(name: str) -> logging.Logger:
-    """
-    Configures and returns a standard Python logger.
-    """
-    log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+# Remove o handler padrão para evitar logs duplicados
+logger.remove()
 
-    # Prevent duplicate handlers if get_logger is called multiple times
-    logger = logging.getLogger(name)
-    if logger.hasHandlers():
-        logger.handlers.clear()
+# Adiciona um novo "sink" para o stdout com um formato mais rico e colorido
+logger.add(
+    sys.stdout,
+    level=settings.LOG_LEVEL.upper(),
+    format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+           "<level>{level: <8}</level> | "
+           "<cyan>{name}:{function}:{line}</cyan> - <level>{message}</level>",
+    colorize=True,
+    backtrace=True,
+    diagnose=True
+)
 
-    logger.setLevel(log_level)
-    
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(log_level)
-    
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    handler.setFormatter(formatter)
-    
-    logger.addHandler(handler)
-    logger.propagate = False
-    
-    return logger
+def get_logger(name: str):
+    """
+    Retorna uma instância do logger Loguru com o nome do módulo associado.
+    """
+    return logger.bind(name=name)
