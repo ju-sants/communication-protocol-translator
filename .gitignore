@@ -3,3 +3,4 @@ __pycache__
 .env
 *.txt
 suntech_server_test.py
+studying/
