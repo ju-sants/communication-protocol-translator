@@ -130,7 +130,7 @@ def format_vl01_packet_for_display(packet_body: bytes) -> str:
            display_str.append("  Tipo: Pacote de Heartbeat (Status)")
            display_str.extend(_format_status_content(content_body))
 
-       elif protocol == 0x16: # Alarme
+       elif protocol == 0x95: # Alarme
            display_str.append("  Tipo: Pacote de Alarme")
            location_part = content_body[:32]
            status_part = content_body[32:]
