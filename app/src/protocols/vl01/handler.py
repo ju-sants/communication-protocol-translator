@@ -43,6 +43,8 @@ def handle_connection(conn: socket.socket, addr):
                         raw_packet = buffer[:full_packet_size]
                         buffer = buffer[full_packet_size:]
 
+                        print(f"PACOTE COM COMEÇO x79: {raw_packet}")
+
                         # Validação dos bits de parada
                         if not raw_packet.endswith(b'\x0d\x0a'):
                             logger.warning(f"Pacote VL01 com stop bits inválidos, descartando. pacote={raw_packet.hex()}")
