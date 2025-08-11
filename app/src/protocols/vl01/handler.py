@@ -31,7 +31,7 @@ def handle_connection(conn: socket.socket, addr):
             
             while len(buffer) > 4:
                 if buffer.startswith(b'\x78\x78') or buffer.startswith(b"\x79\x79"):
-                    packet_length = buffer[2] if buffer.startswith(b"\x78\x78") else struct.unpack(">H", buffer[2:4])
+                    packet_length = buffer[2] if buffer.startswith(b"\x78\x78") else struct.unpack(">H", buffer[2:4])[0]
                     
                     if buffer.startswith(b'\x78\x78'):
                         # Tamanho total do pacote na stream: Start(2) + [Length(1) + Corpo(length-2)] + Stop(2)
