@@ -1,8 +1,9 @@
 import socket
+import struct
+
 from app.core.logger import get_logger
 from .processor import process_packet
 from .utils import format_vl01_packet_for_display 
-
 from app.src.protocols.session_manager import tracker_sessions_manager
 from app.services.redis_service import get_redis
 from app.src.connection.main_server_connection import sessions_manager
@@ -30,7 +31,7 @@ def handle_connection(conn: socket.socket, addr):
             
             while len(buffer) > 4:
                 if buffer.startswith(b'\x78\x78') or buffer.startswith(b"\x79\x79"):
-                    packet_length = buffer[2] if buffer.startswith(b"\x78\x78") else buffer[2:4]
+                    packet_length = buffer[2] if buffer.startswith(b"\x78\x78") else struct.unpack(">H", buffer[2:4])
                     
                     if buffer.startswith(b'\x78\x78'):
                         # Tamanho total do pacote na stream: Start(2) + [Length(1) + Corpo(length-2)] + Stop(2)
