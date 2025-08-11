@@ -63,7 +63,12 @@ def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | 
         if dev_id_str:
             mapper.handle_reply_command_packet(dev_id_str, serial_number, content_body)
         else:
-            logger.warning(f"Pacote de reply command GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
+            logger.warning(f"Pacote de reply command VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
+    elif protocol_number == 0x94:
+        if dev_id_str:
+            mapper.handle_information_packet(dev_id_str, serial_number, content_body)
+        else:
+            logger.warning(f"Pacote de informação VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
 
     else:
         logger.warning(f"Protocolo VL01 não mapeado: {hex(protocol_number)} device_id={dev_id_str}")
