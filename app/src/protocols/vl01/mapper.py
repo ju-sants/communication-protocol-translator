@@ -165,15 +165,22 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
         logger.warning(f"Alarme VL01 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
+    logger.info(f"Pacote de heartbeat recebido de {dev_id_str}, body={body.hex()}")
     # O pacote de Heartbeat (0x13) contém informações de status
     terminal_info = body[0]
-    acc_status = terminal_info & 0b10 
-
+    acc_status = terminal_info & 0b10
+    
     power_alarm_flag = (terminal_info >> 3) & 0b111
     power_status = 1 if power_alarm_flag == 0b010 else 0 # 1 = desconectado
     output_status = (terminal_info >> 7) & 0b1
 
+    logger.info(f"DEVICE {dev_id_str} STATUS: ACC: {acc_status}, Power: {power_status}, Output: {output_status}")
+
     last_location_data_str = redis_client.hget(dev_id_str, "last_location_data")
+    if not last_location_data_str:
+        logger.warning(f"Não há dados de localização para o device {dev_id_str}, retornando...")
+        return
+
     last_location_data = json.loads(last_location_data_str)
     if last_location_data.get("timestamp"):
         last_location_data["timestamp"] = datetime.now(timezone.utc)
@@ -184,49 +191,47 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
         last_output_status = redis_client.hget(dev_id_str, "last_output_status")
         last_output_status = int(last_output_status) if last_output_status else None
 
-        if last_output_status:
-            if last_output_status != output_status:
-                if last_output_status == 0:
-                    packet = build_suntech_res_packet(
-                        dev_id_str, 
-                        ["CMD", dev_id_str, "04", "01"],
-                        last_location_data
-                    )
-                
-                else:
-                    packet = build_suntech_res_packet(
-                        dev_id_str, 
-                        ["CMD", dev_id_str, "04", "02"],
-                        last_location_data
-                    )
-                
-                if packet:
-                    send_to_main_server(dev_id_str, serial, packet.encode("ascii"))
-                    packet = None
+        if last_output_status is not None and last_output_status != output_status:
+            logger.info(f"Houve mudança no output, enviando alerta... last_output_status={last_output_status}, output_status={output_status}")
+            if last_output_status == 0:
+                packet = build_suntech_res_packet(
+                    dev_id_str,
+                    ["CMD", dev_id_str, "04", "01"],
+                    last_location_data
+                )
+            else:
+                packet = build_suntech_res_packet(
+                    dev_id_str,
+                    ["CMD", dev_id_str, "04", "02"],
+                    last_location_data
+                )
+            
+            if packet:
+                send_to_main_server(dev_id_str, serial, packet.encode("ascii"))
+                packet = None
 
         last_acc_status = redis_client.hget(dev_id_str, "last_acc_status")
         last_acc_status = int(last_acc_status) if last_acc_status else None
 
-        if last_acc_status:
-            if last_acc_status != acc_status:
-                if last_acc_status == 0:
-                    packet = build_suntech_packet(
-                        "ALT",
-                        dev_id_str,
-                        last_location_data,
-                        serial,
-                        is_realtime=True,
-                        alert_id=33
-                    )
-                
-                else:
-                    packet = build_suntech_packet(
+        if last_acc_status is not None and last_acc_status != acc_status:
+            logger.info(f"Houve mudança no ACC, enviando alerta... last_acc_status={last_acc_status}, acc_status={acc_status}")
+            if last_acc_status == 0:
+                packet = build_suntech_packet(
                     "ALT",
                     dev_id_str,
                     last_location_data,
                     serial,
                     is_realtime=True,
-                    alert_id=34
+                    alert_id=33 # Ignição ligada
+                )
+            else:
+                packet = build_suntech_packet(
+                    "ALT",
+                    dev_id_str,
+                    last_location_data,
+                    serial,
+                    is_realtime=True,
+                    alert_id=34 # Ignição desligada
                 )
             
             if packet:
@@ -236,30 +241,30 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
         last_power_status = redis_client.hget(dev_id_str, "last_power_status")
         last_power_status = int(last_power_status) if last_power_status else None
 
-        if last_power_status:
-            if last_power_status != power_status:
-                if last_power_status == 0:
-                    packet = build_suntech_packet(
-                        "ALT",
-                        dev_id_str,
-                        last_location_data,
-                        serial,
-                        is_realtime=True,
-                        alert_id=40
-                    )
-                else:
-                     packet = build_suntech_packet(
-                        "ALT",
-                        dev_id_str,
-                        last_location_data,
-                        serial,
-                        is_realtime=True,
-                        alert_id=41
-                    )
-                
-                if packet:
-                    send_to_main_server(dev_id_str, serial, packet.encode("ascii"))
-                    packet = None
+        if last_power_status is not None and last_power_status != power_status:
+            logger.info(f"Houve mudança no status da energia, enviando alerta... last_power_status={last_power_status}, power_status={power_status}")
+            if last_power_status == 0:
+                packet = build_suntech_packet(
+                    "ALT",
+                    dev_id_str,
+                    last_location_data,
+                    serial,
+                    is_realtime=True,
+                    alert_id=40 # Bateria externa conectada
+                )
+            else:
+                packet = build_suntech_packet(
+                    "ALT",
+                    dev_id_str,
+                    last_location_data,
+                    serial,
+                    is_realtime=True,
+                    alert_id=41 # Bateria externa desconectada
+                )
+            
+            if packet:
+                send_to_main_server(dev_id_str, serial, packet.encode("ascii"))
+                packet = None
 
     redis_client.hset(dev_id_str, "last_output_status", output_status)
     redis_client.hset(dev_id_str, 'last_acc_status', 1 if acc_status else 0)
