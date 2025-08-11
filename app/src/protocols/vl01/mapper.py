@@ -306,6 +306,6 @@ def handle_information_packet(dev_id: str, serial: int, body: bytes):
     
     type = body[0]
     if type == 0x00:
-        print(body[1])
+        print(body[1:-2].hex())
     else:
         pass
