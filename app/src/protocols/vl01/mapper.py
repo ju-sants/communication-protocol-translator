@@ -173,7 +173,9 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     power_status = 1 if power_alarm_flag == 0b010 else 0 # 1 = desconectado
     output_status = (terminal_info >> 7) & 0b1
 
-    last_location_data = redis_client.hget(dev_id_str, "last_location_data")
+    last_location_data_str = redis_client.hget(dev_id_str, "last_location_data")
+    last_location_data = json.loads(last_location_data_str)
+    
     packet = None
     if last_location_data:
         # Verificação de Alertas
