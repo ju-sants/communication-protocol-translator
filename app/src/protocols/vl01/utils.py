@@ -97,16 +97,16 @@ def _format_status_content(content_body: bytes) -> list[str]:
         return [f"    - Erro ao formatar conteúdo de status: {e}"]
 
 
-def format_vl01_packet_for_display(packet_body: bytes) -> str:
+def format_vl01_packet_for_display(packet_body: bytes, is_x79: bool = False) -> str:
    """
    Formata o corpo de um pacote VL01 para exibição legível em logs.
    """
    try:
        length = packet_body[0]
-       protocol = packet_body[1]
+       protocol = packet_body[1] if not is_x79 else packet_body[2]
        serial = struct.unpack('>H', packet_body[-4:-2])[0]
        crc = struct.unpack('>H', packet_body[-2:])[0]
-       content_body = packet_body[2:-4]
+       content_body = packet_body[2:-4] if not is_x79 else packet_body[3:-4]
 
        display_str = [
            "--- Pacote VL01 Recebido ---",
