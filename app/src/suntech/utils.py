@@ -21,7 +21,7 @@ def build_suntech_mnt_packet(dev_id_str: str) -> bytes:
     logger.info(f"Construído pacote de apresentação MNT, pacote={packet_str}")
     return packet_str.encode('ascii')
 
-def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int, is_realtime: bool, alert_id: int = None, geo_fence_id: int = None) -> str:
+def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int, is_realtime: bool, alert_id: int = None, geo_fence_id: int = None, voltage_stored: bool = False) -> str:
     """Função central para construir pacotes Suntech STT e ALT, agora com suporte a ID de geocerca."""
     logger.debug(
         f"Construindo pacote Suntech: HDR={hdr}, DevID={dev_id}, Realtime={is_realtime}, "
@@ -53,9 +53,15 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int
     # Campos de telemetria extra (Assign Headers)
     assign_map = "00028003"
     
+    voltage = None
+    if not voltage_stored:
+        voltage = str(location_data.get("voltage", "0.0"))
+    else:
+        voltage = redis_client.hget(dev_id, "last_voltage")
+        
     telemetry_fields = [
         assign_map,
-        str(location_data.get("voltage", "0.0")), # PWR_VOLT
+        voltage if voltage else "0.0", # PWR_VOLT
         "0.0",   # BCK_VOLT
         str(int(location_data.get('gps_odometer', 0))), # GPS_ODOM
         "1"  # H_METER
