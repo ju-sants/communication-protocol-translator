@@ -175,7 +175,9 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
 
     last_location_data_str = redis_client.hget(dev_id_str, "last_location_data")
     last_location_data = json.loads(last_location_data_str)
-    
+    if last_location_data.get("timestamp"):
+        last_location_data["timestamp"] = datetime.now(timezone.utc)
+
     packet = None
     if last_location_data:
         # Verificação de Alertas
