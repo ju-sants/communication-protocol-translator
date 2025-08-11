@@ -43,7 +43,7 @@ def handle_connection(conn: socket.socket, addr):
                         raw_packet = buffer[:full_packet_size]
                         buffer = buffer[full_packet_size:]
 
-                        print(f"PACOTE COM COMEÇO x79: {raw_packet}")
+                        print(f"PACOTE COM COMEÇO x79: {hex(raw_packet)}")
 
                         # Validação dos bits de parada
                         if not raw_packet.endswith(b'\x0d\x0a'):
