@@ -292,8 +292,10 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
             packet = None
             
             if command_content_str == "RELAY: ON":
+                redis_client.hset(dev_id, "last_output_status", 1)
                 packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "01"], last_location_data)
             elif command_content_str == "RELAY: OFF":
+                redis_client.hset(dev_id, "last_output_status", 0)
                 packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "02"], last_location_data)
                 
             if packet:
