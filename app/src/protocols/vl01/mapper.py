@@ -303,7 +303,7 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
         logger.error(f"Erro ao decodificar comando de REPLY")
 
 def handle_information_packet(dev_id: str, serial: int, body: bytes):
-
+    
     type = body[0]
     if type == 0x00:
         print(body[1], struct.unpack(">B", body[1]))
