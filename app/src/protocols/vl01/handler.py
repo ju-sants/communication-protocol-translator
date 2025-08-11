@@ -33,17 +33,19 @@ def handle_connection(conn: socket.socket, addr):
                 if buffer.startswith(b'\x78\x78') or buffer.startswith(b"\x79\x79"):
                     packet_length = buffer[2] if buffer.startswith(b"\x78\x78") else struct.unpack(">H", buffer[2:4])[0]
                     
+                    comeca_com_79 = False
                     if buffer.startswith(b'\x78\x78'):
                         # Tamanho total do pacote na stream: Start(2) + [Length(1) + Corpo(length-2)] + Stop(2)
                         full_packet_size = 2 + 1 + packet_length + 2
                     else:
+                        comeca_com_79 = True
                         full_packet_size = 2 + 2 + packet_length + 2
                     
                     if len(buffer) >= full_packet_size:
                         raw_packet = buffer[:full_packet_size]
                         buffer = buffer[full_packet_size:]
-
-                        print(f"PACOTE COM COMEÇO x79: {hex(raw_packet)}")
+                        if comeca_com_79:
+                            print(f"PACOTE COM COMEÇO x79: {raw_packet.hex()}")
 
                         # Validação dos bits de parada
                         if not raw_packet.endswith(b'\x0d\x0a'):
