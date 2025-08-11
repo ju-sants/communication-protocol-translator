@@ -91,7 +91,28 @@ def decode_location_packet(body: bytes):
         logger.exception(f"Falha ao decodificar pacote de localização VL01 body_hex={body.hex()}")
         return None
 
+def decode_alarm_location_packet(body: bytes):
+    data = {}
 
+    year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
+    data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second).replace(tzinfo=timezone.utc)
+
+    lat_raw, lon_raw = struct.unpack(">II", body[7:15])
+    lat = lat_raw / 1800000.0
+    lon = lon_raw / 1800000.0
+
+    course_status = struct.unpack(">H", body[16:18])[0]
+
+    # Hemisférios (Bit 11 para Latitude Sul, Bit 12 para Longitude Oeste)
+    is_latitude_north = (course_status >> 10) & 1
+    is_longitude_west = (course_status >> 11) & 1
+    
+    data['latitude'] = -abs(lat) if not is_latitude_north else abs(lat)
+    data['longitude'] = -abs(lon) if is_longitude_west else abs(lon)
+        
+    data["direction"] = course_status & 0x03FF
+     
+    return data
 def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
     location_data = decode_location_packet(body)
 
@@ -124,7 +145,7 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
     
-    alarm_location_data = decode_location_packet(body[0:16])
+    alarm_location_data = decode_alarm_location_packet(body[0:16])
     if not alarm_location_data:
         logger.info(f"Pacote de alarme sem dados de localização, descartando... dev_id={dev_id_str}, packet={body}")
         return
@@ -147,7 +168,7 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
     if not definitive_location_data:
         return
     
-    alarm_code = body[17]
+    alarm_code = body[16]
 
     suntech_alert_id = VL01_TO_SUNTECH_ALERT_MAP.get(alarm_code)
 
