@@ -281,9 +281,8 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
 
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
     try:
-        command_content = body[6:]
+        command_content = body[5:]
         command_content_str = command_content.decode("ascii", errors="ignore")
-        print(command_content_str)
         if command_content_str:
             last_location_data_str = redis_client.hget(dev_id, "last_location_data")
             last_location_data = json.loads(last_location_data_str)
