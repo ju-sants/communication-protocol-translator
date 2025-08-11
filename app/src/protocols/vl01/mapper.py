@@ -14,7 +14,7 @@ redis_client = get_redis()
 
 VL01_TO_SUNTECH_ALERT_MAP = {
     0x01: 42,  # SOS -> Suntech: Panic Button
-    0x02: 41,  # Power Cut Alarm -> Suntech: Backup Battery Disconnected
+    0x02: 41,  # Power Cut Alarm -> Suntech: Power Disconected
     0x03: 15,  # Shock Alarm -> Suntech: Shocked
     0x04: 6,   # Fence In Alarm -> Suntech: Enter Geo-Fence
     0x05: 5,   # Fence Out Alarm -> Suntech: Exit Geo-Fence
@@ -167,14 +167,95 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     # O pacote de Heartbeat (0x13) contém informações de status
     terminal_info = body[0]
+    acc_status = terminal_info & 0b10 
 
+    power_alarm_flag = (terminal_info >> 3) & 0b111
+    power_status = 1 if power_alarm_flag == 0b010 else 0 # 1 = desconectado
     output_status = (terminal_info >> 7) & 0b1
+
+    last_location_data = redis_client.hget(dev_id_str, "last_location_data")
+    packet = None
+    if last_location_data:
+        # Verificação de Alertas
+        last_output_status = redis_client.hget(dev_id_str, "last_output_status")
+        if last_output_status:
+            if last_output_status != output_status:
+                if last_output_status == 0:
+                    packet = build_suntech_res_packet(
+                        dev_id_str, 
+                        ["CMD", dev_id_str, "04", "01"],
+                        last_location_data
+                    )
+                
+                else:
+                    packet = build_suntech_res_packet(
+                        dev_id_str, 
+                        ["CMD", dev_id_str, "04", "02"],
+                        last_location_data
+                    )
+                
+                if packet:
+                    send_to_main_server(dev_id_str, serial, packet.encode("ascii"))
+
+        last_acc_status = redis_client.hget(dev_id_str, "last_acc_status")
+        if last_acc_status:
+            if last_acc_status != acc_status:
+                if last_acc_status == 0:
+                    packet = build_suntech_packet(
+                        "ALT",
+                        dev_id_str,
+                        last_location_data,
+                        serial,
+                        is_realtime=True,
+                        alert_id=33
+                    )
+                
+                else:
+                    packet = build_suntech_packet(
+                    "ALT",
+                    dev_id_str,
+                    last_location_data,
+                    serial,
+                    is_realtime=True,
+                    alert_id=34
+                )
+            
+            if packet:
+                send_to_main_server(dev_id_str, serial, packet.encode("ascii"))
+
+        last_power_status = redis_client.hget(dev_id_str, "last_power_status")
+        if last_power_status:
+            if last_power_status != power_status:
+                if last_power_status == 0:
+                    packet = build_suntech_packet(
+                        "ALT",
+                        dev_id_str,
+                        last_location_data,
+                        serial,
+                        is_realtime=True,
+                        alert_id=40
+                    )
+                else:
+                     packet = build_suntech_packet(
+                        "ALT",
+                        dev_id_str,
+                        last_location_data,
+                        serial,
+                        is_realtime=True,
+                        alert_id=41
+                    )
+                
+                if packet:
+                    send_to_main_server(dev_id_str, serial, packet.encode("ascii"))
+
     redis_client.hset(dev_id_str, "last_output_status", output_status)
+    redis_client.hset(dev_id_str, 'last_acc_status', 1 if acc_status else 0)
+    redis_client.hset(dev_id_str, "last_power_status", power_status)
 
     # Keep-Alive da Suntech
     suntech_packet = build_suntech_alv_packet(dev_id_str)
     if suntech_packet:
-        logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote VL01:\n{suntech_packet}")
+        logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
         send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'))
 
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
