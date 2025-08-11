@@ -213,28 +213,6 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     packet = None
     if last_location_data:
         # Verificação de Alertas
-        last_output_status = redis_client.hget(dev_id_str, "last_output_status")
-        last_output_status = int(last_output_status) if last_output_status else None
-
-        if last_output_status is not None and last_output_status != output_status:
-            logger.info(f"Houve mudança no output, enviando alerta... last_output_status={last_output_status}, output_status={output_status}")
-            if last_output_status == 0:
-                packet = build_suntech_res_packet(
-                    dev_id_str,
-                    ["CMD", dev_id_str, "04", "01"],
-                    last_location_data
-                )
-            else:
-                packet = build_suntech_res_packet(
-                    dev_id_str,
-                    ["CMD", dev_id_str, "04", "02"],
-                    last_location_data
-                )
-            
-            if packet:
-                send_to_main_server(dev_id_str, serial, packet.encode("ascii"))
-                packet = None
-
         last_acc_status = redis_client.hget(dev_id_str, "last_acc_status")
         last_acc_status = int(last_acc_status) if last_acc_status else None
 
