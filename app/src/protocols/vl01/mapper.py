@@ -193,7 +193,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     logger.info(f"Pacote de heartbeat recebido de {dev_id_str}, body={body.hex()}")
     # O pacote de Heartbeat (0x13) contém informações de status
     terminal_info = body[0]
-    acc_status = terminal_info & 0b10
+    acc_status = 1 if terminal_info & 0b10 else 0
     
     power_alarm_flag = (terminal_info >> 3) & 0b111
     power_status = 1 if power_alarm_flag == 0b010 else 0 # 1 = desconectado
