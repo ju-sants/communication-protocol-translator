@@ -110,7 +110,8 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
         dev_id_str,
         location_data,
         serial,
-        location_data.get("is_realtime", True)
+        location_data.get("is_realtime", True),
+        voltage_stored=True
     )
 
     if suntech_packet:
