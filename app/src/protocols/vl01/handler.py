@@ -56,7 +56,7 @@ def handle_connection(conn: socket.socket, addr):
                         packet_body = raw_packet[2:-2]
                         
                         # Formatando pacote para display
-                        logger.info(f"Pacote Formatado Recebido de {addr}:\n{format_vl01_packet_for_display(packet_body)}")
+                        logger.info(f"Pacote Formatado Recebido de {addr}:\n{format_vl01_packet_for_display(packet_body, is_x79)}")
 
                         # Chama o processador, passando o ID da sessão
                         response_packet, newly_logged_in_dev_id = process_packet(dev_id_session, packet_body, is_x79)
