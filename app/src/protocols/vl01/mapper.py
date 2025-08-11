@@ -181,7 +181,9 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     packet = None
     if last_location_data:
         # Verificação de Alertas
-        last_output_status = int(redis_client.hget(dev_id_str, "last_output_status"))
+        last_output_status = redis_client.hget(dev_id_str, "last_output_status")
+        last_output_status = int(last_output_status) if last_output_status else None
+        
         if last_output_status:
             if last_output_status != output_status:
                 if last_output_status == 0:
@@ -201,7 +203,9 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
                 if packet:
                     send_to_main_server(dev_id_str, serial, packet.encode("ascii"))
 
-        last_acc_status = int(redis_client.hget(dev_id_str, "last_acc_status"))
+        last_acc_status = redis_client.hget(dev_id_str, "last_acc_status")
+        last_acc_status = int(last_acc_status) if last_acc_status else None
+        
         if last_acc_status:
             if last_acc_status != acc_status:
                 if last_acc_status == 0:
@@ -227,7 +231,9 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
             if packet:
                 send_to_main_server(dev_id_str, serial, packet.encode("ascii"))
 
-        last_power_status = int(redis_client.hget(dev_id_str, "last_power_status"))
+        last_power_status = redis_client.hget(dev_id_str, "last_power_status")
+        last_power_status = int(last_power_status) if last_power_status else None
+        
         if last_power_status:
             if last_power_status != power_status:
                 if last_power_status == 0:
