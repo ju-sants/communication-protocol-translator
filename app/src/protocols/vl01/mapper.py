@@ -125,7 +125,10 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
         return
     
     alarm_location_data = decode_location_packet(body[0:16])
-
+    if not alarm_location_data:
+        logger.info(f"Pacote de alarme sem dados de localização, descartando... dev_id={dev_id_str}, packet={body}")
+        return
+    
     alarm_datetime = alarm_location_data.get("timestamp")
     if not alarm_datetime:
         logger.info(f"Pacote de alarme sem data e hora, descartando... dev_id={dev_id_str}")
