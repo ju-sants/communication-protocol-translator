@@ -183,7 +183,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
         # Verificação de Alertas
         last_output_status = redis_client.hget(dev_id_str, "last_output_status")
         if last_output_status:
-            if last_output_status != output_status:
+            if last_output_status != int(output_status):
                 if last_output_status == 0:
                     packet = build_suntech_res_packet(
                         dev_id_str, 
@@ -203,7 +203,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
 
         last_acc_status = redis_client.hget(dev_id_str, "last_acc_status")
         if last_acc_status:
-            if last_acc_status != acc_status:
+            if last_acc_status != int(acc_status):
                 if last_acc_status == 0:
                     packet = build_suntech_packet(
                         "ALT",
@@ -229,7 +229,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
 
         last_power_status = redis_client.hget(dev_id_str, "last_power_status")
         if last_power_status:
-            if last_power_status != power_status:
+            if last_power_status != int(power_status):
                 if last_power_status == 0:
                     packet = build_suntech_packet(
                         "ALT",
