@@ -33,18 +33,18 @@ def handle_connection(conn: socket.socket, addr):
                 if buffer.startswith(b'\x78\x78') or buffer.startswith(b"\x79\x79"):
                     packet_length = buffer[2] if buffer.startswith(b"\x78\x78") else struct.unpack(">H", buffer[2:4])[0]
                     
-                    comeca_com_79 = False
+                    is_x79 = False
                     if buffer.startswith(b'\x78\x78'):
                         # Tamanho total do pacote na stream: Start(2) + [Length(1) + Corpo(length-2)] + Stop(2)
                         full_packet_size = 2 + 1 + packet_length + 2
                     else:
-                        comeca_com_79 = True
+                        is_x79 = True
                         full_packet_size = 2 + 2 + packet_length + 2
                     
                     if len(buffer) >= full_packet_size:
                         raw_packet = buffer[:full_packet_size]
                         buffer = buffer[full_packet_size:]
-                        if comeca_com_79:
+                        if is_x79:
                             print(f"PACOTE COM COMEÇO x79: {raw_packet.hex()}")
 
                         # Validação dos bits de parada
@@ -59,7 +59,7 @@ def handle_connection(conn: socket.socket, addr):
                         logger.info(f"Pacote Formatado Recebido de {addr}:\n{format_vl01_packet_for_display(packet_body)}")
 
                         # Chama o processador, passando o ID da sessão
-                        response_packet, newly_logged_in_dev_id = process_packet(dev_id_session, packet_body)
+                        response_packet, newly_logged_in_dev_id = process_packet(dev_id_session, packet_body, is_x79)
                         
                         if newly_logged_in_dev_id:
                             dev_id_session = newly_logged_in_dev_id
