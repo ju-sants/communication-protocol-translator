@@ -44,8 +44,6 @@ def handle_connection(conn: socket.socket, addr):
                     if len(buffer) >= full_packet_size:
                         raw_packet = buffer[:full_packet_size]
                         buffer = buffer[full_packet_size:]
-                        if is_x79:
-                            print(f"PACOTE COM COMEÇO x79: {raw_packet.hex()}")
 
                         # Validação dos bits de parada
                         if not raw_packet.endswith(b'\x0d\x0a'):
