@@ -97,11 +97,11 @@ def decode_alarm_location_packet(body: bytes):
     year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
     data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second).replace(tzinfo=timezone.utc)
 
-    lat_raw, lon_raw = struct.unpack(">II", body[7:15])
+    lat_raw, lon_raw = struct.unpack(">II", body[6:14])
     lat = lat_raw / 1800000.0
     lon = lon_raw / 1800000.0
 
-    course_status = struct.unpack(">H", body[16:18])[0]
+    course_status = struct.unpack(">H", body[14:])[0]
 
     # Hemisférios (Bit 11 para Latitude Sul, Bit 12 para Longitude Oeste)
     is_latitude_north = (course_status >> 10) & 1
