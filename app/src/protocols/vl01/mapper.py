@@ -214,7 +214,7 @@ def handle_information_packet(dev_id: str, serial: int, body: bytes):
     
     type = body[0]
     if type == 0x00:
-        logger.info(f"Recebido pacote de informação com informações de voltagem, dev_id={dev_id}")
+        logger.info(f"Recebido pacote de informação com dados de voltagem, dev_id={dev_id}")
         voltage = struct.unpack(">H", body[1:])
         if voltage:
             voltage = voltage[0] / 100
