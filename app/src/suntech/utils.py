@@ -54,9 +54,11 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int
     assign_map = "00028003"
     
     voltage = None
-    if not voltage_stored or not is_realtime:
+    if not voltage_stored:
         voltage = str(location_data.get("voltage", "1.11"))
-    else:
+    elif voltage_stored and not is_realtime:
+        voltage = str(location_data.get("voltage", "1.11"))
+    elif voltage_stored and is_realtime:
         voltage = redis_client.hget(dev_id, "last_voltage")
         
     telemetry_fields = [
