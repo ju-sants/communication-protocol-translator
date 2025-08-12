@@ -1,6 +1,6 @@
 from crc import Calculator, Configuration
 import struct
-
+from datetime import datetime, timezone
 
 def crc_itu(data_bytes: bytes) -> int:
     config = Configuration(
@@ -67,7 +67,28 @@ def _format_location_content(content_body: bytes) -> list[str]:
     except Exception as e:
         return [f"    - Erro ao formatar conteúdo de localização: {e}"]
 
+def _decode_alarm_location_packet(body: bytes):
+    data = {}
 
+    year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
+    data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second).replace(tzinfo=timezone.utc)
+
+    lat_raw, lon_raw = struct.unpack(">II", body[6:14])
+    lat = lat_raw / 1800000.0
+    lon = lon_raw / 1800000.0
+
+    course_status = struct.unpack(">H", body[14:])[0]
+
+    # Hemisférios (Bit 11 para Latitude Sul, Bit 12 para Longitude Oeste)
+    is_latitude_north = (course_status >> 10) & 1
+    is_longitude_west = (course_status >> 11) & 1
+    
+    data['latitude'] = -abs(lat) if not is_latitude_north else abs(lat)
+    data['longitude'] = -abs(lon) if is_longitude_west else abs(lon)
+        
+    data["direction"] = course_status & 0x03FF
+     
+    return data
 def _format_status_content(content_body: bytes) -> list[str]:
     """Função auxiliar para formatar os campos de um pacote de status/heartbeat."""
     try:
@@ -98,17 +119,17 @@ def _format_status_content(content_body: bytes) -> list[str]:
 
 
 def format_vl01_packet_for_display(packet_body: bytes, is_x79: bool = False) -> str:
-   """
-   Formata o corpo de um pacote VL01 para exibição legível em logs.
-   """
-   try:
-       length = packet_body[0]
-       protocol = packet_body[1] if not is_x79 else packet_body[2]
-       serial = struct.unpack('>H', packet_body[-4:-2])[0]
-       crc = struct.unpack('>H', packet_body[-2:])[0]
-       content_body = packet_body[2:-4] if not is_x79 else packet_body[3:-4]
+    """
+    Formata o corpo de um pacote VL01 para exibição legível em logs.
+    """
+    try:
+        length = packet_body[0]
+        protocol = packet_body[1] if not is_x79 else packet_body[2]
+        serial = struct.unpack('>H', packet_body[-4:-2])[0]
+        crc = struct.unpack('>H', packet_body[-2:])[0]
+        content_body = packet_body[2:-4] if not is_x79 else packet_body[3:-4]
 
-       display_str = [
+        display_str = [
            "--- Pacote VL01 Recebido ---",
            f"  Protocolo: {hex(protocol)}",
            f"  Tamanho Declarado: {length}",
@@ -118,32 +139,37 @@ def format_vl01_packet_for_display(packet_body: bytes, is_x79: bool = False) -> 
            "--- Detalhes do Conteúdo ---"
        ]
 
-       if protocol == 0x01: # Login
+        if protocol == 0x01: # Login
            display_str.append("  Tipo: Pacote de Login")
            display_str.append(f"    - IMEI: {content_body.hex()}")
        
-       elif protocol in [0x12, 0x22, 0xA0, 0x32]: # Localização
+        elif protocol in [0x12, 0x22, 0xA0, 0x32]: # Localização
            display_str.append(f"  Tipo: Pacote de Localização ({hex(protocol)})")
            display_str.extend(_format_location_content(content_body))
 
-       elif protocol == 0x13: # Heartbeat
+        elif protocol == 0x13: # Heartbeat
            display_str.append("  Tipo: Pacote de Heartbeat (Status)")
            display_str.extend(_format_status_content(content_body))
 
-       elif protocol == 0x95: # Alarme
+        elif protocol == 0x95: # Alarme
            display_str.append("  Tipo: Pacote de Alarme")
-           location_part = content_body[:32]
-           status_part = content_body[32:]
+           location_part = content_body[:16]
            display_str.append("  [Dados de Localização do Alarme]")
-           display_str.extend(_format_location_content(location_part))
-           display_str.append("  [Dados de Status do Alarme]")
-           display_str.extend(_format_status_content(status_part))
+           display_str.extend(_decode_alarm_location_packet(location_part))
 
-       else:
+        elif protocol == 0x94: # Pacote de Informação
+            display_str.append("  Tipo: Pacote de Informação")
+            type = content_body[0]
+            if type == 0x00:
+                voltage = struct.unpack(">H", content_body[1:])[0] / 100.0
+                display_str.append(f"    - Voltagem: {voltage:.2f} V")
+            else:
+                display_str.append(f"    - Tipo Não Mapeado: {type}")
+        else:
            display_str.append(f"  Tipo: Desconhecido ({hex(protocol)})")
        
-       display_str.append("-----------------------------")
-       return "\n".join(display_str)
+        display_str.append("-----------------------------")
+        return "\n".join(display_str)
 
-   except Exception as e:
+    except Exception as e:
        return f"!!! Erro ao formatar pacote VL01: {e} | Pacote (raw): {packet_body.hex()} !!!"
