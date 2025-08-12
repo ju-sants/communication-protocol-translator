@@ -201,50 +201,6 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
 
     logger.info(f"DEVICE {dev_id_str} STATUS: ACC: {acc_status}, Power: {power_status}, Output: {output_status}")
 
-    last_location_data_str = redis_client.hget(dev_id_str, "last_location_data")
-    if not last_location_data_str:
-        logger.warning(f"Não há dados de localização para o device {dev_id_str}, retornando...")
-        return
-
-    last_location_data = json.loads(last_location_data_str)
-    if last_location_data.get("timestamp"):
-        last_location_data["timestamp"] = datetime.now(timezone.utc)
-
-    packet = None
-    if last_location_data:
-        # Verificação de Alertas
-        last_power_status = redis_client.hget(dev_id_str, "last_power_status")
-        last_power_status = int(last_power_status) if last_power_status else None
-
-        if last_power_status is not None and last_power_status != power_status:
-            logger.info(f"Houve mudança no status da energia, enviando alerta... last_power_status={last_power_status}, power_status={power_status}")
-            if last_power_status == 0:
-                packet = build_suntech_packet(
-                    "ALT",
-                    dev_id_str,
-                    last_location_data,
-                    serial,
-                    is_realtime=True,
-                    alert_id=40 # Bateria externa conectada
-                )
-            else:
-                packet = build_suntech_packet(
-                    "ALT",
-                    dev_id_str,
-                    last_location_data,
-                    serial,
-                    is_realtime=True,
-                    alert_id=41 # Bateria externa desconectada
-                )
-            
-            if packet:
-                send_to_main_server(dev_id_str, serial, packet.encode("ascii"))
-                packet = None
-
-    redis_client.hset(dev_id_str, "last_output_status", output_status)
-    redis_client.hset(dev_id_str, 'last_acc_status', 1 if acc_status else 0)
-    redis_client.hset(dev_id_str, "last_power_status", power_status)
-
     # Keep-Alive da Suntech
     suntech_packet = build_suntech_alv_packet(dev_id_str)
     if suntech_packet:
