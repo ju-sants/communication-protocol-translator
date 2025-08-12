@@ -5,6 +5,7 @@ import copy
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
+from .utils import _decode_alarm_location_packet
 from app.src.suntech.utils import build_suntech_packet, build_suntech_alv_packet, build_suntech_res_packet
 from app.src.connection.main_server_connection import send_to_main_server
 
@@ -90,29 +91,6 @@ def decode_location_packet(body: bytes):
     except Exception as e:
         logger.exception(f"Falha ao decodificar pacote de localização VL01 body_hex={body.hex()}")
         return None
-
-def decode_alarm_location_packet(body: bytes):
-    data = {}
-
-    year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
-    data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second).replace(tzinfo=timezone.utc)
-
-    lat_raw, lon_raw = struct.unpack(">II", body[6:14])
-    lat = lat_raw / 1800000.0
-    lon = lon_raw / 1800000.0
-
-    course_status = struct.unpack(">H", body[14:])[0]
-
-    # Hemisférios (Bit 11 para Latitude Sul, Bit 12 para Longitude Oeste)
-    is_latitude_north = (course_status >> 10) & 1
-    is_longitude_west = (course_status >> 11) & 1
-    
-    data['latitude'] = -abs(lat) if not is_latitude_north else abs(lat)
-    data['longitude'] = -abs(lon) if is_longitude_west else abs(lon)
-        
-    data["direction"] = course_status & 0x03FF
-     
-    return data
 def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
     location_data = decode_location_packet(body)
 
@@ -145,7 +123,7 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
     
-    alarm_location_data = decode_alarm_location_packet(body[0:16])
+    alarm_location_data = _decode_alarm_location_packet(body[0:16])
     if not alarm_location_data:
         logger.info(f"Pacote de alarme sem dados de localização, descartando... dev_id={dev_id_str}, packet={body}")
         return
