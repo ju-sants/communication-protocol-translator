@@ -80,10 +80,11 @@ def decode_location_packet(body: bytes) -> dict:
         return None
     return data
 
-def map_and_forward(dev_id_str: str, serial: int, msg_id: int, body: bytes):
+def map_and_forward(dev_id_str: str, serial: int, msg_id: int, body: bytes, raw_packet_hex: str):
     """Processa um pacote JT/T 808 decodificado e o traduz para o formato Suntech."""
     suntech_packet = None  # Usar um nome de variável genérico
     logger.info(f"Processando pacote JT/T 808: msg_id={hex(msg_id)}, device_id={dev_id_str}")
+    redis_client.hset(dev_id_str, "last_serial", serial)
 
     if msg_id == 0x0100 or msg_id == 0x0102:
         logger.info(f"Pacote de Registro/Autenticação tratado (apenas para sessão) para device_id={dev_id_str}")
@@ -145,7 +146,7 @@ def map_and_forward(dev_id_str: str, serial: int, msg_id: int, body: bytes):
                 historical_suntech_packet = build_suntech_packet("STT", dev_id_str, loc_data, serial, is_realtime=False)
                 if historical_suntech_packet:
                     logger.debug(f"Encaminhando pacote histórico {i+1}/{total_reports} para device_id={dev_id_str}: {historical_suntech_packet}")
-                    send_to_main_server(dev_id_str, serial, historical_suntech_packet.encode('ascii'))
+                    send_to_main_server(dev_id_str, serial, historical_suntech_packet.encode('ascii'), raw_packet_hex)
         suntech_packet = None # Garante que nada extra seja enviado no final
 
     else:
@@ -153,4 +154,4 @@ def map_and_forward(dev_id_str: str, serial: int, msg_id: int, body: bytes):
 
     if suntech_packet:
         logger.info(f"Pacote Suntech gerado para encaminhamento para device_id={dev_id_str}: {suntech_packet}")
-        send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'))
+        send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)

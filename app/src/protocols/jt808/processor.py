@@ -15,7 +15,7 @@ def process_packet(unescaped_packet: bytes) -> bytes | None:
     logger.debug("Processando pacote JT/T 808", device_id=dev_id_str, msg_id=hex(msg_id))
 
     # Envia os dados para o mapper, que fará a tradução e encaminhamento
-    mapper.map_and_forward(dev_id_str, serial, msg_id, body)
+    mapper.map_and_forward(dev_id_str, serial, msg_id, body, unescaped_packet.hex())
 
     # Constrói e retorna a resposta ACK para o dispositivo
     return builder.build_ack_response(terminal_phone_bcd, serial, msg_id, result=0)
