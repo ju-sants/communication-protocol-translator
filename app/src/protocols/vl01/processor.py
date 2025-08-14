@@ -40,33 +40,33 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, is_x79: bool = Fa
     
     elif protocol_number == 0xA0: # Pacote de Localização
         if dev_id_str:
-            mapper.handle_location_packet(dev_id_str, serial_number, content_body)
+            mapper.handle_location_packet(dev_id_str, serial_number, content_body, packet_body.hex())
         else:
             logger.warning(f"Pacote de localização VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_packet = None
 
     elif protocol_number == 0x13: # Pacote de Heartbeat/Status
         if dev_id_str:
-            mapper.handle_heartbeat_packet(dev_id_str, serial_number, content_body)
+            mapper.handle_heartbeat_packet(dev_id_str, serial_number, content_body, packet_body.hex())
         else:
             logger.warning(f"Pacote de heartbeat VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_packet = builder.build_generic_response(protocol_number, serial_number)
 
     elif protocol_number == 0x95: # Pacote de Alarme
         if dev_id_str:
-            mapper.handle_alarm_packet(dev_id_str, serial_number, content_body)
+            mapper.handle_alarm_packet(dev_id_str, serial_number, content_body, packet_body.hex())
         else:
             logger.warning(f"Pacote de alarme VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_packet = builder.build_generic_response(protocol_number, serial_number)
     
     elif protocol_number == 0x21:
         if dev_id_str:
-            mapper.handle_reply_command_packet(dev_id_str, serial_number, content_body)
+            mapper.handle_reply_command_packet(dev_id_str, serial_number, content_body, packet_body.hex())
         else:
             logger.warning(f"Pacote de reply command VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
     elif protocol_number == 0x94:
         if dev_id_str:
-            mapper.handle_information_packet(dev_id_str, serial_number, content_body)
+            mapper.handle_information_packet(dev_id_str, serial_number, content_body, packet_body.hex())
         else:
             logger.warning(f"Pacote de informação VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
 

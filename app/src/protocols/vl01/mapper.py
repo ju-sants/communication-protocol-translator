@@ -91,7 +91,7 @@ def decode_location_packet(body: bytes):
     except Exception as e:
         logger.exception(f"Falha ao decodificar pacote de localização VL01 body_hex={body.hex()}")
         return None
-def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
+def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     location_data = decode_location_packet(body)
 
     if not location_data:
@@ -103,6 +103,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
 
     # Salvando para uso em caso de alarmes
     redis_client.hset(dev_id_str, "last_location_data", json.dumps(last_location_data))
+    redis_client.hset(dev_id_str, "last_serial", serial)
 
     suntech_packet = build_suntech_packet(
         "STT",
@@ -115,9 +116,9 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
 
     if suntech_packet:
         logger.info(f"Pacote Localização SUNTECH traduzido de pacote VL01:\n{suntech_packet}")
-        send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"))
+        send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"), raw_packet_hex)
 
-def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
+def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
 
     if len(body) < 17:
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
@@ -163,11 +164,11 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
         if suntech_packet:
             logger.info(f"Pacote Alerta SUNTECH traduzido de pacote VL01:\n{suntech_packet}")
 
-            send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'))
+            send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
     else:
         logger.warning(f"Alarme VL01 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
-def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
+def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     logger.info(f"Pacote de heartbeat recebido de {dev_id_str}, body={body.hex()}")
     # O pacote de Heartbeat (0x13) contém informações de status
     terminal_info = body[0]
@@ -178,14 +179,15 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     output_status = (terminal_info >> 7) & 0b1
 
     logger.info(f"DEVICE {dev_id_str} STATUS: ACC: {acc_status}, Power: {power_status}, Output: {output_status}")
+    redis_client.hset(dev_id_str, "last_serial", serial)
 
     # Keep-Alive da Suntech
     suntech_packet = build_suntech_alv_packet(dev_id_str)
     if suntech_packet:
         logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
-        send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'))
+        send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
 
-def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
+def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
     try:
         command_content = body[5:]
         command_content_str = command_content.decode("ascii", errors="ignore")
@@ -204,13 +206,13 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
                 packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "02"], last_location_data)
                 
             if packet:
-                send_to_main_server(dev_id, serial, packet.encode("ascii"))
+                send_to_main_server(dev_id, serial, packet.encode("ascii"), raw_packet_hex)
 
             pass
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY")
 
-def handle_information_packet(dev_id: str, serial: int, body: bytes):
+def handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
     
     type = body[0]
     if type == 0x00:
