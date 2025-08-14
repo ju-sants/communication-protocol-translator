@@ -20,15 +20,15 @@ class TrackerSessionsManager:
     
     def register_tracker_client(self, dev_id: str, conn: socket.socket):
         with self._lock:
-            self.active_trackers[dev_id] = conn
+            self.active_trackers[str(dev_id)] = conn
             logger.info(f"Rastreador registrado na sessão: dev_id={dev_id}")
 
     def remove_tracker_client(self, dev_id: str):
         with self._lock:
-            if dev_id in self.active_trackers:
-                del self.active_trackers[dev_id]
-
-                logger.info(f"Rastreador removido de sua sessão: dev_id={dev_id}")
+            dev_id_str = str(dev_id)
+            if dev_id_str in self.active_trackers:
+                del self.active_trackers[dev_id_str]
+                logger.info(f"Rastreador removido de sua sessão: dev_id={dev_id_str}")
     
     def get_tracker_client_socket(self, dev_id: str):
         with self._lock:
@@ -36,28 +36,12 @@ class TrackerSessionsManager:
 
     def exists(self, dev_id: str) -> bool:
         with self._lock:
-            # Try the key as-is first (string)
-            socket_obj = self.active_trackers.get(dev_id)
-            
-            # If not found, try decoding if it's bytes, or encoding if it's string
-            if socket_obj is None:
-                try:
-                    # If dev_id is a string, try finding a bytes version
-                    if isinstance(dev_id, str):
-                        bytes_key = bytes.fromhex(dev_id)
-                        socket_obj = self.active_trackers.get(bytes_key)
-                    # If dev_id is bytes, try finding a string version
-                    elif isinstance(dev_id, bytes):
-                        str_key = dev_id.hex()
-                        socket_obj = self.active_trackers.get(str_key)
-                except (ValueError, TypeError):
-                    pass # Ignore errors if conversion fails
-
+            socket_obj = self.active_trackers.get(str(dev_id))
             if socket_obj is None:
                 return False
             
             try:
-                return socket_obj.fileno() != -1 
+                return socket_obj.fileno() != -1
             except OSError:
                 return False
 
