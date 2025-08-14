@@ -227,7 +227,7 @@ def decode_location_packet_4g(body: bytes):
         return None
 
 
-def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int):
+def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int, raw_packet_hex: str):
     if protocol_number == 0x22:
         location_data = decode_location_packet_v3(body)
     elif protocol_number == 0x32:
@@ -247,6 +247,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
 
     # Salvando para uso em caso de alarmes
     redis_client.hset(dev_id_str, "last_location_data", json.dumps(last_location_data))
+    redis_client.hset(dev_id_str, "last_serial", serial)
 
     suntech_packet = build_suntech_packet(
         "STT",
@@ -258,9 +259,9 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
 
     if suntech_packet:
         logger.info(f"Pacote Localização SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
-        send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"))
+        send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"), raw_packet_hex)
 
-def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
+def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
 
     if len(body) < 32:
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
@@ -304,25 +305,26 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes):
         if suntech_packet:
             logger.info(f"Pacote Alerta SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
 
-            send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'))
+            send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
     else:
         logger.warning(f"Alarme GT06 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
-def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
+def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     # O pacote de Heartbeat (0x13) contém informações de status
     terminal_info = body[0]
 
     output_status = (terminal_info >> 7) & 0b1
     redis_client.hset(dev_id_str, "last_output_status", output_status)
+    redis_client.hset(dev_id_str, "last_serial", serial)
 
     # Keep-Alive da Suntech
     suntech_packet = build_suntech_alv_packet(dev_id_str)
     if suntech_packet:
         logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
-        send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'))
+        send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
 
 
-def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
+def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
     try:
         command_content = body[5:-4]
         command_content_str = command_content.decode("ascii", errors="ignore")
@@ -343,6 +345,6 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes):
                 print(command_content_str)
             
             if packet:
-                send_to_main_server(dev_id, serial, packet.encode("ascii"))
+                send_to_main_server(dev_id, serial, packet.encode("ascii"), raw_packet_hex)
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY")
