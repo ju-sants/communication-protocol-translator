@@ -40,28 +40,28 @@ def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | 
     
     elif protocol_number in [0x12, 0x22, 0xA0, 0x32]: # Pacotes de Localização
         if dev_id_str:
-            mapper.handle_location_packet(dev_id_str, serial_number, content_body, protocol_number)
+            mapper.handle_location_packet(dev_id_str, serial_number, content_body, protocol_number, packet_body.hex())
         else:
             logger.warning(f"Pacote de localização GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_packet = None
 
     elif protocol_number == 0x13: # Pacote de Heartbeat/Status
         if dev_id_str:
-            mapper.handle_heartbeat_packet(dev_id_str, serial_number, content_body)
+            mapper.handle_heartbeat_packet(dev_id_str, serial_number, content_body, packet_body.hex())
         else:
             logger.warning(f"Pacote de heartbeat GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_packet = builder.build_generic_response(protocol_number, serial_number)
 
     elif protocol_number == 0x16: # Pacote de Alarme
         if dev_id_str:
-            mapper.handle_alarm_packet(dev_id_str, serial_number, content_body)
+            mapper.handle_alarm_packet(dev_id_str, serial_number, content_body, packet_body.hex())
         else:
             logger.warning(f"Pacote de alarme GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_packet = builder.build_generic_response(protocol_number, serial_number)
     
     elif protocol_number == 0x15:
         if dev_id_str:
-            mapper.handle_reply_command_packet(dev_id_str, serial_number, content_body)
+            mapper.handle_reply_command_packet(dev_id_str, serial_number, content_body, packet_body.hex())
         else:
             logger.warning(f"Pacote de reply command GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
 
