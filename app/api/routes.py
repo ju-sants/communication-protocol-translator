@@ -20,7 +20,7 @@ def get_all_trackers_data():
                 continue
             
             device_data = redis_client.hgetall(key)
-            device_data['is_connected'] = tracker_sessions_manager.exists(key)
+            device_data['is_connected'] = tracker_sessions_manager.exists(key, use_redis=True)
             all_data[key] = device_data
         return jsonify(all_data)
     except Exception as e:
