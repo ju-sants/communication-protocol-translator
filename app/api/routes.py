@@ -21,7 +21,8 @@ def get_all_trackers_data():
             all_data[key] = device_data
         return jsonify(all_data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 @app.route('/trackers/<string:dev_id>/command', methods=['POST'])
 def send_tracker_command(dev_id):
