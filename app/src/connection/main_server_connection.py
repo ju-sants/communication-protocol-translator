@@ -3,6 +3,7 @@ import threading
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
+from app.services.history_service import add_packet_to_history
 from app.config.settings import settings
 from app.src.suntech.utils import build_suntech_mnt_packet
 from app.src.protocols.jt808.builder import process_suntech_command as process_suntech_command_to_jt808
@@ -180,6 +181,7 @@ class MainServerSessionsManager:
 
 sessions_manager = MainServerSessionsManager()
 
-def send_to_main_server(dev_id_str: str, serial: str, packet_data: bytes):
+def send_to_main_server(dev_id_str: str, serial: str, suntech_packet: bytes, raw_packet_hex: str):
+    add_packet_to_history(dev_id_str, raw_packet_hex, suntech_packet.decode('ascii', errors='ignore'))
     session = sessions_manager.get_session(dev_id_str, serial)
-    session.send(packet_data)
+    session.send(suntech_packet)
