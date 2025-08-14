@@ -16,6 +16,9 @@ def get_all_trackers_data():
         keys = redis_client.keys('*')
         all_data = {}
         for key in keys:
+            if redis_client.type(key) != 'hash':
+                continue
+            
             device_data = redis_client.hgetall(key)
             device_data['is_connected'] = tracker_sessions_manager.exists(key)
             all_data[key] = device_data
