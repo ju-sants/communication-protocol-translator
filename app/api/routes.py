@@ -2,7 +2,7 @@ import json
 from flask import current_app as app, jsonify, request
 from app.services.redis_service import get_redis
 from app.src.protocols.session_manager import tracker_sessions_manager
-from app.src.connection.main_server_connection import COMMAND_PROCESSORS
+from app.src.connection.main_server_connection import COMMAND_PROCESSORS, sessions_manager
 from app.services.history_service import get_packet_history
 
 redis_client = get_redis()
@@ -73,3 +73,19 @@ def get_tracker_history(dev_id):
         return jsonify(history)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/sessions/trackers', methods=['GET'])
+def get_tracker_sessions():
+    """
+    Returns a list of device IDs with active socket connections to the translator.
+    """
+    active_sessions = list(tracker_sessions_manager.active_trackers.keys())
+    return jsonify(active_sessions)
+
+@app.route('/sessions/main-server', methods=['GET'])
+def get_main_server_sessions():
+    """
+    Returns a list of device IDs with active sessions to the main Suntech server.
+    """
+    active_sessions = list(sessions_manager._sessions.keys())
+    return jsonify(active_sessions)
