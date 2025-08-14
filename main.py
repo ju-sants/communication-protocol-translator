@@ -22,8 +22,18 @@ def start_listener(port: int, handler_func):
         logger.critical(f"❌ Falha ao iniciar listener na porta {port} error={e}")
 
 
+def run_flask_app():
+    from app.api import create_app
+    app = create_app()
+    app.run(host='0.0.0.0', port=5000)
+
 def main():
     logger.info("Iniciando Servidor Tradutor...")
+
+    # Iniciar API Flask em uma thread separada
+    flask_thread = threading.Thread(target=run_flask_app, daemon=True)
+    flask_thread.start()
+    logger.info("✅ Servidor Flask iniciado em http://0.0.0.0:5000")
     
     for protocol_name, config in settings.PROTOCOLS.items():
         try:
