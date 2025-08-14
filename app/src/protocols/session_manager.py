@@ -36,7 +36,23 @@ class TrackerSessionsManager:
 
     def exists(self, dev_id: str) -> bool:
         with self._lock:
+            # Try the key as-is first (string)
             socket_obj = self.active_trackers.get(dev_id)
+            
+            # If not found, try decoding if it's bytes, or encoding if it's string
+            if socket_obj is None:
+                try:
+                    # If dev_id is a string, try finding a bytes version
+                    if isinstance(dev_id, str):
+                        bytes_key = bytes.fromhex(dev_id)
+                        socket_obj = self.active_trackers.get(bytes_key)
+                    # If dev_id is bytes, try finding a string version
+                    elif isinstance(dev_id, bytes):
+                        str_key = dev_id.hex()
+                        socket_obj = self.active_trackers.get(str_key)
+                except (ValueError, TypeError):
+                    pass # Ignore errors if conversion fails
+
             if socket_obj is None:
                 return False
             
