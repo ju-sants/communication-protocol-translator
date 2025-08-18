@@ -2,6 +2,9 @@ import struct
 from datetime import datetime, timezone, timedelta
 import json
 import copy
+import threading
+import time
+from collections import deque
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -13,6 +16,57 @@ from .utils import haversine
 logger = get_logger(__name__)
 redis_client = get_redis()
 
+class PacketQueue:
+    def __init__(self, batch_size=10):
+        self.queue = deque()
+        self.lock = threading.Lock()
+        self.batch_size = batch_size
+
+    def add_packet(self, packet_type: str, dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str, timestamp: datetime):
+        with self.lock:
+            self.queue.append({
+                "type": packet_type,
+                "dev_id_str": dev_id_str,
+                "serial": serial,
+                "body": body,
+                "raw_packet_hex": raw_packet_hex,
+                "timestamp": timestamp
+            })
+            self.queue = deque(sorted(list(self.queue), key=lambda x: x["timestamp"]))
+
+            processed_indices = set()
+            for i, packet in enumerate(list(self.queue)):
+                if len(self.queue) - (i + 1) < self.batch_size:
+                    logger.debug(f"Not enough packets in queue after index {i} to form a batch of {self.batch_size}. Current queue size: {len(self.queue)}")
+                    break
+
+                next_batch_packets = [p for j, p in enumerate(self.queue) if j > i and j <= i + self.batch_size]
+
+                if all(next_p["timestamp"] > packet["timestamp"] for next_p in next_batch_packets):
+                    processed_indices.add(i)
+
+            if processed_indices:
+                packets_to_process = []
+                new_queue = deque()
+                for i, packet in enumerate(list(self.queue)):
+                    if i in processed_indices:
+                        packets_to_process.append(packet)
+                    else:
+                        new_queue.append(packet)
+                self.queue = new_queue
+
+                for packet in packets_to_process:
+                    try:
+                        if packet["type"] == "location":
+                            _handle_location_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
+                        elif packet["type"] == "alarm":
+                            _handle_alarm_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
+                    except Exception as e:
+                        logger.exception(f"Error processing queued packet: {e}")
+                logger.info(f"Processed {len(packets_to_process)} packets. Remaining queue size: {len(self.queue)}")
+        logger.debug(f"Packet added to queue. Current queue size: {len(self.queue)}")
+
+packet_queue = PacketQueue()
 
 VL01_TO_SUNTECH_ALERT_MAP = {
     0x01: 42,  # SOS -> Suntech: Panic Button
@@ -31,7 +85,7 @@ VL01_TO_SUNTECH_ALERT_MAP = {
 }
 
 
-def decode_location_packet(body: bytes):
+def _decode_location_packet(body: bytes):
 
     try:
         data = {}
@@ -95,8 +149,8 @@ def decode_location_packet(body: bytes):
         logger.exception(f"Falha ao decodificar pacote de localização VL01 body_hex={body.hex()}")
         return None
 
-def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
-    location_data = decode_location_packet(body)
+def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+    location_data = _decode_location_packet(body)
 
     if not location_data:
         return
@@ -152,7 +206,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet
         logger.info(f"Pacote Localização SUNTECH traduzido de pacote VL01:\n{suntech_packet}")
         send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"), raw_packet_hex)
 
-def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+def _handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
 
     if len(body) < 17:
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
@@ -257,3 +311,19 @@ def handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_
             redis_client.hset(dev_id, 'last_voltage', voltage)
     else:
         pass
+
+def packet_queuer(dev_id_str: str, protocol_number: int, serial: int, body: bytes, raw_packet_hex: str):
+    # For location packets, try to extract timestamp from the body for accurate ordering
+    timestamp = datetime.now(timezone.utc)
+    if protocol_number == 0xA0: # Location Packet
+        location_data = _decode_location_packet(body)
+        if location_data and "timestamp" in location_data:
+            timestamp = location_data["timestamp"]
+        packet_queue.add_packet("location", dev_id_str, serial, body, raw_packet_hex, timestamp)
+    elif protocol_number == 0x95: # Alarm Packet
+        alarm_location_data = _decode_alarm_location_packet(body[0:16])
+        if alarm_location_data and "timestamp" in alarm_location_data:
+            timestamp = alarm_location_data["timestamp"]
+        packet_queue.add_packet("alarm", dev_id_str, serial, body, raw_packet_hex, timestamp)
+    else:
+        logger.warning(f"Attempted to queue unknown packet type: {hex(protocol_number)}")
