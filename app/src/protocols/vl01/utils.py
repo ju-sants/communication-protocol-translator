@@ -1,6 +1,8 @@
 from crc import Calculator, Configuration
 import struct
 from datetime import datetime, timezone
+from math import radians, sin, cos, sqrt, atan2
+
 
 def crc_itu(data_bytes: bytes) -> int:
     config = Configuration(
@@ -173,3 +175,13 @@ def format_vl01_packet_for_display(packet_body: bytes, is_x79: bool = False) -> 
 
     except Exception as e:
        return f"!!! Erro ao formatar pacote VL01: {e} | Pacote (raw): {packet_body.hex()} !!!"
+    
+def haversine(lat1, lon1, lat2, lon2):
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1 
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1-a)) 
+    r = 6371
+    return c * r

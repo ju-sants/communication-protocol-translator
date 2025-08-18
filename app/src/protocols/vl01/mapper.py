@@ -8,7 +8,7 @@ from app.services.redis_service import get_redis
 from .utils import _decode_alarm_location_packet
 from app.src.suntech.utils import build_suntech_packet, build_suntech_alv_packet, build_suntech_res_packet
 from app.src.connection.main_server_connection import send_to_main_server
-from app.services.utils import haversine
+from .utils import haversine
 
 logger = get_logger(__name__)
 redis_client = get_redis()
