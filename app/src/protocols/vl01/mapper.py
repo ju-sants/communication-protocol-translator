@@ -114,17 +114,16 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet
             current_lat = location_data["latitude"]
             current_lon = location_data["longitude"]
 
-            distance = haversine(last_lat, last_lon, current_lat, current_lon)
+            distance = haversine(last_lat, last_lon, current_lat, current_lon) * 1000  # Convert to meters
             current_odometer += distance
-            logger.info(f"Odometer for {dev_id_str}: {current_odometer:.2f} km (distance added: {distance:.2f} km)")
+            logger.info(f"Odometer for {dev_id_str}: {current_odometer/1000:.2f} km (distance added: {distance/1000:.2f} km)")
         else:
-            logger.info(f"No previous location for {dev_id_str}. Odometer starting at {current_odometer:.2f} km.")
+            logger.info(f"No previous location for {dev_id_str}. Odometer starting at {current_odometer/1000:.2f} km.")
 
-        location_data["odometer_km"] = current_odometer
+        location_data["gps_odometer"] = current_odometer
         redis_client.hset(dev_id_str, "odometer", str(current_odometer))
         redis_client.hset(dev_id_str, "last_location", json.dumps({"latitude": location_data["latitude"], "longitude": location_data["longitude"]}))
 
-        location_data["gps_odometer"] = current_odometer
 
     last_location_data = copy.deepcopy(location_data)
     
