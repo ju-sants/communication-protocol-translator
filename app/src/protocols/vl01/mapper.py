@@ -83,9 +83,9 @@ def decode_location_packet(body: bytes):
 
             data["is_realtime"] = is_realtime
 
-            # mileage_at = acc_at + 3
-            # mileage_km = struct.unpack(">I", body[mileage_at:mileage_at + 4])[0]
-            # data["gps_odometer"] = mileage_km
+            mileage_at = acc_at + 3
+            mileage_km = struct.unpack(">I", body[mileage_at:mileage_at + 4])[0]
+            data["gps_odometer_embedded"] = mileage_km
         except:
             pass
 
