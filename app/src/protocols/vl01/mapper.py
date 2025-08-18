@@ -8,6 +8,7 @@ from app.services.redis_service import get_redis
 from .utils import _decode_alarm_location_packet
 from app.src.suntech.utils import build_suntech_packet, build_suntech_alv_packet, build_suntech_res_packet
 from app.src.connection.main_server_connection import send_to_main_server
+from app.services.utils import haversine
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -69,6 +70,8 @@ def decode_location_packet(body: bytes):
 
             acc_at = 20 + mnc_length + 4 + 8
             acc_status = body[acc_at]
+            data["acc_status"] = acc_status
+
             status_bits = 0
             if gps_fixed == 1:
                 status_bits |= 0b10
@@ -80,9 +83,9 @@ def decode_location_packet(body: bytes):
 
             data["is_realtime"] = is_realtime
 
-            mileage_at = acc_at + 3
-            mileage_km = struct.unpack(">I", body[mileage_at:mileage_at + 4])[0]
-            data["gps_odometer"] = mileage_km
+            # mileage_at = acc_at + 3
+            # mileage_km = struct.unpack(">I", body[mileage_at:mileage_at + 4])[0]
+            # data["gps_odometer"] = mileage_km
         except:
             pass
 
@@ -91,12 +94,38 @@ def decode_location_packet(body: bytes):
     except Exception as e:
         logger.exception(f"Falha ao decodificar pacote de localização VL01 body_hex={body.hex()}")
         return None
+
 def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     location_data = decode_location_packet(body)
 
     if not location_data:
         return
     
+    if location_data.get("acc_status"):
+        # Haversine Odometer Calculation
+        last_location_str = redis_client.hget(dev_id_str, "last_location")
+        current_odometer = float(redis_client.hget(dev_id_str, "odometer") or 0.0)
+
+        if last_location_str:
+            last_location = json.loads(last_location_str)
+            last_lat = last_location["latitude"]
+            last_lon = last_location["longitude"]
+            
+            current_lat = location_data["latitude"]
+            current_lon = location_data["longitude"]
+
+            distance = haversine(last_lat, last_lon, current_lat, current_lon)
+            current_odometer += distance
+            logger.info(f"Odometer for {dev_id_str}: {current_odometer:.2f} km (distance added: {distance:.2f} km)")
+        else:
+            logger.info(f"No previous location for {dev_id_str}. Odometer starting at {current_odometer:.2f} km.")
+
+        location_data["odometer_km"] = current_odometer
+        redis_client.hset(dev_id_str, "odometer", str(current_odometer))
+        redis_client.hset(dev_id_str, "last_location", json.dumps({"latitude": location_data["latitude"], "longitude": location_data["longitude"]}))
+
+        location_data["gps_odometer"] = current_odometer
+
     last_location_data = copy.deepcopy(location_data)
     
     last_location_data["timestamp"] = last_location_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
@@ -184,7 +213,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     # Keep-Alive da Suntech
     suntech_packet = build_suntech_alv_packet(dev_id_str)
     if suntech_packet:
-        logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
+        logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote NT40:\n{suntech_packet}")
         send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
 
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
