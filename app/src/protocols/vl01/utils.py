@@ -91,6 +91,19 @@ def _decode_alarm_location_packet(body: bytes):
     data["direction"] = course_status & 0x03FF
      
     return data
+def _format_alarm_location_content(content_body: bytes) -> list[str]:
+    """Função auxiliar para formatar os campos de um pacote de localização/alarme."""
+    try:
+        data = _decode_alarm_location_packet(content_body)
+        return [
+            f"    - Data/Hora: {data['timestamp']}",
+            f"    - Latitude: {data['latitude']}",
+            f"    - Longitude: {data['longitude']}",
+            f"    - Direção: {data['direction']}"
+        ]
+    except Exception as e:
+        return [f"    - Erro ao formatar conteúdo de alarme: {e}"]
+
 def _format_status_content(content_body: bytes) -> list[str]:
     """Função auxiliar para formatar os campos de um pacote de status/heartbeat."""
     try:
@@ -157,7 +170,7 @@ def format_vl01_packet_for_display(packet_body: bytes, is_x79: bool = False) -> 
            display_str.append("  Tipo: Pacote de Alarme")
            location_part = content_body[:16]
            display_str.append("  [Dados de Localização do Alarme]")
-           display_str.extend(_decode_alarm_location_packet(location_part))
+           display_str.extend(_format_alarm_location_content(location_part))
 
         elif protocol == 0x94: # Pacote de Informação
             display_str.append("  Tipo: Pacote de Informação")
