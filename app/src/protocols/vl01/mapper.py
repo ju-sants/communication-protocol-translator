@@ -124,6 +124,12 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet
         redis_client.hset(dev_id_str, "odometer", str(current_odometer))
         redis_client.hset(dev_id_str, "last_location", json.dumps({"latitude": location_data["latitude"], "longitude": location_data["longitude"]}))
 
+    else:
+        last_odometer = redis_client.hget(dev_id_str, "odometer")
+        if last_odometer:
+            location_data["gps_odometer"] = float(last_odometer)
+        else:
+            location_data["gps_odometer"] = 0.0
 
     last_location_data = copy.deepcopy(location_data)
     
