@@ -97,9 +97,12 @@ def process_suntech_command(command: bytes, dev_id: str, serial: int):
             logger.info(f"Comando com metragem incorreta: {command_key}")
             return
         
-        kilometers = int(meters) / 1000
+        # kilometers = int(meters) / 1000
 
-        vl01_text_command = f"MILEAGE,ON,{kilometers}#"
+        # vl01_text_command = f"MILEAGE,ON,{kilometers}#"
+
+        # NO MOMENTO ESTAMOS USANDO HODOMETRO GERENCIADO PELO PRÓPRIO SERVIDOR
+        redis_client.hset(dev_id, "odometer", meters)
 
     else:
         vl01_text_command = command_mapping.get(command_key)
