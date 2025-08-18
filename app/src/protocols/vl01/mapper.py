@@ -17,13 +17,13 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 class PacketQueue:
-    def __init__(self):
+    def __init__(self, batch_size=10):
         self.queue = deque()
         self.lock = threading.Lock()
+        self.batch_size = batch_size
 
     def add_packet(self, packet_type: str, dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str, timestamp: datetime):
         with self.lock:
-            # Append and then re-sort to maintain order by timestamp
             self.queue.append({
                 "type": packet_type,
                 "dev_id_str": dev_id_str,
@@ -34,30 +34,28 @@ class PacketQueue:
             })
             self.queue = deque(sorted(list(self.queue), key=lambda x: x["timestamp"]))
 
-            indexes_processed = set()
+            processed_indices = set()
             for i, packet in enumerate(list(self.queue)):
-                if len(list(self.queue)) > 1:
-                    next_packet = self.queue[i + 1]
+                if len(self.queue) - (i + 1) < self.batch_size:
+                    logger.debug(f"Not enough packets in queue after index {i} to form a batch of {self.batch_size}. Current queue size: {len(self.queue)}")
+                    break
 
-                    current_packet_timestamp = packet.get("timestamp")
-                    next_packet_timestamp = next_packet.get("timestamp")
-                    if not current_packet_timestamp or not next_packet_timestamp:
-                        logger.warning("packets na fila sem timestamp válido")
-                        return
-                    
-                    current_packet_timestamp_dt = datetime.fromisoformat(current_packet_timestamp)
-                    next_packet_timestamp_dt = datetime.fromisoformat(next_packet_timestamp)
+                next_batch_packets = [p for j, p in enumerate(self.queue) if j > i and j <= i + self.batch_size]
 
-                    time_diff = next_packet_timestamp_dt - current_packet_timestamp_dt
+                if all(next_p["timestamp"] > packet["timestamp"] for next_p in next_batch_packets):
+                    processed_indices.add(i)
 
-                    if time_diff.total_seconds() > 30:
-                        break
+            if processed_indices:
+                packets_to_process = []
+                new_queue = deque()
+                for i, packet in enumerate(list(self.queue)):
+                    if i in processed_indices:
+                        packets_to_process.append(packet)
                     else:
-                        indexes_processed.add(i)
-            
-            if indexes_processed:
-                for index in indexes_processed:
-                    packet = list(self.queue)[index]
+                        new_queue.append(packet)
+                self.queue = new_queue
+
+                for packet in packets_to_process:
                     try:
                         if packet["type"] == "location":
                             _handle_location_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
@@ -67,6 +65,8 @@ class PacketQueue:
                             _handle_information_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
                     except Exception as e:
                         logger.exception(f"Error processing queued packet: {e}")
+                logger.info(f"Processed {len(packets_to_process)} packets. Remaining queue size: {len(self.queue)}")
+        logger.debug(f"Packet added to queue. Current queue size: {len(self.queue)}")
 
 packet_queue = PacketQueue()
 
