@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 class PacketQueue:
-    def __init__(self, batch_size=10):
+    def __init__(self, batch_size=20):
         self.queue = deque()
         self.lock = threading.Lock()
         self.batch_size = batch_size
