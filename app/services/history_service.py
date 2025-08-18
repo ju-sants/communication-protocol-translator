@@ -3,7 +3,7 @@ import json
 from app.services.redis_service import get_redis
 
 redis_client = get_redis()
-HISTORY_LIMIT = 50  # Limite de entradas no histórico por dispositivo
+HISTORY_LIMIT = 10000  # Limite de entradas no histórico por dispositivo
 
 def add_packet_to_history(dev_id: str, raw_packet_hex: str, suntech_packet: str):
     """
