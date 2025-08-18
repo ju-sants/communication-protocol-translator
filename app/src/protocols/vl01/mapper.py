@@ -62,6 +62,8 @@ class PacketQueue:
                             _handle_location_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
                         elif packet["type"] == "alarm":
                             _handle_alarm_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
+                        elif packet["type"] == "information":
+                            _handle_information_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
                     except Exception as e:
                         logger.exception(f"Error processing queued packet: {e}")
 
@@ -300,7 +302,7 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY")
 
-def handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
+def _handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
     
     type = body[0]
     if type == 0x00:
@@ -325,5 +327,8 @@ def packet_queuer(dev_id_str: str, protocol_number: int, serial: int, body: byte
         if alarm_location_data and "timestamp" in alarm_location_data:
             timestamp = alarm_location_data["timestamp"]
         packet_queue.add_packet("alarm", dev_id_str, serial, body, raw_packet_hex, timestamp)
+    elif protocol_number == 0x94:
+        timestamp = datetime.now(timezone.utc).isoformat()
+        packet_queue.add_packet("information", dev_id_str, serial, body, raw_packet_hex, timestamp)
     else:
         logger.warning(f"Attempted to queue unknown packet type: {hex(protocol_number)}")
