@@ -36,23 +36,24 @@ class PacketQueue:
 
             indexes_processed = set()
             for i, packet in enumerate(list(self.queue)):
-                next_packet = self.queue[i + 1]
+                if len(list(self.queue)) > 1:
+                    next_packet = self.queue[i + 1]
 
-                current_packet_timestamp = packet.get("timestamp")
-                next_packet_timestamp = next_packet.get("timestamp")
-                if not current_packet_timestamp or not next_packet_timestamp:
-                    logger.warning("packets na fila sem timestamp válido")
-                    return
-                
-                current_packet_timestamp_dt = datetime.fromisoformat(current_packet_timestamp)
-                next_packet_timestamp_dt = datetime.fromisoformat(next_packet_timestamp)
+                    current_packet_timestamp = packet.get("timestamp")
+                    next_packet_timestamp = next_packet.get("timestamp")
+                    if not current_packet_timestamp or not next_packet_timestamp:
+                        logger.warning("packets na fila sem timestamp válido")
+                        return
+                    
+                    current_packet_timestamp_dt = datetime.fromisoformat(current_packet_timestamp)
+                    next_packet_timestamp_dt = datetime.fromisoformat(next_packet_timestamp)
 
-                time_diff = next_packet_timestamp_dt - current_packet_timestamp_dt
+                    time_diff = next_packet_timestamp_dt - current_packet_timestamp_dt
 
-                if time_diff.total_seconds() > 30:
-                    break
-                else:
-                    indexes_processed.add(i)
+                    if time_diff.total_seconds() > 30:
+                        break
+                    else:
+                        indexes_processed.add(i)
             
             if indexes_processed:
                 for index in indexes_processed:
