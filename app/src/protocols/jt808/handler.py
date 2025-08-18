@@ -43,7 +43,7 @@ def handle_connection(conn: socket.socket, addr):
                 dev_id_str = terminal_phone_bcd.hex()
 
                 # Registra o cliente no gerenciador de sessão
-                tracker_sessions_manager.register_client(dev_id_str, conn)
+                tracker_sessions_manager.register_tracker_client(dev_id_str, conn)
                 redis_client.hset(dev_id_str, "protocol", "jt808")
 
                 logger.info(f"Pacote Formatado Recebido de {addr}:\n{format_jt808_packet_for_display(unescaped_packet, dev_id_str)}")
@@ -59,6 +59,6 @@ def handle_connection(conn: socket.socket, addr):
         logger.exception(f"Erro fatal na conexão JT/T 808 endereco={addr}, device_id={dev_id_str}")
     finally:
         if dev_id_str:
-            tracker_sessions_manager.remove_client(dev_id_str)
+            tracker_sessions_manager.remove_tracker_client(dev_id_str)
         logger.info(f"Fechando conexão e thread JT/T 808 endereco={addr}, device_id={dev_id_str}")
         conn.close()
