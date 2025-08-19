@@ -1,4 +1,3 @@
-# app/services/history_service.py
 import json
 from app.services.redis_service import get_redis
 
