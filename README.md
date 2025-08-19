@@ -238,6 +238,30 @@ Para cada rastreador conectado ou que já se conectou, um hash é mantido no Red
 | `last_command_sent`    | `JSON string` | Detalhes do último comando enviado do servidor para o dispositivo.             | `{"command": "RELAY 0", "timestamp": "...", "packet_hex": "..."}` |
 | `last_command_response`| `JSON string` | Detalhes da última resposta de comando recebida do dispositivo. (Atualmente não implementado para todos os protocolos) | `{"response": "OK", "timestamp": "..."}` |
 
+### Gerenciamento de Dados Específico do Protocolo VL01
+
+O módulo [`mapper.py`](app/src/protocols/vl01/mapper.py:1) do protocolo VL01 implementa estratégias avançadas de gerenciamento de pacotes e enriquecimento de dados diretamente no servidor gateway.
+
+#### Estratégias de Gerenciamento de Pacotes:
+
+*   **Fila Persistente de Pacotes (Redis)**: Pacotes de localização, alarme e informação recebidos do protocolo VL01 são adicionados a uma fila persistente no Redis (`vl01_persistent_packet_queue`). Isso garante que os dados não sejam perdidos em caso de falha do servidor e permite o processamento ordenado.
+*   **Processamento em Lotes**: A fila processa os pacotes em lotes de 30, garantindo que sejam tratados na ordem cronológica de seus timestamps (extraídos do próprio pacote quando disponíveis).
+
+#### Informações Gerenciadas Exclusivamente pelo Servidor:
+
+Alguns dados cruciais são calculados ou mantidos inteiramente no servidor para o protocolo VL01, agregando inteligência aos dados brutos:
+
+*   **Odômetro (`gps_odometer`)**: O valor do odômetro é calculado pelo servidor utilizando a fórmula de Haversine com base nas coordenadas de localização recebidas. Este valor é persistido no Redis e acumulado ao longo do tempo.
+*   **Voltagem (`last_voltage`)**: A voltagem da bateria do dispositivo é extraída de pacotes de informação específicos e armazenada no Redis, permitindo um acompanhamento preciso do estado de energia do rastreador.
+
+### Histórico de Pacotes (`history:<device_id>`)
+
+Para cada dispositivo, uma lista é mantida no Redis contendo os pacotes brutos e seus respectivos pacotes Suntech traduzidos. Esta lista é limitada a `HISTORY_LIMIT` (definido em [`app/services/history_service.py`](app/services/history_service.py)) entradas.
+
+| Campo            | Tipo      | Descrição                                         | Exemplo                       |
+| :--------------- | :-------- | :------------------------------------------------ | :---------------------------- |
+| `raw_packet`     | `string`  | O pacote original recebido do rastreador (hex).   | `"78780d01..."`               |
+| `suntech_packet` | `string`  | O pacote traduzido para o formato Suntech.        | `">STT,IMEI,..."`             |
 
 ## Protocolos Suportados
 
