@@ -69,10 +69,182 @@ graph TD
     end
 ```
 
+## Endpoints da API
+
+O servidor gateway expõe uma API RESTful para consulta de dados dos rastreadores e gerenciamento de sessões.
+
+### `GET /trackers`
+Retorna um dicionário com todos os dados dos rastreadores salvos no Redis, incluindo o status de conexão (`is_connected`).
+Exemplo de Resposta:
+```json
+{
+  "IMEI_DO_RASTREADOR_1": {
+    "protocol": "gt06",
+    "last_active_timestamp": "2023-10-27T10:30:00.000000+00:00",
+    "is_connected": true,
+    "last_location_data": "{\"latitude\": -23.55052, ...}",
+    "odometer": "12345.67",
+    "acc_status": "1",
+    "power_status": "0",
+    "last_voltage": "12.5",
+    "imei": "IMEI_DO_RASTREADOR_1",
+    "last_full_location": "{\"latitude\": -23.55052, ...}",
+    "last_event_type": "location",
+    "total_packets_received": "1500"
+  },
+  "IMEI_DO_RASTREADOR_2": {
+    "protocol": "jt808",
+    "is_connected": false,
+    "last_active_timestamp": "2023-10-27T09:45:00.000000+00:00",
+    "...": "..."
+  }
+}
+```
+
+### `GET /trackers/summary`
+Fornece estatísticas de alto nível sobre os rastreadores no sistema.
+Exemplo de Resposta:
+```json
+{
+  "total_registered_trackers": 50,
+  "total_active_translator_sessions": 25,
+  "total_active_main_server_sessions": 20,
+  "protocol_distribution": {
+    "gt06": 30,
+    "jt808": 15,
+    "vl01": 5
+  },
+  "total_packets_in_history": 120000,
+  "most_recent_active_trackers": [
+    {"device_id": "IMEI_RECENTE_1", "last_active_timestamp": "2023-10-27T10:35:00.000000+00:00"},
+    {"device_id": "IMEI_RECENTE_2", "last_active_timestamp": "2023-10-27T10:34:00.000000+00:00"}
+  ]
+}
+```
+
+### `GET /trackers/<dev_id>/details`
+Retorna detalhes abrangentes para um rastreador específico, incluindo dados do Redis e status de conexão.
+Exemplo de Resposta:
+```json
+{
+  "device_id": "IMEI_DO_RASTREADOR",
+  "imei": "IMEI_DO_RASTREADOR",
+  "protocol": "gt06",
+  "is_connected_translator": true,
+  "is_connected_main_server": true,
+  "last_active_timestamp": "2023-10-27T10:35:00.000000+00:00",
+  "last_event_type": "location",
+  "total_packets_received": 1501,
+  "last_location_data": { /* ... */ },
+  "last_full_location": {
+    "timestamp": "2023-10-27T10:35:00+00:00",
+    "satellites": 8,
+    "latitude": -23.55052,
+    "longitude": -46.63330,
+    "speed_kmh": 60,
+    "direction": 90,
+    "gps_fixed": 1,
+    "acc_status": 1,
+    "status_bits": 3,
+    "is_realtime": true,
+    "gps_odometer": 12345.67,
+    "voltage": 12.8
+  },
+  "odometer": 12345.67,
+  "acc_status": 1,
+  "power_status": 0,
+  "last_voltage": 12.8,
+  "last_command_sent": {
+    "command": "RELAY 0",
+    "timestamp": "2023-10-27T10:30:00.000000+00:00",
+    "packet_hex": "..."
+  },
+  "last_command_response": {},
+  "device_status": "Moving (Ignition On)"
+}
+```
+
+### `POST /trackers/<dev_id>/command`
+Envia um comando nativo para um rastreador específico através de sua conexão ativa.
+**Corpo da Requisição:**
+```json
+{
+  "command": "RELAY 0"
+}
+```
+Exemplo de Resposta:
+```json
+{
+  "status": "Command sent successfully",
+  "device_id": "IMEI_DO_RASTREADOR",
+  "command": "RELAY 0",
+  "packet_hex": "..."
+}
+```
+
+### `GET /trackers/<dev_id>/history`
+Recupera o histórico de pacotes (brutos e traduzidos para Suntech) para um rastreador específico.
+Exemplo de Resposta:
+```json
+[
+  {
+    "raw_packet": "7878...",
+    "suntech_packet": ">STT..."
+  },
+  {
+    "raw_packet": "7878...",
+    "suntech_packet": ">ALT..."
+  }
+]
+```
+
+### `GET /sessions/trackers`
+Retorna uma lista dos IDs de dispositivos com sessões de socket ativas com o gateway tradutor.
+Exemplo de Resposta:
+```json
+["IMEI_RASTREADOR_1", "IMEI_RASTREADOR_2"]
+```
+
+### `GET /sessions/main-server`
+Retorna uma lista dos IDs de dispositivos com sessões ativas com o servidor principal Suntech.
+Exemplo de Resposta:
+```json
+["IMEI_RASTREADOR_1", "IMEI_RASTREADOR_3"]
+```
+
+## Dados Persistidos no Redis
+
+O Redis é utilizado como um armazenamento de estado de curto prazo e cache para otimizar as operações do gateway. As chaves são categorizadas principalmente por `device_id` (IMEI) para dados do rastreador e chaves `history:<device_id>` para o histórico de pacotes.
+
+### Hash de Dispositivo (`<device_id>`)
+
+Para cada rastreador conectado ou que já se conectou, um hash é mantido no Redis sob a chave sendo o `device_id` (geralmente o IMEI em formato hexadecimal ou string, dependendo do protocolo).
+
+| Campo                  | Tipo      | Descrição                                                                         | Exemplo             |
+| :--------------------- | :-------- | :-------------------------------------------------------------------------------- | :------------------ |
+| `protocol`             | `string`  | O protocolo que o dispositivo utiliza (ex: `gt06`, `jt808`, `vl01`, `nt40`).        | `"gt06"`            |
+| `imei`                 | `string`  | O IMEI do dispositivo.                                                            | `"358204012345678"` |
+| `last_serial`          | `integer` | O último número de série do pacote recebido do dispositivo.                       | `"12345"`           |
+| `last_active_timestamp`| `string`  | Timestamp UTC da última vez que o dispositivo enviou qualquer tipo de pacote (ISO 8601). | `"2023-10-27T10:35:00.123456+00:00"` |
+| `last_event_type`      | `string`  | O tipo do último evento recebido (`location`, `heartbeat`, `alarm`, `information`). | `"location"`        |
+| `total_packets_received`| `integer` | Contador total de pacotes recebidos do dispositivo desde o início.               | `"1501"`            |
+| `last_location_data`   | `JSON string` | Dados da última localização decodificada do protocolo, usados internamente para alertas (menos campos). | `{"latitude": -23.55, ...}` |
+| `last_full_location`   | `JSON string` | Dados completos da última localização reportada, incluindo todos os detalhes.    | `{"timestamp": "2023-10-27T...", "latitude": -23.55, "speed_kmh": 60, ...}` |
+| `odometer`             | `float`   | Odômetro calculado pelo servidor (em metros), baseado na distância Haversine. | `"12345678.90"`     |
+| `acc_status`           | `integer` | Status da ignição (0: OFF, 1: ON).                                                | `"1"`               |
+| `power_status`         | `integer` | Status da alimentação principal (0: Conectada, 1: Desconectada).                  | `"0"`               |
+| `last_voltage`         | `float`   | Última voltagem da bateria do dispositivo reportada.                              | `"12.8"`            |
+| `last_output_status`   | `integer` | Último estado da saída de controle (ex: bloqueio) (0: Desligado, 1: Ligado).     | `"1"`               |
+| `last_command_sent`    | `JSON string` | Detalhes do último comando enviado do servidor para o dispositivo.             | `{"command": "RELAY 0", "timestamp": "...", "packet_hex": "..."}` |
+| `last_command_response`| `JSON string` | Detalhes da última resposta de comando recebida do dispositivo. (Atualmente não implementado para todos os protocolos) | `{"response": "OK", "timestamp": "..."}` |
+
+
 ## Protocolos Suportados
 
 *   **GT06**: Um dos protocolos mais comuns em dispositivos de rastreamento genéricos.
 *   **JT/T 808**: Um protocolo padrão robusto, amplamente utilizado em veículos comerciais.
+*   **VL01**: Protocolo específico com gerenciamento avançado de dados no servidor.
+
 
 ## Como Começar
 
