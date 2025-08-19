@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 import json
 import copy
 import threading
+import redis
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -18,10 +19,11 @@ redis_client = get_redis()
 REDIS_QUEUE_KEY = "vl01_persistent_packet_queue"
 
 class PacketQueue:
-    def __init__(self, redis_client, queue_key: str, batch_size=30):
+    def __init__(self, redis_client: redis.Redis, queue_key: str, batch_processing: bool = False, batch_size: int = 30):
         self.redis_client = redis_client
         self.queue_key = queue_key
         self.batch_size = batch_size
+        self.batch_processing = batch_processing
         self.processing_lock = threading.Lock()
         
     def add_packet(self, packet_type: str, dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str, timestamp: datetime):
@@ -42,10 +44,46 @@ class PacketQueue:
             current_queue_size = self.redis_client.zcard(self.queue_key)
             if current_queue_size >= self.batch_size:
                 logger.info(f"Attempting to process batch. Current queue size: {current_queue_size}")
-                self._process_batch()
+                if self.batch_processing:
+                    self._process_batch()
+                else:
+                    self._process_first()
             else:
                 logger.info(f"Queue size {current_queue_size} is less than batch size {self.batch_size}. Not processing yet.")
 
+    def _process_first(self):
+        logger.info(f"Starting _process_first for queue {self.queue_key}")
+        packet_raw = self.redis_client.zrange(self.queue_key, 0, 0, withscores=True)
+        
+        if not packet_raw:
+            logger.info(f"No packets in queue {self.queue_key} to process.")
+            return
+
+        member_str, _ = packet_raw[0]
+        try:
+            packet = json.loads(member_str)
+            packet["body"] = bytes.fromhex(packet["body"])
+            packet["timestamp"] = datetime.fromtimestamp(packet["timestamp"], tz=timezone.utc)
+            logger.debug(f"Successfully deserialized packet for device {packet['dev_id_str']}")
+        except Exception as e:
+            logger.error(f"Error deserializing packet from Redis: {member_str}. Error: {e}")
+            self.redis_client.zrem(self.queue_key, member_str)
+            return
+
+        try:
+            if packet["type"] == "location":
+                _handle_location_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
+            elif packet["type"] == "alarm":
+                _handle_alarm_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
+            elif packet["type"] == "information":
+                _handle_information_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
+        except Exception as e:
+            logger.exception(f"Error processing queued packet: {e}")
+        finally:
+            self.redis_client.zrem(self.queue_key, member_str)
+
+        logger.info(f"Finished processing one packet for queue {self.queue_key}.")
+            
     def _process_batch(self):
         logger.info(f"Starting _process_batch for queue {self.queue_key}")
         packets_raw = self.redis_client.zrange(self.queue_key, 0, self.batch_size - 1, withscores=True)
@@ -88,7 +126,7 @@ class PacketQueue:
                 logger.exception(f"Error processing queued packet: {e}")
             finally:
                 pass
-
+ 
         logger.info(f"Finished processing {len(packets_to_process)} packets in batch for queue {self.queue_key}.")
  
         if members_to_remove:
