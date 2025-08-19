@@ -193,8 +193,13 @@ def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     last_location_data["timestamp"] = last_location_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
 
     # Salvando para uso em caso de alarmes
+    redis_client.hset(dev_id_str, "imei", dev_id_str) # Explicitly save IMEI
     redis_client.hset(dev_id_str, "last_location_data", json.dumps(last_location_data))
+    redis_client.hset(dev_id_str, "last_full_location", json.dumps(location_data, default=str)) # Full location data
     redis_client.hset(dev_id_str, "last_serial", serial)
+    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
+    redis_client.hset(dev_id_str, "last_event_type", "location")
+    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
 
     suntech_packet = build_suntech_packet(
         "STT",
@@ -210,6 +215,9 @@ def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
         send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"), raw_packet_hex)
 
 def _handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
+    redis_client.hset(dev_id_str, "last_event_type", "alarm")
+    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
 
     if len(body) < 17:
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
@@ -262,6 +270,10 @@ def _handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_h
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     logger.info(f"Pacote de heartbeat recebido de {dev_id_str}, body={body.hex()}")
     # O pacote de Heartbeat (0x13) contém informações de status
+    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
+    redis_client.hset(dev_id_str, "last_event_type", "heartbeat")
+    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
+    
     terminal_info = body[0]
     acc_status = 1 if terminal_info & 0b10 else 0
     
@@ -304,6 +316,9 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
         logger.error(f"Erro ao decodificar comando de REPLY")
 
 def _handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
+    redis_client.hset(dev_id, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
+    redis_client.hset(dev_id, "last_event_type", "information")
+    redis_client.hincrby(dev_id, "total_packets_received", 1)
     
     type = body[0]
     if type == 0x00:
@@ -312,6 +327,7 @@ def _handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet
         if voltage:
             voltage = voltage[0] / 100
             redis_client.hset(dev_id, 'last_voltage', voltage)
+            redis_client.hset(dev_id, "power_status", 0 if voltage > 0 else 1) # Update power status based on voltage
     else:
         pass
 

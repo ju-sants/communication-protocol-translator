@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 
-GT06_TO_SUNTECH_ALERT_MAP = {
+NT40_TO_SUNTECH_ALERT_MAP = {
     0x01: 42,  # SOS -> Suntech: Panic Button
     0x02: 41,  # Power Cut Alarm -> Suntech: Backup Battery Disconnected
     0x19: 14,  # Battery low voltage alarm -> Suntech: Battery Low
@@ -29,7 +29,7 @@ GT06_TO_SUNTECH_ALERT_MAP = {
 }
 
 
-def decode_location_packet_v3(body: bytes):
+def decode_location_packet_x12(body: bytes):
 
     try:
         data = {}
@@ -83,10 +83,10 @@ def decode_location_packet_v3(body: bytes):
         return data
 
     except Exception as e:
-        logger.exception(f"Falha ao decodificar pacote de localização GT06 body_hex={body.hex()}")
+        logger.exception(f"Falha ao decodificar pacote de localização NT40 body_hex={body.hex()}")
         return None
 
-def decode_location_packet_v4(body: bytes):
+def decode_location_packet_x22(body: bytes):
 
     try:
         data = {}
@@ -94,16 +94,16 @@ def decode_location_packet_v4(body: bytes):
         year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
         data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second).replace(tzinfo=timezone.utc)
 
-        sats_byte = body[6]
+        sats_byte = body[12]
         data["satellites"] = sats_byte & 0x0F
 
-        lat_raw, lon_raw = struct.unpack(">II", body[7:15])
+        lat_raw, lon_raw = struct.unpack(">II", body[13:21])
         lat = lat_raw / 1800000.0
         lon = lon_raw / 1800000.0
 
-        data["speed_kmh"] = body[15]
+        data["speed_kmh"] = body[21]
 
-        course_status = struct.unpack(">H", body[16:18])[0]
+        course_status = struct.unpack(">H", body[22:24])[0]
 
         # Hemisférios (Bit 11 para Latitude Sul, Bit 12 para Longitude Oeste)
         is_latitude_north = (course_status >> 10) & 1
@@ -116,7 +116,11 @@ def decode_location_packet_v4(body: bytes):
 
         gps_fixed = (course_status >> 12) & 1
 
-        acc_status = body[27]
+        is_realtime = (course_status >> 13) & 1 == 0
+        data["is_realtime"] = is_realtime
+
+        terminal_info = body[33]
+        acc_status = (terminal_info >> 1) & 0b1
         
         status_bits = 0
         if gps_fixed == 1:
@@ -125,115 +129,26 @@ def decode_location_packet_v4(body: bytes):
             status_bits |= 0b1
         data["status_bits"] = status_bits
 
-        is_realtime = body[29] == 0x00
+        voltage_at = 34
+        voltage_raw = struct.unpack(">H", body[voltage_at:voltage_at + 2])[0]
+        voltage = voltage_raw * 0.01
+        data["voltage"] = round(voltage, 2)
 
-        data["is_realtime"] = is_realtime
-
-        mileage_at = 30
-        mileage_km = struct.unpack(">I", body[mileage_at:mileage_at + 4])[0]
+        mileage_at = 40
+        mileage_km = struct.unpack(">3B", body[mileage_at:mileage_at + 3])[0]
         data["gps_odometer"] = mileage_km
-
-        if is_realtime: # Só consideraremos a voltagem se for em tempo real, pois posições da memória estão vindo com esse dado problemático
-            voltage_at = mileage_at + 4
-            voltage_raw = struct.unpack(">H", body[voltage_at:voltage_at + 2])[0]
-            voltage = voltage_raw * 0.01
-            data["voltage"] = round(voltage, 2)
-        else:
-            data["voltage"] = 0.0
 
         return data
 
     except Exception as e:
-        logger.exception(f"Falha ao decodificar pacote de localização GT06 body_hex={body.hex()}")
+        logger.exception(f"Falha ao decodificar pacote de localização NT40 body_hex={body.hex()}")
         return None
-
-def decode_location_packet_4g(body: bytes):
-    """
-    Decodifica o pacote de localização do protocolo 4G (0xA0) do rastreador GT06.
-    """
-    try:
-        data = {}
-
-        # Decodifica o timestamp (6 bytes)
-        year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
-        data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second).replace(tzinfo=timezone.utc)
-
-        # Quantidade de satélites (1 byte)
-        sats_byte = body[6]
-        data["satellites"] = sats_byte & 0x0F
-
-        # Latitude e Longitude (8 bytes)
-        lat_raw, lon_raw = struct.unpack(">II", body[7:15])
-        lat = lat_raw / 1800000.0
-        lon = lon_raw / 1800000.0
-
-        data["speed_kmh"] = body[15]
-
-        course_status = struct.unpack(">H", body[16:18])[0]
-        
-        is_latitude_north = (course_status >> 10) & 1
-        is_longitude_west = (course_status >> 11) & 1
-        
-        data['latitude'] = -abs(lat) if not is_latitude_north else abs(lat)
-        data['longitude'] = -abs(lon) if is_longitude_west else abs(lon)
-            
-        data["direction"] = course_status & 0x03FF
-
-        gps_fixed = (course_status >> 12) & 1
-
-        mcc_raw = struct.unpack(">H", body[18:20])[0]
-        mcc_highest_bit = (mcc_raw >> 15) & 1
-        
-        mnc_len = 2 if mcc_highest_bit == 1 else 1 # 
-        
-        if mnc_len == 1:
-            lac_start = 21
-        else:
-            lac_start = 22
-            
-        lac_end = lac_start + 4
-        cell_id_end = lac_end + 8
-        
-        acc_status_at = cell_id_end
-        acc_status = body[acc_status_at]
-        
-        status_bits = 0
-        if gps_fixed == 1:
-            status_bits |= 0b10
-        if acc_status == 1:
-            status_bits |= 0b1
-        data["status_bits"] = status_bits
-
-        is_realtime_at = acc_status_at + 2
-        is_realtime = body[is_realtime_at] == 0x00
-        data["is_realtime"] = is_realtime
-
-        mileage_at = is_realtime_at + 1
-        mileage_km = struct.unpack(">I", body[mileage_at:mileage_at + 4])[0]
-        data["gps_odometer"] = mileage_km
-
-        if is_realtime: # Só consideraremos a voltagem se for em tempo real, pois posições da memória estão vindo com esse dado problemático
-            voltage_at = mileage_at + 4
-            voltage_raw = struct.unpack(">H", body[voltage_at:voltage_at + 2])[0]
-            voltage = voltage_raw * 0.01 # 
-            data["voltage"] = round(voltage, 2)
-        else:
-            data["voltage"] = 0.0
-
-        return data
-
-    except Exception as e:
-        logger.exception(f"Falha ao decodificar pacote de localização 4G GT06 body_hex={body.hex()}")
-        return None
-
 
 def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int, raw_packet_hex: str):
-    if protocol_number == 0x22:
-        location_data = decode_location_packet_v3(body)
-    elif protocol_number == 0x32:
-        location_data = decode_location_packet_v4(body)
-    elif protocol_number == 0xA0:
-        location_data = decode_location_packet_4g(body)
+    if protocol_number == 0x12:
+        location_data = decode_location_packet_x12(body)
+    elif protocol_number == 0x22:
+        location_data = decode_location_packet_x22(body[8:])
     else:
         logger.info("Tipo de protocolo não mapeado")
         location_data = None
@@ -246,8 +161,15 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     last_location_data["timestamp"] = last_location_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
 
     # Salvando para uso em caso de alarmes
+    redis_client.hset(dev_id_str, "imei", dev_id_str) # Explicitly save IMEI
     redis_client.hset(dev_id_str, "last_location_data", json.dumps(last_location_data))
+    redis_client.hset(dev_id_str, "last_full_location", json.dumps(location_data, default=str)) # Full location data
     redis_client.hset(dev_id_str, "last_serial", serial)
+    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
+    redis_client.hset(dev_id_str, "last_event_type", "location")
+    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
+    redis_client.hset(dev_id_str, "acc_status", (location_data.get('status_bits', 0) & 0b1))
+    redis_client.hset(dev_id_str, "power_status", 0 if location_data.get('voltage', 0.0) > 0 else 1)
 
     suntech_packet = build_suntech_packet(
         "STT",
@@ -258,17 +180,20 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     )
 
     if suntech_packet:
-        logger.info(f"Pacote Localização SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
+        logger.info(f"Pacote Localização SUNTECH traduzido de pacote NT40:\n{suntech_packet}")
         send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"), raw_packet_hex)
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
+    redis_client.hset(dev_id_str, "last_event_type", "alarm")
+    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
 
     if len(body) < 32:
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
-    
-    alarm_location_data = decode_location_packet_v3(body[0:32])
-    
+
+    alarm_location_data = decode_location_packet_x12(body[0:32])
+
     alarm_datetime = alarm_location_data.get("timestamp")
     if not alarm_datetime:
         logger.info(f"Pacote de alarme sem data e hora, descartando... dev_id={dev_id_str}")
@@ -289,11 +214,11 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
     
     alarm_code = body[30]
 
-    suntech_alert_id = GT06_TO_SUNTECH_ALERT_MAP.get(alarm_code)
+    suntech_alert_id = NT40_TO_SUNTECH_ALERT_MAP.get(alarm_code)
 
     
     if suntech_alert_id:
-        logger.info(f"Alarme GT06 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
+        logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
         suntech_packet = build_suntech_packet(
             hdr="ALT",
             dev_id=dev_id_str,
@@ -303,14 +228,18 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
             alert_id=suntech_alert_id
         )
         if suntech_packet:
-            logger.info(f"Pacote Alerta SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
+            logger.info(f"Pacote Alerta SUNTECH traduzido de pacote NT40:\n{suntech_packet}")
 
             send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
     else:
-        logger.warning(f"Alarme GT06 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
+        logger.warning(f"Alarme NT40 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     # O pacote de Heartbeat (0x13) contém informações de status
+    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
+    redis_client.hset(dev_id_str, "last_event_type", "heartbeat")
+    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
+    
     terminal_info = body[0]
 
     output_status = (terminal_info >> 7) & 0b1
@@ -320,7 +249,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     # Keep-Alive da Suntech
     suntech_packet = build_suntech_alv_packet(dev_id_str)
     if suntech_packet:
-        logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote GT06:\n{suntech_packet}")
+        logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote NT40:\n{suntech_packet}")
         send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
 
 

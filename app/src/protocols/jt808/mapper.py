@@ -1,5 +1,7 @@
 import struct
 from datetime import datetime, timezone, timedelta
+import json
+
 from app.config.settings import settings
 from app.src.suntech.utils import build_suntech_packet, build_suntech_alv_packet
 from app.src.connection.main_server_connection import send_to_main_server
@@ -84,7 +86,11 @@ def map_and_forward(dev_id_str: str, serial: int, msg_id: int, body: bytes, raw_
     """Processa um pacote JT/T 808 decodificado e o traduz para o formato Suntech."""
     suntech_packet = None  # Usar um nome de variável genérico
     logger.info(f"Processando pacote JT/T 808: msg_id={hex(msg_id)}, device_id={dev_id_str}")
+    redis_client.hset(dev_id_str, "imei", dev_id_str) # Explicitly save IMEI
     redis_client.hset(dev_id_str, "last_serial", serial)
+    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
+    redis_client.hset(dev_id_str, "last_event_type", "heartbeat" if msg_id == 0x0002 else "location") # Set event type
+    redis_client.hincrby(dev_id_str, "total_packets_received", 1) # Increment total packets received
 
     if msg_id == 0x0100 or msg_id == 0x0102:
         logger.info(f"Pacote de Registro/Autenticação tratado (apenas para sessão) para device_id={dev_id_str}")
@@ -98,6 +104,10 @@ def map_and_forward(dev_id_str: str, serial: int, msg_id: int, body: bytes, raw_
         if not location_data:
             return
         
+        redis_client.hset(dev_id_str, "last_full_location", json.dumps(location_data, default=str)) # Save full location data
+        redis_client.hset(dev_id_str, "acc_status", (location_data.get('status_bits', 0) & 0b1)) # ACC status is bit 0
+        redis_client.hset(dev_id_str, "power_status", (location_data.get('status_bits', 0) >> 8) & 0b1) # Main power status is bit 8
+
         # Funções que geram eventos adicionais (enviam seus próprios pacotes)
         handle_ignition_change(dev_id_str, serial, location_data)
         handle_power_change(dev_id_str, serial, location_data)

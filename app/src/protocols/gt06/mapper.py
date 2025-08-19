@@ -244,10 +244,17 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     last_location_data = copy.deepcopy(location_data)
     
     last_location_data["timestamp"] = last_location_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
-
+    
     # Salvando para uso em caso de alarmes
+    redis_client.hset(dev_id_str, "imei", dev_id_str) # Explicitly save IMEI
     redis_client.hset(dev_id_str, "last_location_data", json.dumps(last_location_data))
+    redis_client.hset(dev_id_str, "last_full_location", json.dumps(location_data, default=str)) # Full location data
     redis_client.hset(dev_id_str, "last_serial", serial)
+    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
+    redis_client.hset(dev_id_str, "last_event_type", "location")
+    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
+    redis_client.hset(dev_id_str, "acc_status", location_data.get('acc_status', 0))
+    redis_client.hset(dev_id_str, "power_status", 0 if location_data.get('voltage', 0.0) > 0 else 1)
 
     suntech_packet = build_suntech_packet(
         "STT",
@@ -262,6 +269,9 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
         send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"), raw_packet_hex)
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
+    redis_client.hset(dev_id_str, "last_event_type", "alarm")
+    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
 
     if len(body) < 32:
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
@@ -311,6 +321,10 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
 
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     # O pacote de Heartbeat (0x13) contém informações de status
+    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
+    redis_client.hset(dev_id_str, "last_event_type", "heartbeat")
+    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
+    
     terminal_info = body[0]
 
     output_status = (terminal_info >> 7) & 0b1
