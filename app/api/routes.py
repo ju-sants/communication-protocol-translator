@@ -1,5 +1,7 @@
 import json
 from flask import current_app as app, jsonify, request
+from datetime import datetime, timezone
+
 from app.services.redis_service import get_redis
 from app.src.protocols.session_manager import tracker_sessions_manager
 from app.src.connection.main_server_connection import sessions_manager
@@ -36,6 +38,55 @@ def get_all_trackers_data():
         import traceback
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
+@app.route('/trackers/summary', methods=['GET'])
+def get_trackers_summary():
+    """
+    Returns high-level statistics for all trackers.
+    """
+    try:
+        all_tracker_keys = [key.decode('utf-8') for key in redis_client.keys('*') if redis_client.type(key) == b'hash']
+        
+        total_registered_trackers = len(all_tracker_keys)
+        total_active_translator_sessions = len(tracker_sessions_manager.active_trackers)
+        total_active_main_server_sessions = len(sessions_manager._sessions)
+
+        protocol_distribution = {}
+        last_active_trackers = []
+
+        for dev_id in all_tracker_keys:
+            protocol = redis_client.hget(dev_id, 'protocol')
+            if protocol:
+                protocol_distribution[protocol] = protocol_distribution.get(protocol, 0) + 1
+            
+            last_active_timestamp = redis_client.hget(dev_id, 'last_active_timestamp')
+            if last_active_timestamp:
+                last_active_trackers.append({
+                    "device_id": dev_id,
+                    "last_active_timestamp": last_active_timestamp
+                })
+        
+        # Sort last active trackers by timestamp (most recent first)
+        last_active_trackers.sort(key=lambda x: x['last_active_timestamp'], reverse=True)
+        
+        # Calculate total packets in history
+        total_packets_in_history = 0
+        history_keys = [key.decode('utf-8') for key in redis_client.keys('history:*')]
+        for history_key in history_keys:
+            total_packets_in_history += redis_client.llen(history_key)
+
+        summary = {
+            "total_registered_trackers": total_registered_trackers,
+            "total_active_translator_sessions": total_active_translator_sessions,
+            "total_active_main_server_sessions": total_active_main_server_sessions,
+            "protocol_distribution": protocol_distribution,
+            "total_packets_in_history": total_packets_in_history,
+            "most_recent_active_trackers": last_active_trackers[:10] # Top 10 most recent
+        }
+        return jsonify(summary)
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
 @app.route('/trackers/<string:dev_id>/command', methods=['POST'])
 def send_tracker_command(dev_id):
     """
@@ -68,6 +119,14 @@ def send_tracker_command(dev_id):
         tracker_socket = tracker_sessions_manager.get_tracker_client_socket(dev_id)
         if tracker_socket:
             tracker_socket.sendall(command_packet)
+            # Store command sent in Redis
+            redis_client.hset(dev_id, "last_command_sent", json.dumps({
+                "command": command_str,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "packet_hex": command_packet.hex()
+            }))
+            redis_client.hincrby(dev_id, "total_commands_sent", 1)
+
             return jsonify({
                 "status": "Command sent successfully",
                 "device_id": dev_id,
@@ -106,3 +165,49 @@ def get_main_server_sessions():
     """
     active_sessions = list(sessions_manager._sessions.keys())
     return jsonify(active_sessions)
+
+@app.route('/trackers/<string:dev_id>/details', methods=['GET'])
+def get_tracker_details(dev_id):
+    """
+    Returns comprehensive details for a specific tracker, including Redis data and connection status.
+    """
+    try:
+        device_data = redis_client.hgetall(dev_id)
+        if not device_data:
+            return jsonify({"error": "Device not found in Redis"}), 404
+
+        status_info = {
+            "device_id": dev_id,
+            "imei": device_data.get('imei', dev_id),
+            "protocol": device_data.get('protocol'),
+            "is_connected_translator": tracker_sessions_manager.exists(dev_id, use_redis=True),
+            "is_connected_main_server": dev_id in sessions_manager._sessions,
+            "last_active_timestamp": device_data.get('last_active_timestamp'),
+            "last_event_type": device_data.get('last_event_type'),
+            "total_packets_received": int(device_data.get('total_packets_received', 0)),
+            "last_location_data": json.loads(device_data.get('last_location_data', '{}')),
+            "last_full_location": json.loads(device_data.get('last_full_location', '{}')),
+            "odometer": float(device_data.get('odometer', 0.0)),
+            "acc_status": int(device_data.get('acc_status', 0)),
+            "power_status": int(device_data.get('power_status', 0)),
+            "last_voltage": float(device_data.get('last_voltage', 0.0)),
+            "last_command_sent": json.loads(device_data.get('last_command_sent', '{}')),
+            "last_command_response": json.loads(device_data.get('last_command_response', '{}'))
+        }
+
+        # Determine a more descriptive device_status
+        if status_info["is_connected_translator"]:
+            if status_info["acc_status"] == 1:
+                if status_info["last_full_location"].get("speed_kmh", 0) > 0:
+                    status_info["device_status"] = "Moving (Ignition On)"
+                else:
+                    status_info["device_status"] = "Stopped (Ignition On)"
+            else:
+                status_info["device_status"] = "Parked (Ignition Off)"
+        else:
+            status_info["device_status"] = "Offline"
+        
+        return jsonify(status_info)
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
