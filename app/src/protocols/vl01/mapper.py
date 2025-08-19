@@ -4,7 +4,6 @@ import json
 import copy
 import threading
 import time
-from collections import deque
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -16,59 +15,81 @@ from .utils import haversine
 logger = get_logger(__name__)
 redis_client = get_redis()
 
+# Define the Redis key for the persistent queue
+REDIS_QUEUE_KEY = "vl01_persistent_packet_queue"
+
 class PacketQueue:
-    def __init__(self, batch_size=20):
-        self.queue = deque()
-        self.lock = threading.Lock()
+    def __init__(self, redis_client, queue_key: str, batch_size=30):
+        self.redis_client = redis_client
+        self.queue_key = queue_key
         self.batch_size = batch_size
-
+        self.processing_lock = threading.Lock()
+        
     def add_packet(self, packet_type: str, dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str, timestamp: datetime):
-        with self.lock:
-            self.queue.append({
-                "type": packet_type,
-                "dev_id_str": dev_id_str,
-                "serial": serial,
-                "body": body,
-                "raw_packet_hex": raw_packet_hex,
-                "timestamp": timestamp
-            })
-            self.queue = deque(sorted(list(self.queue), key=lambda x: x["timestamp"]))
+        packet_data = {
+            "type": packet_type,
+            "dev_id_str": dev_id_str,
+            "serial": serial,
+            "body": body.hex(),
+            "raw_packet_hex": raw_packet_hex,
+            "timestamp": timestamp.timestamp()
+        }
+        self.redis_client.zadd(self.queue_key, {json.dumps(packet_data): packet_data["timestamp"]})
+        logger.debug(f"Packet added to persistent queue. Current queue size: {self.redis_client.zcard(self.queue_key)}")
+        self._process_queue_if_ready()
 
-            processed_indices = set()
-            for i, packet in enumerate(list(self.queue)):
-                if len(self.queue) - (i + 1) < self.batch_size:
-                    logger.debug(f"Not enough packets in queue after index {i} to form a batch of {self.batch_size}. Current queue size: {len(self.queue)}")
-                    break
+    def _process_queue_if_ready(self):
+        with self.processing_lock:
+            current_queue_size = self.redis_client.zcard(self.queue_key)
+            if current_queue_size >= self.batch_size:
+                logger.debug(f"Attempting to process batch. Current queue size: {current_queue_size}")
+                self._process_batch()
+            else:
+                logger.debug(f"Queue size {current_queue_size} is less than batch size {self.batch_size}. Not processing yet.")
 
-                next_batch_packets = [p for j, p in enumerate(self.queue) if j > i and j <= i + self.batch_size]
+    def _process_batch(self):
+        packets_raw = self.redis_client.zrange(self.queue_key, 0, self.batch_size - 1, withscores=True)
+        
+        if not packets_raw:
+            return
 
-                if all(next_p["timestamp"] > packet["timestamp"] for next_p in next_batch_packets):
-                    processed_indices.add(i)
+        packets_to_process = []
+        members_to_remove = []
 
-            if processed_indices:
-                packets_to_process = []
-                new_queue = deque()
-                for i, packet in enumerate(list(self.queue)):
-                    if i in processed_indices:
-                        packets_to_process.append(packet)
-                    else:
-                        new_queue.append(packet)
-                self.queue = new_queue
+        for member_str, _ in packets_raw:
+            try:
+                packet = json.loads(member_str)
+                packet["body"] = bytes.fromhex(packet["body"])
+                packet["timestamp"] = datetime.fromtimestamp(packet["timestamp"], tz=timezone.utc)
+                packets_to_process.append(packet)
+                members_to_remove.append(member_str)
+            except Exception as e:
+                logger.error(f"Error deserializing packet from Redis: {member_str}. Error: {e}")
+                members_to_remove.append(member_str)
 
-                for packet in packets_to_process:
-                    try:
-                        if packet["type"] == "location":
-                            _handle_location_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
-                        elif packet["type"] == "alarm":
-                            _handle_alarm_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
-                        elif packet["type"] == "information":
-                            _handle_information_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
-                    except Exception as e:
-                        logger.exception(f"Error processing queued packet: {e}")
-                logger.info(f"Processed {len(packets_to_process)} packets. Remaining queue size: {len(self.queue)}")
-        logger.debug(f"Packet added to queue. Current queue size: {len(self.queue)}")
+        if not packets_to_process:
+            return
 
-packet_queue = PacketQueue()
+        packets_to_process.sort(key=lambda x: x["timestamp"])
+
+        for packet in packets_to_process:
+            try:
+                if packet["type"] == "location":
+                    _handle_location_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
+                elif packet["type"] == "alarm":
+                    _handle_alarm_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
+                elif packet["type"] == "information":
+                    _handle_information_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
+            except Exception as e:
+                logger.exception(f"Error processing queued packet: {e}")
+            finally:
+                pass
+
+        if members_to_remove:
+            self.redis_client.zrem(self.queue_key, *members_to_remove)
+            logger.info(f"Processed {len(packets_to_process)} packets and removed them from queue. Remaining queue size: {self.redis_client.zcard(self.queue_key)}")
+
+packet_queue = PacketQueue(redis_client, REDIS_QUEUE_KEY)
 
 
 VL01_TO_SUNTECH_ALERT_MAP = {
