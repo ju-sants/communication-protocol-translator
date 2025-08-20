@@ -54,26 +54,10 @@ def decode_location_packet_x12(body: bytes):
 
         gps_fixed = (course_status >> 12) & 1
 
-        try: # Colocando dentro de um try except pois essa funcao tbm recebe chamadas para decodificar pacotes de alerta, que não tem as infos abaixo, 
-            # Na ordem em que estão abaixo
-            acc_status = body[26]
-            
-            status_bits = 0
-            if gps_fixed == 1:
-                status_bits |= 0b10
-            if acc_status == 1:
-                status_bits |= 0b1
-            data["status_bits"] = status_bits
-
-            is_realtime = body[28] == 0x00
-
-            data["is_realtime"] = is_realtime
-
-            mileage_at = 29
-            mileage_km = struct.unpack(">I", body[mileage_at:mileage_at + 4])[0]
-            data["gps_odometer"] = mileage_km
-        except Exception:
-            pass
+        status_bits = 0
+        if gps_fixed == 1:
+            status_bits |= 0b10
+        data["status_bits"] = status_bits
 
         return data
 
