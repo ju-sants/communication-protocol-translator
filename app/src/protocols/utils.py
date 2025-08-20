@@ -17,7 +17,7 @@ SUNTECH_GEOFENCE_ENTER_ALERT_ID: int = 6
 SUNTECH_GEOFENCE_EXIT_ALERT_ID: int = 5
 
 
-def handle_ignition_change(dev_id_str: str, serial, location_data: dict):
+def handle_ignition_change(dev_id_str: str, serial, location_data: dict, raw_packet_hex: str):
     """
     Verifica se houve mudança no status da ignição e envia o alerta correspondente.
     """
@@ -52,7 +52,7 @@ def handle_ignition_change(dev_id_str: str, serial, location_data: dict):
             
             # Envia o pacote de alerta de ignição para o servidor principal
             if ignition_alert_packet:
-                send_to_main_server(dev_id_str, serial, ignition_alert_packet.encode('ascii'))
+                send_to_main_server(dev_id_str, serial, ignition_alert_packet.encode('ascii'), raw_packet_hex)
 
         # Atualiza o estado no Redis para a próxima verificação
         redis_client.hset(dev_id_str, 'acc_status', current_acc_status)
