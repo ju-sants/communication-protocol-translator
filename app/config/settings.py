@@ -1,7 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import SkipValidation
 from typing import Dict, Any
-import threading
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -29,6 +27,10 @@ class Settings(BaseSettings):
         "vl01": {
             "port": 65432,
             "handler_path": "app.src.protocols.vl01.handler.handle_connection"
+        },
+        "nt40": {
+            "port": 65433,
+            "handler_path": "app.src.protocols.nt40.handler.handle_connection"
         }
     }
  
