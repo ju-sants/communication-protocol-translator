@@ -7,6 +7,7 @@ from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.src.suntech.utils import build_suntech_packet, build_suntech_alv_packet, build_suntech_res_packet
 from app.src.connection.main_server_connection import send_to_main_server
+from app.src.protocols.utils import handle_ignition_change
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -149,6 +150,10 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
 
     if not location_data:
         return
+    
+    handle_alarm_from_location(dev_id_str, serial, location_data, raw_packet_hex)
+
+    handle_ignition_change(dev_id_str, serial, location_data, raw_packet_hex)
     
     last_location_data = copy.deepcopy(location_data)
     
