@@ -134,7 +134,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     if protocol_number == 0x12:
         location_data = decode_location_packet_x12(body)
     elif protocol_number == 0x22:
-        location_data = decode_location_packet_x22(body[8:])
+        location_data = decode_location_packet_x22(body[9:])
     else:
         logger.info("Tipo de protocolo não mapeado")
         location_data = None
