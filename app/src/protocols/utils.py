@@ -25,8 +25,7 @@ def handle_ignition_change(dev_id_str: str, serial, location_data: dict, raw_pac
         current_acc_status = (location_data['status_bits'] & 0b1) # 1 se ON, 0 se OFF
         
         # Busca o estado anterior no Redis
-        previous_state = redis_client.hgetall(dev_id_str)
-        previous_acc_status_str = previous_state.get('acc_status')
+        previous_acc_status_str = redis_client.hget(dev_id_str, "acc_status")
         
         # Converte o estado anterior para inteiro se existir
         previous_acc_status = int(previous_acc_status_str) if previous_acc_status_str is not None else None
