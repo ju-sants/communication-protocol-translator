@@ -121,8 +121,8 @@ def decode_location_packet_x22(body: bytes):
         data["voltage"] = round(voltage, 2)
 
         mileage_at = 40
-        mileage_km = struct.unpack(">3B", body[mileage_at:mileage_at + 3])[0]
-        data["gps_odometer"] = mileage_km
+        mileage_km = int.from_bytes(body[mileage_at:mileage_at + 3], "big")
+        data["gps_odometer"] = mileage_km * 1000
 
         return data
 
