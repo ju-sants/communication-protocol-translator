@@ -193,6 +193,8 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     redis_client.hincrby(dev_id_str, "total_packets_received", 1)
     redis_client.hset(dev_id_str, "acc_status", (location_data.get('status_bits', 0) & 0b1))
     redis_client.hset(dev_id_str, "power_status", 0 if location_data.get('voltage', 0.0) > 0 else 1)
+    if location_data.get("output_status") is not None:
+        redis_client.hset(dev_id_str, "last_output_status", location_data.get("output_status"))
 
     suntech_packet = build_suntech_packet(
         "STT",
