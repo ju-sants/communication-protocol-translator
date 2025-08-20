@@ -108,6 +108,13 @@ def decode_location_packet_x22(body: bytes):
             status_bits |= 0b1
         data["status_bits"] = status_bits
 
+        output_status = (terminal_info >> 7) & 0b1
+        data["output_status"] = output_status
+
+        data["power_cut_alarm"] = 1 if (terminal_info >> 3) & 0b11 == 0b10 else 0
+        alarm_language = body[32]
+        data["alarm_language"] = alarm_language
+        
         voltage_at = 34
         voltage_raw = struct.unpack(">H", body[voltage_at:voltage_at + 2])[0]
         voltage = voltage_raw * 0.01
