@@ -217,7 +217,7 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
 
-    alarm_location_data = decode_location_packet_x12(body[0:32])
+    alarm_location_data = decode_location_packet_x12(body[0:17])
 
     alarm_datetime = alarm_location_data.get("timestamp")
     if not alarm_datetime:
@@ -237,7 +237,7 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
     if not definitive_location_data:
         return
     
-    alarm_code = body[30]
+    alarm_code = body[31]
 
     suntech_alert_id = NT40_TO_SUNTECH_ALERT_MAP.get(alarm_code)
 
