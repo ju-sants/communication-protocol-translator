@@ -280,24 +280,28 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
 
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
     try:
-        command_content = body[5:-4]
+        command_content = body[5:]
         command_content_str = command_content.decode("ascii", errors="ignore")
 
         if command_content_str:
-            command_content_str = command_content_str.strip().upper()
+            command_content_str = command_content_str.strip().upper().rstrip('\x00\x01')
             last_location_data_str = redis_client.hget(dev_id, "last_location_data")
             last_location_data = json.loads(last_location_data_str)
             last_location_data["timestamp"] = datetime.now(timezone.utc)
 
             packet = None
             
-            if command_content_str == "RELAY 1":
+            if command_content_str == "RELAYER ENABLE OK!":
                 packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "01"], last_location_data)
-            elif command_content_str == "RELAY 0":
+            elif command_content_str == "RELAYER DISABLE OK!":
                 packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "02"], last_location_data)
             else:
-                print(command_content_str)
-            
+                logger.info(f"command_content_str: {command_content_str!r}, length: {len(command_content_str)}")
+                logger.info(f"command_content_str == 'RELAYER ENABLE OK!': {command_content_str == 'RELAYER ENABLE OK!'}")
+                logger.info(f"command_content_str == 'RELAYER DISABLE OK!': {command_content_str == 'RELAYER DISABLE OK!'}")
+                logger.info(f"len('RELAYER ENABLE OK!') = {len('RELAYER ENABLE OK!')}")
+                logger.info(f"len('RELAYER DISABLE OK!') = {len('RELAYER DISABLE OK!')}")
+
             if packet:
                 send_to_main_server(dev_id, serial, packet.encode("ascii"), raw_packet_hex)
     except Exception as e:
