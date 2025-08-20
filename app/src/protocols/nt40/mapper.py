@@ -130,6 +130,39 @@ def decode_location_packet_x22(body: bytes):
         logger.exception(f"Falha ao decodificar pacote de localização NT40 body_hex={body.hex()}")
         return None
 
+def handle_alarm_from_location(dev_id_str, serial,  alarm_location_data, raw_packet_hex):
+
+    suntech_alert_id = None
+
+    power_cut_alarm = alarm_location_data.get("power_cut_alarm")
+    if power_cut_alarm is not None and power_cut_alarm:
+        suntech_alert_id = 41
+    
+    else:
+        alarm_code = alarm_location_data.get("alarm", 0x00)
+
+        if alarm_code not in (0x0, 0x00):
+            suntech_alert_id = NT40_TO_SUNTECH_ALERT_MAP.get(alarm_code, 0)
+            logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
+
+    
+    if suntech_alert_id:
+        suntech_packet = build_suntech_packet(
+            hdr="ALT",
+            dev_id=dev_id_str,
+            location_data=alarm_location_data,
+            serial=serial,
+            is_realtime=True,
+            alert_id=suntech_alert_id
+        )
+        if suntech_packet:
+            logger.info(f"Pacote Alerta SUNTECH traduzido de pacote NT40:\n{suntech_packet}")
+
+            send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
+    elif suntech_alert_id is not None:
+        logger.warning(f"Alarme NT40 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
+
+
 def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int, raw_packet_hex: str):
     if protocol_number == 0x12:
         location_data = decode_location_packet_x12(body)
