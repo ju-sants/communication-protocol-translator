@@ -95,7 +95,7 @@ def process_suntech_command(command: bytes, dev_id: str, serial: int):
         
         kilometers = int(meters) / 1000
 
-        nt40_text_command = f"MILEAGE={kilometers}#"
+        nt40_text_command = f"MILSET,{kilometers}#"
     
     else:
         nt40_text_command = command_mapping.get(command_key)
