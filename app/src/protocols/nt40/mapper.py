@@ -99,6 +99,8 @@ def decode_location_packet_x22(body: bytes):
         data["is_realtime"] = is_realtime
 
         terminal_info = body[33]
+        data["terminal_info"]  = terminal_info
+
         acc_status = (terminal_info >> 1) & 0b1
         
         status_bits = 0
@@ -111,7 +113,6 @@ def decode_location_packet_x22(body: bytes):
         output_status = (terminal_info >> 7) & 0b1
         data["output_status"] = output_status
 
-        data["power_cut_alarm"] = 1 if (terminal_info >> 3) & 0b11 == 0b10 else 0
         alarm_language = body[32]
         data["alarm_language"] = alarm_language
         
