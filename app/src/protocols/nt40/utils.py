@@ -115,7 +115,7 @@ def format_nt40_packet_for_display(packet_body: bytes) -> str:
             f"  Tamanho Declarado: {length}",
             f"  Serial: {serial}",
             f"  CRC: {hex(crc)}",
-            f"  Corpo (raw): {content_body.hex()}",
+            f"  Corpo (raw): {packet_body.hex()}",
             "--- Detalhes do Conteúdo ---"
         ]
 
