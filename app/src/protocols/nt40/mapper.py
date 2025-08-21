@@ -134,11 +134,18 @@ def decode_location_packet_x22(body: bytes):
 def handle_alarm_from_location(dev_id_str, serial,  alarm_location_data, raw_packet_hex):
 
     suntech_alert_id = None
+    power_cut_alarm = None
+    sos_alarm = None
 
-    power_cut_alarm = alarm_location_data.get("power_cut_alarm")
+    terminal_info = alarm_location_data.get("terminal_info")
+    if terminal_info:
+        power_cut_alarm = 1 if (terminal_info >> 3) & 0b11 == 0b10 else 0
+        sos_alarm = 1 if (terminal_info >> 5) & 0b1 else 0
+
     if power_cut_alarm is not None and power_cut_alarm:
         suntech_alert_id = 41
-    
+    if sos_alarm is not None and sos_alarm:
+        suntech_alert_id = 42
     else:
         alarm_code = alarm_location_data.get("alarm", 0x00)
 
