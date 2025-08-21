@@ -132,12 +132,12 @@ def decode_location_packet_x22(body: bytes):
         return None
 
 def handle_alarm_from_location(dev_id_str, serial,  alarm_location_data, raw_packet_hex):
-
     suntech_alert_id = None
     power_cut_alarm = None
     sos_alarm = None
 
     terminal_info = alarm_location_data.get("terminal_info")
+    logger.info(f"handle_alarm_from_location: terminal_info={bin(terminal_info)}")
     if terminal_info:
         power_cut_alarm = 1 if (terminal_info >> 3) & 0b11 == 0b10 else 0
         sos_alarm = 1 if (terminal_info >> 5) & 0b1 else 0
@@ -148,6 +148,7 @@ def handle_alarm_from_location(dev_id_str, serial,  alarm_location_data, raw_pac
         suntech_alert_id = 42
     else:
         alarm_code = alarm_location_data.get("alarm", 0x00)
+        logger.info(f"handle_alarm_from_location: alarm_code={alarm_code}")
 
         if alarm_code not in (0x0, 0x00):
             suntech_alert_id = NT40_TO_SUNTECH_ALERT_MAP.get(alarm_code, 0)
@@ -168,7 +169,7 @@ def handle_alarm_from_location(dev_id_str, serial,  alarm_location_data, raw_pac
 
             send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
     elif suntech_alert_id is not None:
-        logger.warning(f"Alarme NT40 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
+        logger.warning(f"Alarme NT40 não mapeado recebido device_id={dev_id_str}, alarm_code={alarm_location_data.get('alarm')}, terminal_info={alarm_location_data.get('terminal_info')}")
 
 
 def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int, raw_packet_hex: str):
@@ -274,7 +275,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     redis_client.hincrby(dev_id_str, "total_packets_received", 1)
     
     terminal_info = body[0]
-
+    logger.info(f"HEARTBEAT TERMINAL INFO: {bin(terminal_info)}")
     output_status = (terminal_info >> 7) & 0b1
     redis_client.hset(dev_id_str, "last_output_status", output_status)
     redis_client.hset(dev_id_str, "last_serial", serial)
