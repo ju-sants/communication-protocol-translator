@@ -112,14 +112,14 @@ def decode_location_packet_x22(body: bytes):
 
         output_status = (terminal_info >> 7) & 0b1
         data["output_status"] = output_status
-
-        alarm_language = body[32]
-        data["alarm_language"] = alarm_language
         
         voltage_at = 34
         voltage_raw = struct.unpack(">H", body[voltage_at:voltage_at + 2])[0]
         voltage = voltage_raw * 0.01
         data["voltage"] = round(voltage, 2)
+
+        alarm = body[38]
+        data["alarm"] = alarm
 
         mileage_at = 40
         mileage_km = int.from_bytes(body[mileage_at:mileage_at + 3], "big")
