@@ -31,6 +31,10 @@ class Settings(BaseSettings):
         "nt40": {
             "port": 65433,
             "handler_path": "app.src.protocols.nt40.handler.handle_connection"
+        },
+        "satellite": {
+            "port": 65434,
+            "handler_path": "app.src.protocols.satellite.handler.handle_connection"
         }
     }
  
