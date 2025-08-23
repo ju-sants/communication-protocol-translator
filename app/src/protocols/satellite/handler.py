@@ -8,8 +8,8 @@ from . import mapper
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-START_BIT = b'\\xff'
-STOP_BIT = b'\\xfe'
+START_BIT = b'\xff'
+STOP_BIT = b'\xfe'
 
 def handle_connection(conn: socket.socket, addr):
     """
