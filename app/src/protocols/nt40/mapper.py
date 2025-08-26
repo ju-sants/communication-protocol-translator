@@ -53,11 +53,7 @@ def decode_location_packet_x12(body: bytes):
         data["direction"] = course_status & 0x03FF
 
         gps_fixed = (course_status >> 12) & 1
-
-        status_bits = 0
-        if gps_fixed == 1:
-            status_bits |= 0b10
-        data["status_bits"] = status_bits
+        data["gps_fixed"] = gps_fixed
 
         return data
 
@@ -94,6 +90,7 @@ def decode_location_packet_x22(body: bytes):
         data["direction"] = course_status & 0x03FF
 
         gps_fixed = (course_status >> 12) & 1
+        data["gps_fixed"] = gps_fixed
 
         is_realtime = (course_status >> 13) & 1 == 0
         data["is_realtime"] = is_realtime
@@ -102,13 +99,7 @@ def decode_location_packet_x22(body: bytes):
         data["terminal_info"]  = terminal_info
 
         acc_status = (terminal_info >> 1) & 0b1
-        
-        status_bits = 0
-        if gps_fixed == 1:
-            status_bits |= 0b10
-        if acc_status == 1:
-            status_bits |= 0b1
-        data["status_bits"] = status_bits
+        data["acc_status"] = acc_status
 
         output_status = (terminal_info >> 7) & 0b1
         data["output_status"] = output_status
@@ -200,7 +191,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
     redis_client.hset(dev_id_str, "last_event_type", "location")
     redis_client.hincrby(dev_id_str, "total_packets_received", 1)
-    redis_client.hset(dev_id_str, "acc_status", (location_data.get('status_bits', 0) & 0b1))
+    redis_client.hset(dev_id_str, "acc_status", location_data.get('acc_status', 0))
     redis_client.hset(dev_id_str, "power_status", 0 if location_data.get('voltage', 0.0) > 0 else 1)
     if location_data.get("output_status") is not None:
         redis_client.hset(dev_id_str, "last_output_status", location_data.get("output_status"))

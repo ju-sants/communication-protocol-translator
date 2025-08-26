@@ -182,6 +182,7 @@ def _decode_location_packet(body: bytes):
         data["direction"] = course_status & 0x03FF
 
         gps_fixed = (course_status >> 12) & 1
+        data["gps_fixed"] = gps_fixed
 
         try: # Colocando dentro de um try except pois essa funcao tbm recebe chamadas para decodificar pacotes de alerta, que não tem as infos abaixo, 
             # Na ordem em que estão abaixo
@@ -193,13 +194,6 @@ def _decode_location_packet(body: bytes):
             acc_at = 20 + mnc_length + 4 + 8
             acc_status = body[acc_at]
             data["acc_status"] = acc_status
-
-            status_bits = 0
-            if gps_fixed == 1:
-                status_bits |= 0b10
-            if acc_status == 1:
-                status_bits |= 0b1
-            data["status_bits"] = status_bits
 
             is_realtime = body[acc_at + 2] == 0x00
 

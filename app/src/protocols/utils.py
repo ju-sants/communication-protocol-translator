@@ -22,7 +22,7 @@ def handle_ignition_change(dev_id_str: str, serial, location_data: dict, raw_pac
     Verifica se houve mudança no status da ignição e envia o alerta correspondente.
     """
     try:
-        current_acc_status = (location_data['status_bits'] & 0b1) # 1 se ON, 0 se OFF
+        current_acc_status = location_data['acc_status'] # 1 se ON, 0 se OFF
         
         # Busca o estado anterior no Redis
         previous_acc_status_str = redis_client.hget(dev_id_str, "acc_status")
@@ -59,11 +59,13 @@ def handle_ignition_change(dev_id_str: str, serial, location_data: dict, raw_pac
     except Exception:
         logger.exception(f"Erro ao processar mudança de ignição para device_id={dev_id_str}")
 
+
+# DEPRECATED
 def handle_power_change(dev_id_str: str, serial, location_data: dict):
     """Verifica se houve mudança no status da alimentação e envia o alerta correspondente."""
     try:
         # Bit 11: 0 = normal, 1 = desconectado
-        current_power_disconnected = (location_data['status_bits'] >> 11) & 1
+        current_power_disconnected = (location_data['DEPRECATED'] >> 11) & 1
         
         previous_state = redis_client.hgetall(dev_id_str)
         previous_power_disconnected_str = previous_state.get('power_status')

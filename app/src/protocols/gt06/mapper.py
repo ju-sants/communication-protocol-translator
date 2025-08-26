@@ -58,17 +58,12 @@ def decode_location_packet_v3(body: bytes):
         data["direction"] = course_status & 0x03FF
 
         gps_fixed = (course_status >> 12) & 1
+        data["gps_fixed"] = gps_fixed
 
         try: # Colocando dentro de um try except pois essa funcao tbm recebe chamadas para decodificar pacotes de alerta, que não tem as infos abaixo, 
             # Na ordem em que estão abaixo
             acc_status = body[26]
-            
-            status_bits = 0
-            if gps_fixed == 1:
-                status_bits |= 0b10
-            if acc_status == 1:
-                status_bits |= 0b1
-            data["status_bits"] = status_bits
+            data["acc_status"] = acc_status
 
             is_realtime = body[28] == 0x00
 
@@ -115,15 +110,10 @@ def decode_location_packet_v4(body: bytes):
         data["direction"] = course_status & 0x03FF
 
         gps_fixed = (course_status >> 12) & 1
+        data["gps_fixed"] = gps_fixed
 
         acc_status = body[27]
-        
-        status_bits = 0
-        if gps_fixed == 1:
-            status_bits |= 0b10
-        if acc_status == 1:
-            status_bits |= 0b1
-        data["status_bits"] = status_bits
+        data["acc_status"] = acc_status
 
         is_realtime = body[29] == 0x00
 
@@ -180,6 +170,7 @@ def decode_location_packet_4g(body: bytes):
         data["direction"] = course_status & 0x03FF
 
         gps_fixed = (course_status >> 12) & 1
+        data["gps_fixed"] = gps_fixed
 
         mcc_raw = struct.unpack(">H", body[18:20])[0]
         mcc_highest_bit = (mcc_raw >> 15) & 1
@@ -196,13 +187,7 @@ def decode_location_packet_4g(body: bytes):
         
         acc_status_at = cell_id_end
         acc_status = body[acc_status_at]
-        
-        status_bits = 0
-        if gps_fixed == 1:
-            status_bits |= 0b10
-        if acc_status == 1:
-            status_bits |= 0b1
-        data["status_bits"] = status_bits
+        data["acc_status"] = acc_status        
 
         is_realtime_at = acc_status_at + 2
         is_realtime = body[is_realtime_at] == 0x00

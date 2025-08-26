@@ -45,8 +45,8 @@ def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int
         f"{location_data['speed_kmh']:.2f}",
         f"{location_data['direction']:.2f}",
         str(location_data.get('satellites', 15)),
-        "1" if (location_data.get('status_bits', 0) & 0b10) else "0",
-        f"0000000{int(location_data.get('status_bits', 0) & 0b1)}",
+        "1" if location_data.get('gps_fixed') else "0",
+        f"0000000{int(location_data.get('acc_status', 0))}",
         f"0000000{redis_client.hget(dev_id, 'last_output_status') if redis_client.hget(dev_id, 'last_output_status') else '0'}"
     ]
 
@@ -130,10 +130,10 @@ def build_suntech_res_packet(dev_id: str, command_parts: list, location_data: di
         f"{location_data.get('speed_kmh', 0.0):.2f}",
         f"{location_data.get('direction', 0.0):.2f}",
         str(location_data.get('satellites', 0)),
-        "1" if (location_data.get('status_bits', 0) & 0b10) else "0",
+        "1" if location_data.get('gps_fixed', 0) else "0",
         str(int(location_data.get('gps_odometer', 0))),
         str(location_data.get('power_voltage', 0.0)),
-        f"0000000{int(location_data.get('status_bits', 0) & 0b1)}",
+        f"0000000{int(location_data.get('acc_status', 0))}",
         f"0000000{redis_client.hget(dev_id, 'last_output_status') if redis_client.hget(dev_id, 'last_output_status') else '0'}",
         mode,
         "0"  # ERR_CODE

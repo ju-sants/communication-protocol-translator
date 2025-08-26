@@ -145,7 +145,6 @@ Exemplo de Resposta:
     "direction": 90,
     "gps_fixed": 1,
     "acc_status": 1,
-    "status_bits": 3,
     "is_realtime": true,
     "gps_odometer": 12345.67,
     "voltage": 12.8
