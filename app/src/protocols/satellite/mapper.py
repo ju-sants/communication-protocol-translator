@@ -14,6 +14,16 @@ def map_data(raw_data: str):
     """
     try:
         data = json.loads(raw_data)
+
+        if data.get("message_type") == "heartbeat":
+            logger.info(f"HeartBeat Message Received")
+            return
+        
+        esn = data.get("ESN")
+        if not esn:
+            logger.info(f"Message received without ESN, dropping.")
+            return
+        
         logger.info(f"Parsed JSON data: {data}")
 
     except json.JSONDecodeError as e:
