@@ -1,6 +1,7 @@
 import json
 from flask import current_app as app, jsonify, request
 from datetime import datetime, timezone
+import requests
 
 from app.services.redis_service import get_redis
 from app.src.protocols.session_manager import tracker_sessions_manager
@@ -93,6 +94,27 @@ def send_tracker_command(dev_id):
     Sends a command to a specific tracker through its active socket.
     Sends a native command directly to a specific tracker.
     """
+    
+    data = request.get_json()
+    if not data or 'command' not in data:
+        return jsonify({"error": "Command not specified in request body"}), 400
+
+    command_str = data['command']
+    
+    device_info = redis_client.hgetall(dev_id)
+    if not device_info:
+        return jsonify({"error": "Device not found in Redis"}), 404
+    
+    protocol_type = device_info.get('protocol')
+    
+    response_internal = requests.post(f"https://{protocol_type}.railway.internal/receive_command/{dev_id}", json=data)
+
+    if response_internal.status_code == 200:
+        return jsonify({"status": "Encaminhado ao serviço interno responsável"})
+    else:
+        return jsonify({"status": "error", "error_message": "Não foi possível encaminhar o comando ao serviço interno responsável."})
+@app.route("/receive_comand/<string:dev_id>", methods=["POST"])
+def receive_command(dev_id):
     data = request.get_json()
     if not data or 'command' not in data:
         return jsonify({"error": "Command not specified in request body"}), 400
@@ -138,7 +160,6 @@ def send_tracker_command(dev_id):
             
     except Exception as e:
         return jsonify({"error": f"Failed to send command: {str(e)}"}), 500
-
 @app.route('/trackers/<string:dev_id>/history', methods=['GET'])
 def get_tracker_history(dev_id):
     """
