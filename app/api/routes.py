@@ -113,7 +113,7 @@ def send_tracker_command(dev_id):
         return jsonify({"status": "Encaminhado ao serviço interno responsável"})
     else:
         return jsonify({"status": "error", "error_message": "Não foi possível encaminhar o comando ao serviço interno responsável."})
-@app.route("/receive_comand/<string:dev_id>", methods=["POST"])
+@app.route("/receive_command/<string:dev_id>", methods=["POST"])
 def receive_command(dev_id):
     data = request.get_json()
     if not data or 'command' not in data:
