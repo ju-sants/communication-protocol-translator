@@ -107,7 +107,7 @@ def send_tracker_command(dev_id):
     
     protocol_type = device_info.get('protocol')
     
-    response_internal = requests.post(f"https://{protocol_type}.railway.internal:5000/receive_command/{dev_id}", json=data)
+    response_internal = requests.post(f"http://{protocol_type}.railway.internal:5000/receive_command/{dev_id}", json=data)
 
     if response_internal.status_code == 200:
         return jsonify({"status": "Encaminhado ao serviço interno responsável"})
