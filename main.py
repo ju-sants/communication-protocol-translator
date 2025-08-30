@@ -25,7 +25,7 @@ def start_listener(port: int, handler_func):
 def run_flask_app():
     from app.api import create_app
     app = create_app()
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='::', port=5000)
 
 def main():
     logger.info("Iniciando Servidor Tradutor...")
