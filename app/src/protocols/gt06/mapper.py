@@ -259,7 +259,7 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
     
-    alarm_location_data = decode_location_packet_v3(body[0:32])
+    alarm_location_data = decode_location_packet_v3(body[0:18])
     
     alarm_datetime = alarm_location_data.get("timestamp")
     if not alarm_datetime:
