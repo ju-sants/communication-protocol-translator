@@ -12,6 +12,8 @@ from app.src.protocols.gt06.builder import process_suntech_command as process_su
 from app.src.protocols.vl01.builder import process_suntech_command as process_suntech_command_to_vl01
 from app.src.protocols.nt40.builder import process_suntech_command as process_suntech_command_to_nt40
 
+from app.src.protocols.gt06.builder import build_login_packet
+
 logger = get_logger(__name__)
 redis_client = get_redis()
 
@@ -22,13 +24,15 @@ COMMAND_PROCESSORS = {
     "nt40": process_suntech_command_to_nt40
     }
 class MainServerSession:
-    def __init__(self, dev_id: str, serial: str):
+    def __init__(self, dev_id: str, serial: str, output_protocol: str):
+        self.output_protocol = output_protocol
         self.dev_id = dev_id
         self.serial = serial
         self.sock: socket.socket = None
         self.lock = threading.Lock()
         self._is_connected = False
         self._conection_retries = 0
+        self._is_gt06_login_step = False
     
     def connect(self):
         with self.lock:
@@ -44,10 +48,8 @@ class MainServerSession:
                 self._reader_thread = threading.Thread(target=self._reader_loop, daemon=True)
                 self._reader_thread.start()
 
-                logger.info("Enviando pacote MNT para apresentar a conexão")
-                mnt_packet = build_suntech_mnt_packet(self.dev_id)
+                self.present_connection()
 
-                self.sock.sendall(mnt_packet)
                 logger.info(f"Conexão e thread de escuta iniciadas device_id={self.dev_id}")
 
                 return True
@@ -56,6 +58,28 @@ class MainServerSession:
                 self._is_connected = False
                 return False
     
+    def present_connection(self):
+
+        if self.output_protocol == "suntech":
+            logger.info(f"Enviando pacote MNT para apresentar a conexão dev_id={self.dev_id}")
+            mnt_packet = build_suntech_mnt_packet(self.dev_id)
+
+            self.sock.sendall(mnt_packet)
+            logger.info(f"Pacote de apresentação MNT enviado. dev_id={self.dev_id}")
+        
+        elif self.output_protocol == "gt06":
+            logger.info(f"Iniciando login... dev_id={self.dev_id}")
+            self._is_gt06_login_step = True
+
+            login_packet = build_login_packet(self.dev_id, self.serial)
+
+            self.sock.sendall(login_packet)
+
+            logger.info(f"Pacote de Login enviado. dev_id={self.dev_id}")
+
+    def handle_gt06_login(self):
+        self._is_gt06_login_step = False
+
     def _reader_loop(self):
         while self._is_connected:
             try:
@@ -65,9 +89,14 @@ class MainServerSession:
 
                 data = self.sock.recv(1024)
                 if not data:
-                    logger.warning(f"Conexão fechada pelo servidor Suntech (recv vazio) device_id={self.dev_id}")
+                    logger.warning(f"Conexão fechada pelo servidor principal (recv vazio) device_id={self.dev_id}")
                     self.disconnect()
                     break
+                
+                # Lida com resposta do servidor para pacotes de login
+                if self._is_gt06_login_step:
+                    self.handle_gt06_login()
+                    continue
                 
                 device_info = redis_client.hgetall(self.dev_id)
                 protocol_type = device_info.get("protocol")
@@ -108,13 +137,21 @@ class MainServerSession:
     def send(self, packet: bytes):
         with self.lock:
             if not self._is_connected:
-                logger.warning("Conexão perdida, tentando reconectar...")
+                logger.warning(f"Conexão perdida, tentando reconectar... dev_id={self.dev_id}")
 
                 if not self.connect():
-                    logger.error("Não foi possível conectar ao servidor principal. Pacote descartado.")
+                    logger.error(f"Não foi possível conectar ao servidor principal. Pacote descartado. dev_id={self.dev_id}")
                     return
             
             try:
+                if self._is_gt06_login_step:
+                    logger.info(f"Aguardadndo resposta do server principal sobre o pacote de login. dev_id={self.dev_id}")
+
+                    while self._is_gt06_login_step:
+                        time.sleep(1)
+                    
+                    logger.info(f"Resposta do server principal recebida, continuando a entrega de pacotes. dev_id={self.dev_id}")
+
                 logger.info(f"Encaminhando pacote de {len(packet)} bytes device_id={self.dev_id}")
                 self.sock.sendall(packet + b'\r')
             except (ConnectionResetError, BrokenPipeError) as e:
