@@ -11,8 +11,12 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # --- Configurações de Rede ---
-    MAIN_SERVER_HOST: str = '127.0.0.1'
-    MAIN_SERVER_PORT: int = 12345
+    SUNTECH_MAIN_SERVER_HOST: str = '127.0.0.1'
+    SUNTECH_MAIN_SERVER_PORT: int = 12345
+
+    GT06_MAIN_SERVER_HOST: str = '127.0.0.1'
+    GT06_MAIN_SERVER_PORT: int = 12345
+ 
 
     # --- Módulos de Protocolo a serem Carregados ---
     PROTOCOLS: Dict[str, Dict[str, Any]] = {
