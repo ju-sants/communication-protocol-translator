@@ -31,6 +31,49 @@ def build_generic_response(protocol_number: str, serial_number: int):
 
     return response_packet
 
+def imei_to_bcd(imei: str) -> bytes:
+    if len(imei) != 15 or not imei.isdigit():
+        raise ValueError("IMEI must be a 15-digit string.")
+
+    imei_padded = '0' + imei
+
+    bcd_bytes = bytearray()
+    for i in range(0, len(imei_padded), 2):
+        byte_val = (int(imei_padded[i]) << 4) | int(imei_padded[i+1])
+        bcd_bytes.append(byte_val)
+    return bytes(bcd_bytes)
+
+def build_login_packet(imei: str, serial_number: int) -> bytes:
+    """
+    Constrói um pacote de login GT06.
+    """
+    protocol_number = 0x01
+    imei_bcd = imei_to_bcd(imei)
+
+    packet_content_for_crc = (
+        struct.pack(">B", protocol_number) +
+        imei_bcd +
+        struct.pack(">H", serial_number)
+    )
+
+    # 1 (protocol) + 8 (IMEI) + 2 (serial) + 2 (CRC placeholder)
+    packet_length_value = len(packet_content_for_crc) + 2
+
+    data_for_crc = struct.pack(">B", packet_length_value) + packet_content_for_crc
+
+    crc = utils.crc_itu(data_for_crc)
+
+    full_packet = (
+        b"\x78\x78" +
+        struct.pack(">B", packet_length_value) +
+        packet_content_for_crc +
+        struct.pack(">H", crc) +
+        b"\x0d\x0a"
+    )
+
+    logger.debug(f"Construído pacote de login GT06: {full_packet.hex()}")
+    return full_packet
+
 def build_command(command_content_str: str, serial_number: int):
     """
     Cria comandos no padrão GT06 para envio ao dispositivo
