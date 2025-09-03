@@ -1,5 +1,6 @@
 import socket
 import threading
+import time
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -40,11 +41,28 @@ class MainServerSession:
                 return True
 
             try:
-                logger.info(f"Iniciando nova conexão para {settings.MAIN_SERVER_HOST}:{settings.MAIN_SERVER_PORT}")
-                self.sock = socket.create_connection((settings.MAIN_SERVER_HOST, settings.MAIN_SERVER_PORT), timeout=5)
+                if not self.output_protocol:
+                    logger.info(f"Impossível iniciar conexão com server principal, tipo de protocolo de saída não especificado. dev_id={self.dev_id}")
+                    return
+                
+                elif self.output_protocol == "suntech":
+                    host = settings.SUNTECH_MAIN_SERVER_HOST
+                    port = settings.SUNTECH_MAIN_SERVER_PORT
+                
+                elif self.output_protocol == "gt06":
+                    host = settings.GT06_MAIN_SERVER_HOST
+                    port = settings.GT06_MAIN_SERVER_PORT
+
+                else:
+                    logger.info(f"Impossível iniciar conexão com server principal, tipo de protocolo de saída não mapeado. dev_id={self.dev_id}, output_protocol={self.output_protocol}")
+                    return
+
+
+                logger.info(f"Iniciando nova conexão para {host}:{port}")
+                self.sock = socket.create_connection((host, port), timeout=5)
                 self._is_connected = True
 
-                logger.info("Criando Thread para ouvir comandos do lado do server")
+                logger.info(f"Criando Thread para ouvir comandos do lado do server. dev_id={self.dev_id}")
                 self._reader_thread = threading.Thread(target=self._reader_loop, daemon=True)
                 self._reader_thread.start()
 
@@ -164,7 +182,7 @@ class MainServerSession:
                         self.send(packet)
                         
                 else:
-                    logger.error("Número máximo de tentativas de conexão para essa sessão atingida")
+                    logger.error(f"Número máximo de tentativas de conexão para essa sessão atingida dev_id={self.dev_id}")
                     self._conection_retries = 0
                     return
 
@@ -199,11 +217,11 @@ class MainServerSessionsManager:
 
         return cls._instance
 
-    def get_session(self, dev_id: str, serial: str):
+    def get_session(self, dev_id: str, serial: str, output_protocol):
         with self.lock:
             if dev_id not in self._sessions:
                 logger.info(f"Nenhuma sessão encontrada no MainServerSessionsManager. Criando uma nova. dev_id={dev_id}")
-                self._sessions[dev_id] = MainServerSession(dev_id, serial)
+                self._sessions[dev_id] = MainServerSession(dev_id, serial, output_protocol)
             
             session = self._sessions[dev_id]
             session.connect()
@@ -223,5 +241,9 @@ sessions_manager = MainServerSessionsManager()
 
 def send_to_main_server(dev_id_str: str, serial: str, suntech_packet: bytes, raw_packet_hex: str):
     add_packet_to_history(dev_id_str, raw_packet_hex, suntech_packet.decode('ascii', errors='ignore'))
-    session = sessions_manager.get_session(dev_id_str, serial)
+
+    output_protocol = redis_client.hget(dev_id_str, "output_protocol")
+    if not output_protocol: output_protocol = "suntech"
+    
+    session = sessions_manager.get_session(dev_id_str, serial, output_protocol)
     session.send(suntech_packet)
