@@ -2,8 +2,9 @@ import struct
 
 from . import builder, mapper, utils
 from app.core.logger import get_logger
+from app.services.redis_service import get_redis
 
-
+redis_client = get_redis()
 logger = get_logger(__name__)
 
 def process_packet(dev_id_str: str | None, packet_body: bytes, is_x79: bool = False) -> tuple[bytes | None, str | None]:
