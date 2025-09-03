@@ -5,7 +5,8 @@ from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.services.history_service import add_packet_to_history
 from app.config.settings import settings
-from app.src.suntech.utils import build_suntech_mnt_packet
+from app.src.output.suntech.utils import build_suntech_mnt_packet
+
 from app.src.protocols.jt808.builder import process_suntech_command as process_suntech_command_to_jt808
 from app.src.protocols.gt06.builder import process_suntech_command as process_suntech_command_to_gt06
 from app.src.protocols.vl01.builder import process_suntech_command as process_suntech_command_to_vl01

@@ -1,6 +1,6 @@
 from app.services.redis_service import get_redis
 from app.core.logger import get_logger
-from app.src.suntech.utils import build_suntech_packet
+from app.src.output.suntech.utils import build_suntech_packet
 from app.src.connection.main_server_connection import send_to_main_server
 
 redis_client = get_redis()
