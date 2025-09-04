@@ -13,7 +13,6 @@ from app.src.protocols.gt06.builder import process_suntech_command as process_su
 from app.src.protocols.vl01.builder import process_suntech_command as process_suntech_command_to_vl01
 from app.src.protocols.nt40.builder import process_suntech_command as process_suntech_command_to_nt40
 
-from app.src.protocols.gt06.builder import build_login_packet
 
 logger = get_logger(__name__)
 redis_client = get_redis()
