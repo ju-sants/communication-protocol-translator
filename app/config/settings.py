@@ -10,13 +10,17 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
 
-    # --- Configurações de Rede ---
+    # --- Configurações de Rede e Credenciais ---
     SUNTECH_MAIN_SERVER_HOST: str = '127.0.0.1'
     SUNTECH_MAIN_SERVER_PORT: int = 12345
 
     GT06_MAIN_SERVER_HOST: str = '127.0.0.1'
     GT06_MAIN_SERVER_PORT: int = 12345
  
+    REDIS_DB_MAIN: int = 2
+    REDIS_PASSWORD: str = '...'
+    REDIS_HOST: str = '127.0.0.1'
+    REDIS_PORT: int = 6379
 
     # --- Módulos de Protocolo a serem Carregados ---
     PROTOCOLS: Dict[str, Dict[str, Any]] = {
