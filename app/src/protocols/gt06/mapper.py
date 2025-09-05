@@ -317,13 +317,13 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
             packet = None
             
             if command_content_str == "RELAY 1":
-                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "01"], last_packet_data)
+                last_packet_data["REPLY"] = "OUTPUT ON"
             elif command_content_str == "RELAY 0":
-                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "02"], last_packet_data)
+                last_packet_data["REPLY"] = "OUTPUT OFF"
             else:
                 print(command_content_str)
             
             if packet:
-                send_to_main_server(dev_id, serial=serial, packet=packet.encode("ascii"), raw_packet_hex=raw_packet_hex)
+                send_to_main_server(dev_id, packet_data=last_packet_data, raw_packet_hex=raw_packet_hex, type="reply_command", original_protocol="GT06")
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY")

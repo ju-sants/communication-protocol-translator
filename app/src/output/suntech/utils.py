@@ -110,42 +110,51 @@ def build_heartbeat_packet(dev_id: str, *args) -> str:
     logger.debug(f"Construído pacote Suntech ALV: {packet}")
     return packet.encode("ascii")
 
-def build_reply_packet(dev_id: str, packet_data: dict) -> str:
+def build_reply_packet(dev_id: str, packet_data: dict, *args) -> str:
     """
     Constrói um pacote de Resposta (RES) rico em dados, como o observado nos logs.
     """
-    cmd_group = command_parts[2]
-    cmd_action = command_parts[3]
+    reply = packet_data.get("REPLY")
 
-    # O formato de timestamp no RES é diferente do STT
-    ts = packet_data.get('timestamp', datetime.now())
-    date_fields = [ts.strftime('%Y'), ts.strftime('%m'), ts.strftime('%d'), ts.strftime('%H:%M:%S')]
+    if reply:
+        cmd_group = ""
+        cmd_action = ""
+        if reply == "OUTPUT ON":
+            cmd_group = "04"
+            cmd_action = "01"
+        elif reply == "OUTPUT OFF":
+            cmd_group = "04"
+            cmd_action = "02"
 
-    mode = "0" if redis_client.hget(dev_id, 'last_output_status') else "1"
+        # O formato de timestamp no RES é diferente do STT
+        ts = packet_data.get('timestamp', datetime.now())
+        date_fields = [ts.strftime('%Y'), ts.strftime('%m'), ts.strftime('%d'), ts.strftime('%H:%M:%S')]
 
-    dev_id_normalized = ''.join(filter(str.isdigit, dev_id))
+        mode = "0" if redis_client.hget(dev_id, 'last_output_status') else "1"
 
-    packet_fields = [
-        "RES",
-        dev_id_normalized[-10:],
-        cmd_group,
-        cmd_action,
-        *date_fields,
-        packet_data.get('cell_id', '0'),
-        f"{packet_data.get('latitude', 0.0):.6f}",
-        f"{packet_data.get('longitude', 0.0):.6f}",
-        f"{packet_data.get('speed_kmh', 0.0):.2f}",
-        f"{packet_data.get('direction', 0.0):.2f}",
-        str(packet_data.get('satellites', 0)),
-        "1" if packet_data.get('gps_fixed', 0) else "0",
-        str(int(packet_data.get('gps_odometer', 0))),
-        str(packet_data.get('power_voltage', 0.0)),
-        f"0000000{int(packet_data.get('acc_status', 0))}",
-        f"0000000{redis_client.hget(dev_id, 'last_output_status') if redis_client.hget(dev_id, 'last_output_status') else '0'}",
-        mode,
-        "0"  # ERR_CODE
-    ]
-    
-    packet = ";".join(packet_fields)
-    logger.info(f"Construído pacote de Resposta (RES): {packet}")
-    return packet
+        dev_id_normalized = ''.join(filter(str.isdigit, dev_id))
+
+        packet_fields = [
+            "RES",
+            dev_id_normalized[-10:],
+            cmd_group,
+            cmd_action,
+            *date_fields,
+            packet_data.get('cell_id', '0'),
+            f"{packet_data.get('latitude', 0.0):.6f}",
+            f"{packet_data.get('longitude', 0.0):.6f}",
+            f"{packet_data.get('speed_kmh', 0.0):.2f}",
+            f"{packet_data.get('direction', 0.0):.2f}",
+            str(packet_data.get('satellites', 0)),
+            "1" if packet_data.get('gps_fixed', 0) else "0",
+            str(int(packet_data.get('gps_odometer', 0))),
+            str(packet_data.get('power_voltage', 0.0)),
+            f"0000000{int(packet_data.get('acc_status', 0))}",
+            f"0000000{redis_client.hget(dev_id, 'last_output_status') if redis_client.hget(dev_id, 'last_output_status') else '0'}",
+            mode,
+            "0"  # ERR_CODE
+        ]
+        
+        packet = ";".join(packet_fields)
+        logger.info(f"Construído pacote de Resposta (RES): {packet}")
+        return packet
