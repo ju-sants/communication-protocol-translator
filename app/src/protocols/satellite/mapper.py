@@ -35,7 +35,7 @@ def map_data(raw_data: str):
         last_serial = redis_client.hget(hybrid_gsm, "last_serial")
         last_serial = last_serial if last_serial else 0
 
-        last_gsm_location_str = redis_client.hget(hybrid_gsm, "last_location_data")
+        last_gsm_location_str = redis_client.hget(hybrid_gsm, "last_packet_data")
 
         last_gsm_location = json.loads(last_gsm_location_str)
 

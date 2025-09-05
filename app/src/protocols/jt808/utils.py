@@ -84,9 +84,9 @@ def format_jt808_packet_for_display(unescaped_packet: bytes) -> str:
             display_str.append("  Tipo: Heartbeat (Keep-Alive)")
         elif msg_id == 0x0200:
             display_str.append("  Tipo: Report de Localização")
-            location_data = decode_location_packet(body)
-            if location_data:
-                for key, value in location_data.items():
+            packet_data = decode_location_packet(body)
+            if packet_data:
+                for key, value in packet_data.items():
                     display_str.append(f"    - {key}: {value}")
             else:
                 display_str.append("    - Falha ao decodificar os dados de localização.")

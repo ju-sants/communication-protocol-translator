@@ -21,18 +21,18 @@ def build_login_packet(dev_id_str: str) -> bytes:
     logger.info(f"Construído pacote de apresentação MNT, pacote={packet_str}")
     return packet_str.encode('ascii')
 
-def build_location_packet(dev_id: str, location_data: dict, serial: int) -> bytes:
+def build_location_packet(dev_id: str, packet_data: dict, serial: int) -> bytes:
     """Função central para construir pacotes Suntech STT e ALT, agora com suporte a ID de geocerca."""
     
-    hdr = location_data.get("hdr")
-    is_realtime = location_data.get("is_realtime")
-    alert_id = location_data.get("alert_id")
-    geo_fence_id = location_data.get("geo_fence_id")
-    voltage_stored = location_data.get("voltage_stored")
+    hdr = packet_data.get("hdr")
+    is_realtime = packet_data.get("is_realtime")
+    alert_id = packet_data.get("alert_id")
+    geo_fence_id = packet_data.get("geo_fence_id")
+    voltage_stored = packet_data.get("voltage_stored")
 
     logger.debug(
         f"Construindo pacote Suntech: HDR={hdr}, DevID={dev_id}, Realtime={is_realtime}, "
-        f"AlertID={alert_id}, GeoFenceID={geo_fence_id}, LocationData={location_data}"
+        f"AlertID={alert_id}, GeoFenceID={geo_fence_id}, LocationData={packet_data}"
     )
     
     dev_id_normalized = ''.join(filter(str.isdigit, dev_id))
@@ -45,15 +45,15 @@ def build_location_packet(dev_id: str, location_data: dict, serial: int) -> byte
         "218",
         "1.0.12",
         "1" if is_realtime else "0",
-        location_data['timestamp'].strftime('%Y%m%d'),
-        location_data['timestamp'].strftime('%H:%M:%S'),
-        f"+{location_data['latitude']:.6f}" if location_data['latitude'] >= 0 else f"{location_data['latitude']:.6f}",
-        f"+{location_data['longitude']:.6f}" if location_data['longitude'] >= 0 else f"{location_data['longitude']:.6f}",
-        f"{location_data['speed_kmh']:.2f}",
-        f"{location_data['direction']:.2f}",
-        str(location_data.get('satellites', 15)),
-        "1" if location_data.get('gps_fixed') else "0",
-        f"0000000{int(location_data.get('acc_status', 0))}",
+        packet_data['timestamp'].strftime('%Y%m%d'),
+        packet_data['timestamp'].strftime('%H:%M:%S'),
+        f"+{packet_data['latitude']:.6f}" if packet_data['latitude'] >= 0 else f"{packet_data['latitude']:.6f}",
+        f"+{packet_data['longitude']:.6f}" if packet_data['longitude'] >= 0 else f"{packet_data['longitude']:.6f}",
+        f"{packet_data['speed_kmh']:.2f}",
+        f"{packet_data['direction']:.2f}",
+        str(packet_data.get('satellites', 15)),
+        "1" if packet_data.get('gps_fixed') else "0",
+        f"0000000{int(packet_data.get('acc_status', 0))}",
         f"0000000{redis_client.hget(dev_id, 'last_output_status') if redis_client.hget(dev_id, 'last_output_status') else '0'}"
     ]
 
@@ -62,9 +62,9 @@ def build_location_packet(dev_id: str, location_data: dict, serial: int) -> byte
     
     voltage = None
     if not voltage_stored:
-        voltage = str(location_data.get("voltage", "1.11"))
+        voltage = str(packet_data.get("voltage", "1.11"))
     elif voltage_stored and not is_realtime:
-        voltage = str(location_data.get("voltage", "1.11"))
+        voltage = str(packet_data.get("voltage", "1.11"))
     elif voltage_stored and is_realtime:
         voltage = redis_client.hget(dev_id, "last_voltage")
         
@@ -72,7 +72,7 @@ def build_location_packet(dev_id: str, location_data: dict, serial: int) -> byte
         assign_map,
         voltage if voltage else "1.11", # PWR_VOLT
         "0.0",   # BCK_VOLT
-        str(int(location_data.get('gps_odometer', 0))), # GPS_ODOM
+        str(int(packet_data.get('gps_odometer', 0))), # GPS_ODOM
         "1"  # H_METER
     ]
 
@@ -110,7 +110,7 @@ def build_heartbeat_packet(dev_id: str, *args) -> str:
     logger.debug(f"Construído pacote Suntech ALV: {packet}")
     return packet.encode("ascii")
 
-def build_reply_packet(dev_id: str, command_parts: list, location_data: dict) -> str:
+def build_reply_packet(dev_id: str, packet_data: dict) -> str:
     """
     Constrói um pacote de Resposta (RES) rico em dados, como o observado nos logs.
     """
@@ -118,7 +118,7 @@ def build_reply_packet(dev_id: str, command_parts: list, location_data: dict) ->
     cmd_action = command_parts[3]
 
     # O formato de timestamp no RES é diferente do STT
-    ts = location_data.get('timestamp', datetime.now())
+    ts = packet_data.get('timestamp', datetime.now())
     date_fields = [ts.strftime('%Y'), ts.strftime('%m'), ts.strftime('%d'), ts.strftime('%H:%M:%S')]
 
     mode = "0" if redis_client.hget(dev_id, 'last_output_status') else "1"
@@ -131,16 +131,16 @@ def build_reply_packet(dev_id: str, command_parts: list, location_data: dict) ->
         cmd_group,
         cmd_action,
         *date_fields,
-        location_data.get('cell_id', '0'),
-        f"{location_data.get('latitude', 0.0):.6f}",
-        f"{location_data.get('longitude', 0.0):.6f}",
-        f"{location_data.get('speed_kmh', 0.0):.2f}",
-        f"{location_data.get('direction', 0.0):.2f}",
-        str(location_data.get('satellites', 0)),
-        "1" if location_data.get('gps_fixed', 0) else "0",
-        str(int(location_data.get('gps_odometer', 0))),
-        str(location_data.get('power_voltage', 0.0)),
-        f"0000000{int(location_data.get('acc_status', 0))}",
+        packet_data.get('cell_id', '0'),
+        f"{packet_data.get('latitude', 0.0):.6f}",
+        f"{packet_data.get('longitude', 0.0):.6f}",
+        f"{packet_data.get('speed_kmh', 0.0):.2f}",
+        f"{packet_data.get('direction', 0.0):.2f}",
+        str(packet_data.get('satellites', 0)),
+        "1" if packet_data.get('gps_fixed', 0) else "0",
+        str(int(packet_data.get('gps_odometer', 0))),
+        str(packet_data.get('power_voltage', 0.0)),
+        f"0000000{int(packet_data.get('acc_status', 0))}",
         f"0000000{redis_client.hget(dev_id, 'last_output_status') if redis_client.hget(dev_id, 'last_output_status') else '0'}",
         mode,
         "0"  # ERR_CODE

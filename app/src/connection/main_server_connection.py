@@ -223,7 +223,7 @@ class MainServerSessionsManager:
 sessions_manager = MainServerSessionsManager()
 
 def send_to_main_server(
-        dev_id: str, location_data: dict = None, serial: str = None, 
+        dev_id: str, packet_data: dict = None, serial: str = None, 
         raw_packet_hex: str = None, original_protocol: str = None, 
         type: str = "location", packet: bytes = None, **reply_command_args
     ):

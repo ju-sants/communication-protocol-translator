@@ -100,42 +100,42 @@ def map_and_forward(dev_id_str: str, serial: int, msg_id: int, body: bytes, raw_
         suntech_packet = build_suntech_alv_packet(dev_id_str)
 
     elif msg_id == 0x0200:
-        location_data = decode_location_packet(body)
-        if not location_data:
+        packet_data = decode_location_packet(body)
+        if not packet_data:
             return
         
-        redis_client.hset(dev_id_str, "last_full_location", json.dumps(location_data, default=str)) # Save full location data
-        redis_client.hset(dev_id_str, "acc_status", (location_data.get('status_bits', 0) & 0b1)) # ACC status is bit 0
-        redis_client.hset(dev_id_str, "power_status", (location_data.get('status_bits', 0) >> 8) & 0b1) # Main power status is bit 8
+        redis_client.hset(dev_id_str, "last_full_location", json.dumps(packet_data, default=str)) # Save full location data
+        redis_client.hset(dev_id_str, "acc_status", (packet_data.get('status_bits', 0) & 0b1)) # ACC status is bit 0
+        redis_client.hset(dev_id_str, "power_status", (packet_data.get('status_bits', 0) >> 8) & 0b1) # Main power status is bit 8
 
         # Funções que geram eventos adicionais (enviam seus próprios pacotes)
-        handle_ignition_change(dev_id_str, serial, location_data, "JT808")
+        handle_ignition_change(dev_id_str, serial, packet_data, "JT808")
 
         # Agora, gera o pacote principal para a localização/alerta atual
         alert_triggered = False
-        jt808_alert_mark = location_data.get('alert_mark', 0)
+        jt808_alert_mark = packet_data.get('alert_mark', 0)
 
         # Verifica se é um alerta de Geocerca (bit 20 ou 21)
-        if ((jt808_alert_mark >> 20) & 1 or (jt808_alert_mark >> 21) & 1) and 'geo_fence_id' in location_data:
-            direction = location_data['geo_fence_direction']
-            geo_id = location_data['geo_fence_id']
+        if ((jt808_alert_mark >> 20) & 1 or (jt808_alert_mark >> 21) & 1) and 'geo_fence_id' in packet_data:
+            direction = packet_data['geo_fence_direction']
+            geo_id = packet_data['geo_fence_id']
             alert_id = settings.SUNTECH_GEOFENCE_ENTER_ALERT_ID if direction == 0 else settings.SUNTECH_GEOFENCE_EXIT_ALERT_ID
             
             logger.info(f"Tradução: Localização COM ALERTA de Geocerca para device_id={dev_id_str}, suntech_alert_id={alert_id}, geo_id={geo_id}")
-            suntech_packet = build_suntech_packet("ALT", dev_id_str, location_data, serial, is_realtime=True, alert_id=alert_id, geo_fence_id=geo_id)
+            suntech_packet = build_suntech_packet("ALT", dev_id_str, packet_data, serial, is_realtime=True, alert_id=alert_id, geo_fence_id=geo_id)
             alert_triggered = True
 
         if not alert_triggered:
             for bit_pos, alert_id in JT808_TO_SUNTECH_ALERT_MAP.items():
                 if (jt808_alert_mark >> bit_pos) & 1:
                     logger.info(f"Tradução: Localização COM ALERTA para device_id={dev_id_str}, bit_pos={bit_pos}, suntech_alert_id={alert_id}")
-                    suntech_packet = build_suntech_packet("ALT", dev_id_str, location_data, serial, is_realtime=True, alert_id=alert_id)
+                    suntech_packet = build_suntech_packet("ALT", dev_id_str, packet_data, serial, is_realtime=True, alert_id=alert_id)
                     alert_triggered = True
                     break
         
         if not alert_triggered:
             logger.info(f"Tradução: Localização para Status (STT) para device_id={dev_id_str}")
-            suntech_packet = build_suntech_packet("STT", dev_id_str, location_data, serial, is_realtime=True)
+            suntech_packet = build_suntech_packet("STT", dev_id_str, packet_data, serial, is_realtime=True)
 
     elif msg_id == 0x0704:
         logger.info(f"Tradução: Pacote de Dados de Área Cega (múltiplos STT/ALT) para device_id={dev_id_str}")

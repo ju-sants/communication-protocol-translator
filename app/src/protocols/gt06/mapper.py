@@ -211,36 +211,36 @@ def decode_location_packet_4g(body: bytes):
 
 def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int, raw_packet_hex: str):
     if protocol_number == 0x22:
-        location_data = decode_location_packet_v3(body)
+        packet_data = decode_location_packet_v3(body)
     elif protocol_number == 0x32:
-        location_data = decode_location_packet_v4(body)
+        packet_data = decode_location_packet_v4(body)
     elif protocol_number == 0xA0:
-        location_data = decode_location_packet_4g(body)
+        packet_data = decode_location_packet_4g(body)
     else:
         logger.info("Tipo de protocolo não mapeado")
-        location_data = None
+        packet_data = None
 
-    if not location_data:
+    if not packet_data:
         return
     
-    last_location_data = copy.deepcopy(location_data)
+    last_packet_data = copy.deepcopy(packet_data)
     
-    last_location_data["timestamp"] = last_location_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
+    last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
     
     # Salvando para uso em caso de alarmes
     redis_client.hset(dev_id_str, "imei", dev_id_str) # Explicitly save IMEI
-    redis_client.hset(dev_id_str, "last_location_data", json.dumps(last_location_data))
-    redis_client.hset(dev_id_str, "last_full_location", json.dumps(location_data, default=str)) # Full location data
+    redis_client.hset(dev_id_str, "last_packet_data", json.dumps(last_packet_data))
+    redis_client.hset(dev_id_str, "last_full_location", json.dumps(packet_data, default=str)) # Full location data
     redis_client.hset(dev_id_str, "last_serial", serial)
     redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
     redis_client.hset(dev_id_str, "last_event_type", "location")
     redis_client.hincrby(dev_id_str, "total_packets_received", 1)
-    redis_client.hset(dev_id_str, "acc_status", location_data.get('acc_status', 0))
-    redis_client.hset(dev_id_str, "power_status", 0 if location_data.get('voltage', 0.0) > 0 else 1)
+    redis_client.hset(dev_id_str, "acc_status", packet_data.get('acc_status', 0))
+    redis_client.hset(dev_id_str, "power_status", 0 if packet_data.get('voltage', 0.0) > 0 else 1)
 
-    location_data["hdr"] = "STT"
+    packet_data["hdr"] = "STT"
 
-    send_to_main_server(dev_id_str, location_data, serial, raw_packet_hex, "GT06")
+    send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, "GT06")
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
@@ -251,9 +251,9 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
     
-    alarm_location_data = decode_location_packet_v3(body[0:18])
+    alarm_packet_data = decode_location_packet_v3(body[0:18])
     
-    alarm_datetime = alarm_location_data.get("timestamp")
+    alarm_datetime = alarm_packet_data.get("timestamp")
     if not alarm_datetime:
         logger.info(f"Pacote de alarme sem data e hora, descartando... dev_id={dev_id_str}")
         return
@@ -263,12 +263,12 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
     if not alarm_datetime > limit:
         logger.info(f"Alarme da memória, descartando... dev_id={dev_id_str}")
 
-    last_location_data_str = redis_client.hget(dev_id_str, "last_location_data")
-    last_location_data = json.loads(last_location_data_str)
+    last_packet_data_str = redis_client.hget(dev_id_str, "last_packet_data")
+    last_packet_data = json.loads(last_packet_data_str)
 
-    definitive_location_data = {**last_location_data, **alarm_location_data}
+    definitive_packet_data = {**last_packet_data, **alarm_packet_data}
 
-    if not definitive_location_data:
+    if not definitive_packet_data:
         return
     
     alarm_code = body[30]
@@ -279,11 +279,11 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
     if suntech_alert_id:
         logger.info(f"Alarme GT06 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
 
-        definitive_location_data["hdr"] = "ALT"
-        definitive_location_data["is_realtime"] = True
-        definitive_location_data["alert_id"] = suntech_alert_id
+        definitive_packet_data["hdr"] = "ALT"
+        definitive_packet_data["is_realtime"] = True
+        definitive_packet_data["alert_id"] = suntech_alert_id
 
-        send_to_main_server(dev_id_str, definitive_location_data, serial, raw_packet_hex, "GT06")
+        send_to_main_server(dev_id_str, definitive_packet_data, serial, raw_packet_hex, "GT06")
 
     else:
         logger.warning(f"Alarme GT06 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
@@ -310,16 +310,16 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
 
         if command_content_str:
             command_content_str = command_content_str.strip().upper()
-            last_location_data_str = redis_client.hget(dev_id, "last_location_data")
-            last_location_data = json.loads(last_location_data_str)
-            last_location_data["timestamp"] = datetime.now(timezone.utc)
+            last_packet_data_str = redis_client.hget(dev_id, "last_packet_data")
+            last_packet_data = json.loads(last_packet_data_str)
+            last_packet_data["timestamp"] = datetime.now(timezone.utc)
 
             packet = None
             
             if command_content_str == "RELAY 1":
-                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "01"], last_location_data)
+                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "01"], last_packet_data)
             elif command_content_str == "RELAY 0":
-                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "02"], last_location_data)
+                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "02"], last_packet_data)
             else:
                 print(command_content_str)
             

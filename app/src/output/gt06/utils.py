@@ -8,16 +8,16 @@ from app.services.redis_service import get_redis
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-def build_location_packet(location_data: dict, protocol_number: int, serial_number: int) -> bytes:
+def build_location_packet(packet_data: dict, protocol_number: int, serial_number: int) -> bytes:
     """
-    Constrói um pacote de localização GT06 a partir de dados de location_data.
+    Constrói um pacote de localização GT06 a partir de dados de packet_data.
     Suporta diferentes protocol_number (0x22, 0x32, 0xA0).
     """
     if protocol_number not in [0x22, 0x32, 0xA0]:
         logger.error(f"Protocol number {hex(protocol_number)} not supported for location packet creation.")
         return b""
 
-    timestamp: datetime = location_data.get("timestamp", datetime.now(timezone.utc))
+    timestamp: datetime = packet_data.get("timestamp", datetime.now(timezone.utc))
     time_bytes = struct.pack(
         ">BBBBBB",
         timestamp.year % 100,
@@ -28,21 +28,21 @@ def build_location_packet(location_data: dict, protocol_number: int, serial_numb
         timestamp.second,
     )
 
-    satellites = location_data.get("satellites", 0) & 0x0F
+    satellites = packet_data.get("satellites", 0) & 0x0F
     gps_info_byte = satellites
 
-    latitude_val = location_data.get("latitude", 0.0)
-    longitude_val = location_data.get("longitude", 0.0)
+    latitude_val = packet_data.get("latitude", 0.0)
+    longitude_val = packet_data.get("longitude", 0.0)
     
     lat_raw = int(abs(latitude_val) * 1800000)
     lon_raw = int(abs(longitude_val) * 1800000)
     lat_lon_bytes = struct.pack(">II", lat_raw, lon_raw)
 
-    speed_kmh = int(location_data.get("speed_kmh", 0))
+    speed_kmh = int(packet_data.get("speed_kmh", 0))
     speed_kmh_bytes = struct.pack(">B", speed_kmh)
 
-    direction = int(location_data.get("direction", 0)) & 0x03FF
-    gps_fixed = 1 if location_data.get("gps_fixed", False) else 0
+    direction = int(packet_data.get("direction", 0)) & 0x03FF
+    gps_fixed = 1 if packet_data.get("gps_fixed", False) else 0
     
     is_latitude_north = 1 if latitude_val >= 0 else 0
     is_longitude_west = 1 if longitude_val < 0 else 0
@@ -52,10 +52,10 @@ def build_location_packet(location_data: dict, protocol_number: int, serial_numb
     
     content_body = time_bytes + struct.pack(">B", gps_info_byte) + lat_lon_bytes + speed_kmh_bytes + course_status_bytes
 
-    acc_status = 1 if location_data.get("acc_status", 0) else 0
-    is_realtime = 0x00 if location_data.get("is_realtime", True) else 0x01
-    gps_odometer = int(location_data.get("gps_odometer", 0))
-    voltage = float(location_data.get("voltage", 0.0))
+    acc_status = 1 if packet_data.get("acc_status", 0) else 0
+    is_realtime = 0x00 if packet_data.get("is_realtime", True) else 0x01
+    gps_odometer = int(packet_data.get("gps_odometer", 0))
+    voltage = float(packet_data.get("voltage", 0.0))
     voltage_raw = int(voltage * 100)
 
     if protocol_number == 0x22:

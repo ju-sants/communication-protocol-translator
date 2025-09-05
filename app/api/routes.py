@@ -206,7 +206,7 @@ def get_tracker_details(dev_id):
             "last_active_timestamp": device_data.get('last_active_timestamp'),
             "last_event_type": device_data.get('last_event_type'),
             "total_packets_received": int(device_data.get('total_packets_received', 0)),
-            "last_location_data": json.loads(device_data.get('last_location_data', '{}')),
+            "last_packet_data": json.loads(device_data.get('last_packet_data', '{}')),
             "last_full_location": json.loads(device_data.get('last_full_location', '{}')),
             "odometer": float(device_data.get('odometer', 0.0)),
             "acc_status": int(device_data.get('acc_status', 0)),

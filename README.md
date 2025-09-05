@@ -85,7 +85,7 @@ Para cada rastreador conectado ou que já se conectou, um hash é mantido no Red
 | `last_active_timestamp`| `string`  | Timestamp UTC da última vez que o dispositivo enviou qualquer tipo de pacote (ISO 8601). | `"2023-10-27T10:35:00.123456+00:00"` |
 | `last_event_type`      | `string`  | O tipo do último evento recebido (`location`, `heartbeat`, `alarm`, `information`). | `"location"`        |
 | `total_packets_received`| `integer` | Contador total de pacotes recebidos do dispositivo desde o início.               | `"1501"`            |
-| `last_location_data`   | `JSON string` | Dados da última localização decodificada do protocolo, usados internamente para alertas (menos campos). | `{"latitude": -23.55, ...}` |
+| `last_packet_data`   | `JSON string` | Dados da última localização decodificada do protocolo, usados internamente para alertas (menos campos). | `{"latitude": -23.55, ...}` |
 | `last_full_location`   | `JSON string` | Dados completos da última localização reportada, incluindo todos os detalhes.    | `{"timestamp": "2023-10-27T...", "latitude": -23.55, "speed_kmh": 60, ...}` |
 | `odometer`             | `float`   | Odômetro calculado pelo servidor (em metros), baseado na distância Haversine. | `"12345678.90"`     |
 | `acc_status`           | `integer` | Status da ignição (0: OFF, 1: ON).                                                | `"1"`               |
@@ -140,7 +140,7 @@ Exemplo de Resposta:
     "protocol": "gt06",
     "last_active_timestamp": "2023-10-27T10:30:00.000000+00:00",
     "is_connected": true,
-    "last_location_data": "{\"latitude\": -23.55052, ...}",
+    "last_packet_data": "{\"latitude\": -23.55052, ...}",
     "odometer": "12345.67",
     "acc_status": "1",
     "power_status": "0",
@@ -193,7 +193,7 @@ Exemplo de Resposta:
   "last_active_timestamp": "2023-10-27T10:35:00.000000+00:00",
   "last_event_type": "location",
   "total_packets_received": 1501,
-  "last_location_data": { /* ... */ },
+  "last_packet_data": { /* ... */ },
   "last_full_location": {
     "timestamp": "2023-10-27T10:35:00+00:00",
     "satellites": 8,
