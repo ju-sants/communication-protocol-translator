@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
 
     # --- Módulos de Protocolo a serem Carregados ---
-    PROTOCOLS: Dict[str, Dict[str, Any]] = {
+    INPUT_PROTOCOL_HANDLERS: Dict[str, Dict[str, Any]] = {
         "jt808": {
             "port": 65430,
             "handler_path": "app.src.protocols.jt808.handler.handle_connection"
