@@ -44,21 +44,15 @@ class MainServerSession:
                     logger.info(f"Impossível iniciar conexão com server principal, tipo de protocolo de saída não especificado. dev_id={self.dev_id}")
                     return
                 
-                elif self.output_protocol == "suntech":
-                    host = settings.SUNTECH_MAIN_SERVER_HOST
-                    port = settings.SUNTECH_MAIN_SERVER_PORT
-                
-                elif self.output_protocol == "gt06":
-                    host = settings.GT06_MAIN_SERVER_HOST
-                    port = settings.GT06_MAIN_SERVER_PORT
+                address = settings.OUTPUT_PROTOCOL_HOST_ADRESSES.get(self.output_protocol)
 
-                else:
+                if not address:
                     logger.info(f"Impossível iniciar conexão com server principal, tipo de protocolo de saída não mapeado. dev_id={self.dev_id}, output_protocol={self.output_protocol}")
                     return
 
 
-                logger.info(f"Iniciando nova conexão para {host}:{port}")
-                self.sock = socket.create_connection((host, port), timeout=5)
+                logger.info(f"Iniciando nova conexão para {address[0]}:{address[1]}")
+                self.sock = socket.create_connection(address, timeout=5)
                 self._is_connected = True
 
                 logger.info(f"Criando Thread para ouvir comandos do lado do server. dev_id={self.dev_id}")
