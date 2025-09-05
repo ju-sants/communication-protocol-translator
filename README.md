@@ -69,6 +69,64 @@ graph TD
     end
 ```
 
+## Dados Persistidos no Redis
+
+O Redis é utilizado como um armazenamento de estado de curto prazo e cache para otimizar as operações do gateway. As chaves são categorizadas principalmente por `device_id` (IMEI) para dados do rastreador e chaves `history:<device_id>` para o histórico de pacotes.
+
+### Hash de Dispositivo (`<device_id>`)
+
+Para cada rastreador conectado ou que já se conectou, um hash é mantido no Redis sob a chave sendo o `device_id` (geralmente o IMEI em formato hexadecimal ou string, dependendo do protocolo).
+
+| Campo                  | Tipo      | Descrição                                                                         | Exemplo             |
+| :--------------------- | :-------- | :-------------------------------------------------------------------------------- | :------------------ |
+| `protocol`             | `string`  | O protocolo que o dispositivo utiliza (ex: `gt06`, `jt808`, `vl01`, `nt40`).        | `"gt06"`            |
+| `imei`                 | `string`  | O IMEI do dispositivo.                                                            | `"358204012345678"` |
+| `last_serial`          | `integer` | O último número de série do pacote recebido do dispositivo.                       | `"12345"`           |
+| `last_active_timestamp`| `string`  | Timestamp UTC da última vez que o dispositivo enviou qualquer tipo de pacote (ISO 8601). | `"2023-10-27T10:35:00.123456+00:00"` |
+| `last_event_type`      | `string`  | O tipo do último evento recebido (`location`, `heartbeat`, `alarm`, `information`). | `"location"`        |
+| `total_packets_received`| `integer` | Contador total de pacotes recebidos do dispositivo desde o início.               | `"1501"`            |
+| `last_location_data`   | `JSON string` | Dados da última localização decodificada do protocolo, usados internamente para alertas (menos campos). | `{"latitude": -23.55, ...}` |
+| `last_full_location`   | `JSON string` | Dados completos da última localização reportada, incluindo todos os detalhes.    | `{"timestamp": "2023-10-27T...", "latitude": -23.55, "speed_kmh": 60, ...}` |
+| `odometer`             | `float`   | Odômetro calculado pelo servidor (em metros), baseado na distância Haversine. | `"12345678.90"`     |
+| `acc_status`           | `integer` | Status da ignição (0: OFF, 1: ON).                                                | `"1"`               |
+| `power_status`         | `integer` | Status da alimentação principal (0: Conectada, 1: Desconectada).                  | `"0"`               |
+| `last_voltage`         | `float`   | Última voltagem da bateria do dispositivo reportada.                              | `"12.8"`            |
+| `last_output_status`   | `integer` | Último estado da saída de controle (ex: bloqueio) (0: Desligado, 1: Ligado).     | `"1"`               |
+| `last_command_sent`    | `JSON string` | Detalhes do último comando enviado do servidor para o dispositivo.             | `{"command": "RELAY 0", "timestamp": "...", "packet_hex": "..."}` |
+| `last_command_response`| `JSON string` | Detalhes da última resposta de comando recebida do dispositivo. (Atualmente não implementado para todos os protocolos) | `{"response": "OK", "timestamp": "..."}` |
+
+### Gerenciamento de Dados Específico do Protocolo VL01
+
+O módulo [`mapper.py`](app/src/protocols/vl01/mapper.py:1) do protocolo VL01 implementa estratégias avançadas de gerenciamento de pacotes e enriquecimento de dados diretamente no servidor gateway.
+
+#### Estratégias de Gerenciamento de Pacotes:
+
+*   **Fila Persistente de Pacotes (Redis)**: Pacotes de localização, alarme e informação recebidos do protocolo VL01 são adicionados a uma fila persistente no Redis (`vl01_persistent_packet_queue`). Isso garante que os dados não sejam perdidos em caso de falha do servidor e permite o processamento ordenado.
+*   **Processamento em Lotes**: A fila processa os pacotes em lotes de 30, garantindo que sejam tratados na ordem cronológica de seus timestamps (extraídos do próprio pacote quando disponíveis).
+
+#### Informações Gerenciadas Exclusivamente pelo Servidor:
+
+Alguns dados cruciais são calculados ou mantidos inteiramente no servidor para o protocolo VL01, agregando inteligência aos dados brutos:
+
+*   **Odômetro (`gps_odometer`)**: O valor do odômetro é calculado pelo servidor utilizando a fórmula de Haversine com base nas coordenadas de localização recebidas. Este valor é persistido no Redis e acumulado ao longo do tempo.
+*   **Voltagem (`last_voltage`)**: A voltagem da bateria do dispositivo é extraída de pacotes de informação específicos e armazenada no Redis, permitindo um acompanhamento preciso do estado de energia do rastreador.
+
+### Histórico de Pacotes (`history:<device_id>`)
+
+Para cada dispositivo, uma lista é mantida no Redis contendo os pacotes brutos e seus respectivos pacotes Suntech traduzidos. Esta lista é limitada a `HISTORY_LIMIT` (definido em [`app/services/history_service.py`](app/services/history_service.py)) entradas.
+
+| Campo            | Tipo      | Descrição                                         | Exemplo                       |
+| :--------------- | :-------- | :------------------------------------------------ | :---------------------------- |
+| `raw_packet`     | `string`  | O pacote original recebido do rastreador (hex).   | `"78780d01..."`               |
+| `suntech_packet` | `string`  | O pacote traduzido para o formato Suntech.        | `">STT,IMEI,..."`             |
+
+## Protocolos Suportados
+
+*   **GT06**: Um dos protocolos mais comuns em dispositivos de rastreamento genéricos.
+*   **JT/T 808**: Um protocolo padrão robusto, amplamente utilizado em veículos comerciais.
+*   **VL01**: Protocolo específico com gerenciamento avançado de dados no servidor.
+
+
 ## Endpoints da API
 
 O servidor gateway expõe uma API RESTful para consulta de dados dos rastreadores e gerenciamento de sessões.
@@ -210,64 +268,6 @@ Exemplo de Resposta:
 ```json
 ["IMEI_RASTREADOR_1", "IMEI_RASTREADOR_3"]
 ```
-
-## Dados Persistidos no Redis
-
-O Redis é utilizado como um armazenamento de estado de curto prazo e cache para otimizar as operações do gateway. As chaves são categorizadas principalmente por `device_id` (IMEI) para dados do rastreador e chaves `history:<device_id>` para o histórico de pacotes.
-
-### Hash de Dispositivo (`<device_id>`)
-
-Para cada rastreador conectado ou que já se conectou, um hash é mantido no Redis sob a chave sendo o `device_id` (geralmente o IMEI em formato hexadecimal ou string, dependendo do protocolo).
-
-| Campo                  | Tipo      | Descrição                                                                         | Exemplo             |
-| :--------------------- | :-------- | :-------------------------------------------------------------------------------- | :------------------ |
-| `protocol`             | `string`  | O protocolo que o dispositivo utiliza (ex: `gt06`, `jt808`, `vl01`, `nt40`).        | `"gt06"`            |
-| `imei`                 | `string`  | O IMEI do dispositivo.                                                            | `"358204012345678"` |
-| `last_serial`          | `integer` | O último número de série do pacote recebido do dispositivo.                       | `"12345"`           |
-| `last_active_timestamp`| `string`  | Timestamp UTC da última vez que o dispositivo enviou qualquer tipo de pacote (ISO 8601). | `"2023-10-27T10:35:00.123456+00:00"` |
-| `last_event_type`      | `string`  | O tipo do último evento recebido (`location`, `heartbeat`, `alarm`, `information`). | `"location"`        |
-| `total_packets_received`| `integer` | Contador total de pacotes recebidos do dispositivo desde o início.               | `"1501"`            |
-| `last_location_data`   | `JSON string` | Dados da última localização decodificada do protocolo, usados internamente para alertas (menos campos). | `{"latitude": -23.55, ...}` |
-| `last_full_location`   | `JSON string` | Dados completos da última localização reportada, incluindo todos os detalhes.    | `{"timestamp": "2023-10-27T...", "latitude": -23.55, "speed_kmh": 60, ...}` |
-| `odometer`             | `float`   | Odômetro calculado pelo servidor (em metros), baseado na distância Haversine. | `"12345678.90"`     |
-| `acc_status`           | `integer` | Status da ignição (0: OFF, 1: ON).                                                | `"1"`               |
-| `power_status`         | `integer` | Status da alimentação principal (0: Conectada, 1: Desconectada).                  | `"0"`               |
-| `last_voltage`         | `float`   | Última voltagem da bateria do dispositivo reportada.                              | `"12.8"`            |
-| `last_output_status`   | `integer` | Último estado da saída de controle (ex: bloqueio) (0: Desligado, 1: Ligado).     | `"1"`               |
-| `last_command_sent`    | `JSON string` | Detalhes do último comando enviado do servidor para o dispositivo.             | `{"command": "RELAY 0", "timestamp": "...", "packet_hex": "..."}` |
-| `last_command_response`| `JSON string` | Detalhes da última resposta de comando recebida do dispositivo. (Atualmente não implementado para todos os protocolos) | `{"response": "OK", "timestamp": "..."}` |
-
-### Gerenciamento de Dados Específico do Protocolo VL01
-
-O módulo [`mapper.py`](app/src/protocols/vl01/mapper.py:1) do protocolo VL01 implementa estratégias avançadas de gerenciamento de pacotes e enriquecimento de dados diretamente no servidor gateway.
-
-#### Estratégias de Gerenciamento de Pacotes:
-
-*   **Fila Persistente de Pacotes (Redis)**: Pacotes de localização, alarme e informação recebidos do protocolo VL01 são adicionados a uma fila persistente no Redis (`vl01_persistent_packet_queue`). Isso garante que os dados não sejam perdidos em caso de falha do servidor e permite o processamento ordenado.
-*   **Processamento em Lotes**: A fila processa os pacotes em lotes de 30, garantindo que sejam tratados na ordem cronológica de seus timestamps (extraídos do próprio pacote quando disponíveis).
-
-#### Informações Gerenciadas Exclusivamente pelo Servidor:
-
-Alguns dados cruciais são calculados ou mantidos inteiramente no servidor para o protocolo VL01, agregando inteligência aos dados brutos:
-
-*   **Odômetro (`gps_odometer`)**: O valor do odômetro é calculado pelo servidor utilizando a fórmula de Haversine com base nas coordenadas de localização recebidas. Este valor é persistido no Redis e acumulado ao longo do tempo.
-*   **Voltagem (`last_voltage`)**: A voltagem da bateria do dispositivo é extraída de pacotes de informação específicos e armazenada no Redis, permitindo um acompanhamento preciso do estado de energia do rastreador.
-
-### Histórico de Pacotes (`history:<device_id>`)
-
-Para cada dispositivo, uma lista é mantida no Redis contendo os pacotes brutos e seus respectivos pacotes Suntech traduzidos. Esta lista é limitada a `HISTORY_LIMIT` (definido em [`app/services/history_service.py`](app/services/history_service.py)) entradas.
-
-| Campo            | Tipo      | Descrição                                         | Exemplo                       |
-| :--------------- | :-------- | :------------------------------------------------ | :---------------------------- |
-| `raw_packet`     | `string`  | O pacote original recebido do rastreador (hex).   | `"78780d01..."`               |
-| `suntech_packet` | `string`  | O pacote traduzido para o formato Suntech.        | `">STT,IMEI,..."`             |
-
-## Protocolos Suportados
-
-*   **GT06**: Um dos protocolos mais comuns em dispositivos de rastreamento genéricos.
-*   **JT/T 808**: Um protocolo padrão robusto, amplamente utilizado em veículos comerciais.
-*   **VL01**: Protocolo específico com gerenciamento avançado de dados no servidor.
-
 
 ## Como Começar
 
