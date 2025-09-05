@@ -1,9 +1,12 @@
 import struct
 from datetime import datetime, timezone
+
 from app.core.logger import get_logger
 from app.src.protocols.gt06.utils import crc_itu
+from app.services.redis_service import get_redis
 
 logger = get_logger(__name__)
+redis_client = get_redis()
 
 def build_location_packet(location_data: dict, protocol_number: int, serial_number: int) -> bytes:
     """
@@ -36,6 +39,7 @@ def build_location_packet(location_data: dict, protocol_number: int, serial_numb
     lat_lon_bytes = struct.pack(">II", lat_raw, lon_raw)
 
     speed_kmh = int(location_data.get("speed_kmh", 0))
+    speed_kmh_bytes = struct.pack(">B", speed_kmh)
 
     direction = int(location_data.get("direction", 0)) & 0x03FF
     gps_fixed = 1 if location_data.get("gps_fixed", False) else 0
@@ -46,7 +50,7 @@ def build_location_packet(location_data: dict, protocol_number: int, serial_numb
     course_status = (gps_fixed << 12) | (is_longitude_west << 11) | (is_latitude_north << 10) | direction
     course_status_bytes = struct.pack(">H", course_status)
     
-    content_body = time_bytes + struct.pack(">B", gps_info_byte) + lat_lon_bytes + struct.pack(">B", speed_kmh) + course_status_bytes
+    content_body = time_bytes + struct.pack(">B", gps_info_byte) + lat_lon_bytes + speed_kmh_bytes + course_status_bytes
 
     acc_status = 1 if location_data.get("acc_status", 0) else 0
     is_realtime = 0x00 if location_data.get("is_realtime", True) else 0x01
@@ -139,3 +143,48 @@ def build_login_packet(imei: str, serial_number: int) -> bytes:
     logger.debug(f"Construído pacote de login GT06: {full_packet.hex()}")
     return full_packet
 
+
+def build_heartbeat_packet(dev_id: str, *args) -> bytes:
+    """
+    Controi um pacote de Heartbeat GT06.
+    """
+
+    protocol_number = struct.pack(">B", 0x13)
+
+    last_output_status = redis_client.hget(dev_id, "last_output_status")
+    acc_status = redis_client.hget(dev_id, "acc_status")
+    serial = redis_client.hget(dev_id, "last_serial")
+
+    terminal_info_content = (last_output_status << 7) | (1 << 6) | (1 << 2) | (acc_status << 1) | 1
+    terminal_info_content_bytes = struct.pack(">B", terminal_info_content)
+
+    voltage_level = struct.pack(">B", 6)
+    gsm_signal_strenght = struct.pack(">B", 0x04)
+    alarm = struct.pack(">B", 0x00)
+    language = struct.pack(">B", 0x02)
+    serial = struct.pack(">H", serial)
+
+    data_for_crc = (
+        protocol_number +
+        terminal_info_content_bytes +
+        voltage_level +
+        gsm_signal_strenght +
+        alarm +
+        language +
+        serial
+    )
+
+    packet_lenght = len(data_for_crc)
+
+    data_for_crc = (struct.pack(">B", packet_lenght) + data_for_crc)
+
+    crc = crc_itu(data_for_crc)
+
+    full_packet = (
+        b"\x78\x78" + 
+        data_for_crc +
+        struct.pack(">B", crc) +
+        b"\x0D\x0A"
+    )
+
+    return full_packet
