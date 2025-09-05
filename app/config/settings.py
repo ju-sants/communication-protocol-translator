@@ -16,10 +16,10 @@ class Settings(BaseSettings):
 
     # --- Módulos de Protocolo a serem Carregados ---
     PROTOCOLS: Dict[str, Dict[str, Any]] = {
-        "jt808": {
-            "port": 65430,
-            "handler_path": "app.src.protocols.jt808.handler.handle_connection"
-        },
+        # "jt808": {
+        #     "port": 65430,
+        #     "handler_path": "app.src.protocols.jt808.handler.handle_connection"
+        # },
         "gt06": {
             "port": 65431,
             "handler_path": "app.src.protocols.gt06.handler.handle_connection"
