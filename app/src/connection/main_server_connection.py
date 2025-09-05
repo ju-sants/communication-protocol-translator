@@ -6,6 +6,8 @@ from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.services.history_service import add_packet_to_history
 from app.config.settings import settings
+from app.src.output.suntech.utils import build_login_packet as build_suntech_login_packet
+from app.src.output.gt06.utils import build_login_packet as build_gt06_login_packet
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -60,7 +62,7 @@ class MainServerSession:
 
         if self.output_protocol == "suntech":
             logger.info(f"Enviando pacote MNT para apresentar a conexão dev_id={self.dev_id}")
-            mnt_packet = build_suntech_mnt_packet(self.dev_id)
+            mnt_packet = build_suntech_login_packet(self.dev_id)
 
             self.sock.sendall(mnt_packet)
             logger.info(f"Pacote de apresentação MNT enviado. dev_id={self.dev_id}")
@@ -69,7 +71,7 @@ class MainServerSession:
             logger.info(f"Iniciando login... dev_id={self.dev_id}")
             self._is_gt06_login_step = True
 
-            login_packet = build_login_packet(self.dev_id, self.serial)
+            login_packet = build_gt06_login_packet(self.dev_id, self.serial)
 
             self.sock.sendall(login_packet)
 
