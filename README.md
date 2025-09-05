@@ -79,7 +79,7 @@ Para cada rastreador conectado ou que já se conectou, um hash é mantido no Red
 
 | Campo                  | Tipo      | Descrição                                                                         | Exemplo             |
 | :--------------------- | :-------- | :-------------------------------------------------------------------------------- | :------------------ |
-| `protocol`             | `string`  | O protocolo que o dispositivo utiliza (ex: `gt06`, `jt808`, `vl01`, `nt40`).        | `"gt06"`            |
+| `protocol`             | `string`  | O protocolo que o dispositivo utiliza (ex: `gt06`, `nt40`, `vl01`, `nt40`).        | `"gt06"`            |
 | `imei`                 | `string`  | O IMEI do dispositivo.                                                            | `"358204012345678"` |
 | `last_serial`          | `integer` | O último número de série do pacote recebido do dispositivo.                       | `"12345"`           |
 | `last_active_timestamp`| `string`  | Timestamp UTC da última vez que o dispositivo enviou qualquer tipo de pacote (ISO 8601). | `"2023-10-27T10:35:00.123456+00:00"` |
@@ -123,7 +123,7 @@ Para cada dispositivo, uma lista é mantida no Redis contendo os pacotes brutos 
 ## Protocolos Suportados
 
 *   **GT06**: Um dos protocolos mais comuns em dispositivos de rastreamento genéricos.
-*   **JT/T 808**: Um protocolo padrão robusto, amplamente utilizado em veículos comerciais.
+*   **NT40**: Um protocolo padrão robusto, amplamente utilizado em veículos comerciais.
 *   **VL01**: Protocolo específico com gerenciamento avançado de dados no servidor.
 
 
@@ -151,7 +151,7 @@ Exemplo de Resposta:
     "total_packets_received": "1500"
   },
   "IMEI_DO_RASTREADOR_2": {
-    "protocol": "jt808",
+    "protocol": "nt40",
     "is_connected": false,
     "last_active_timestamp": "2023-10-27T09:45:00.000000+00:00",
     "...": "..."
@@ -169,7 +169,7 @@ Exemplo de Resposta:
   "total_active_main_server_sessions": 20,
   "protocol_distribution": {
     "gt06": 30,
-    "jt808": 15,
+    "nt40": 15,
     "vl01": 5
   },
   "total_packets_in_history": 120000,
@@ -324,7 +324,7 @@ A arquitetura foi pensada para que a adição de novos protocolos seja um proces
     Dentro de `app/src/protocols/`, crie um novo diretório com o nome do seu protocolo (ex: `novo_protocolo`).
 
 2.  **Implemente os Módulos Essenciais:**
-    Crie os seguintes arquivos dentro do novo diretório, seguindo a estrutura dos módulos `gt06` ou `jt808`:
+    Crie os seguintes arquivos dentro do novo diretório, seguindo a estrutura dos módulos `gt06` ou `nt40`:
     *   `handler.py`: Gerencia o ciclo de vida da conexão TCP.
     *   `processor.py`: Valida a integridade e disseca a estrutura dos pacotes.
     *   `mapper.py`: **O coração da tradução**. Converte os dados do protocolo para o dicionário Python padronizado.
