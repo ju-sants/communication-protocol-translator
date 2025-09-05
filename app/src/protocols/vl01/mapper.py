@@ -7,8 +7,8 @@ import redis
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
+from app.config.settings import settings
 from .utils import _decode_alarm_location_packet
-from app.src.output.suntech.utils import build_suntech_packet, build_suntech_alv_packet, build_suntech_res_packet
 from app.src.connection.main_server_connection import send_to_main_server
 from .utils import haversine
 
@@ -260,18 +260,7 @@ def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     redis_client.hset(dev_id_str, "last_event_type", "location")
     redis_client.hincrby(dev_id_str, "total_packets_received", 1)
 
-    suntech_packet = build_suntech_packet(
-        "STT",
-        dev_id_str,
-        packet_data,
-        serial,
-        packet_data.get("is_realtime", True),
-        voltage_stored=True
-    )
-
-    if suntech_packet:
-        logger.info(f"Pacote Localização SUNTECH traduzido de pacote VL01:\n{suntech_packet}")
-        send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"), raw_packet_hex)
+    send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol="VL01")
 
 def _handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
@@ -307,22 +296,12 @@ def _handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_h
     
     alarm_code = body[16]
 
-    suntech_alert_id = VL01_TO_SUNTECH_ALERT_MAP.get(alarm_code)
+    global_alert_id = settings.GLOBAL_ALERT_ID_DICTIONARY.get("vl01").get(alarm_code)
 
-    if suntech_alert_id:
-        logger.info(f"Alarme VL01 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
-        suntech_packet = build_suntech_packet(
-            hdr="ALT",
-            dev_id=dev_id_str,
-            packet_data=definitive_packet_data,
-            serial=serial,
-            is_realtime=True,
-            alert_id=suntech_alert_id
-        )
-        if suntech_packet:
-            logger.info(f"Pacote Alerta SUNTECH traduzido de pacote VL01:\n{suntech_packet}")
+    if global_alert_id:
+        logger.info(f"Alarme VL01 (0x{alarm_code:02X}) traduzido para Global ID {global_alert_id} device_id={dev_id_str}")
 
-            send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
+        send_to_main_server(dev_id_str, definitive_packet_data, serial, raw_packet_hex, original_protocol="VL01", type="alert")
     else:
         logger.warning(f"Alarme VL01 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
@@ -344,10 +323,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     redis_client.hset(dev_id_str, "last_serial", serial)
 
     # Keep-Alive da Suntech
-    suntech_packet = build_suntech_alv_packet(dev_id_str)
-    if suntech_packet:
-        logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote NT40:\n{suntech_packet}")
-        send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
+    send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="VL01", type="heartbeat")
 
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
     try:
@@ -358,17 +334,14 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
             last_packet_data = json.loads(last_packet_data_str)
             last_packet_data["timestamp"] = datetime.now(timezone.utc)
 
-            packet = None
-            
             if command_content_str == "RELAY:ON":
                 redis_client.hset(dev_id, "last_output_status", 1)
-                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "01"], last_packet_data)
+                last_packet_data["REPLY"] = "OUTPUT ON"
             elif command_content_str == "RELAY:OFF":
                 redis_client.hset(dev_id, "last_output_status", 0)
-                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "02"], last_packet_data)
-                
-            if packet:
-                send_to_main_server(dev_id, serial, packet.encode("ascii"), raw_packet_hex)
+                last_packet_data["REPLY"] = "OUTPUT OFF"
+
+            send_to_main_server(dev_id, last_packet_data, serial, raw_packet_hex, original_protocol="VL01", type="command_reply")
 
             pass
     except Exception as e:

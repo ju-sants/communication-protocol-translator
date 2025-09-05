@@ -5,9 +5,9 @@ import copy
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from app.src.output.suntech.utils import build_suntech_packet, build_suntech_alv_packet, build_suntech_res_packet
 from app.src.connection.main_server_connection import send_to_main_server
 from app.src.protocols.utils import handle_ignition_change
+from app.config.settings import settings
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -123,7 +123,7 @@ def decode_location_packet_x22(body: bytes):
         return None
 
 def handle_alarm_from_location(dev_id_str, serial,  alarm_packet_data, raw_packet_hex):
-    suntech_alert_id = None
+    global_alert_id = None
     power_cut_alarm = None
     sos_alarm = None
 
@@ -134,32 +134,24 @@ def handle_alarm_from_location(dev_id_str, serial,  alarm_packet_data, raw_packe
         sos_alarm = 1 if (terminal_info >> 5) & 0b1 else 0
 
     if power_cut_alarm is not None and power_cut_alarm:
-        suntech_alert_id = 41
+        global_alert_id = settings.GLOBAL_ALERT_ID_DICTIONARY.get("nt40").get(0x02)
     if sos_alarm is not None and sos_alarm:
-        suntech_alert_id = 42
+        global_alert_id = settings.GLOBAL_ALERT_ID_DICTIONARY.get("nt40").get(0x01)
     else:
         alarm_code = alarm_packet_data.get("alarm", 0x00)
         logger.info(f"handle_alarm_from_location: alarm_code={alarm_code}")
 
         if alarm_code not in (0x0, 0x00):
-            suntech_alert_id = NT40_TO_SUNTECH_ALERT_MAP.get(alarm_code, 0)
-            logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
+            global_alert_id = settings.GLOBAL_ALERT_ID_DICTIONARY.get(alarm_code, 0)
+            logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Suntech ID {global_alert_id} device_id={dev_id_str}")
 
     
-    if suntech_alert_id:
-        suntech_packet = build_suntech_packet(
-            hdr="ALT",
-            dev_id=dev_id_str,
-            packet_data=alarm_packet_data,
-            serial=serial,
-            is_realtime=True,
-            alert_id=suntech_alert_id
-        )
-        if suntech_packet:
-            logger.info(f"Pacote Alerta SUNTECH traduzido de pacote NT40:\n{suntech_packet}")
+    if global_alert_id:
+        alarm_packet_data["is_realtime"] = True
+        alarm_packet_data["global_alert_id"] = global_alert_id
 
-            send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
-    elif suntech_alert_id is not None:
+        send_to_main_server(dev_id_str, alarm_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
+    elif global_alert_id is not None:
         logger.warning(f"Alarme NT40 não mapeado recebido device_id={dev_id_str}, alarm_code={alarm_packet_data.get('alarm')}, terminal_info={alarm_packet_data.get('terminal_info')}")
 
 
@@ -196,17 +188,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     if packet_data.get("output_status") is not None:
         redis_client.hset(dev_id_str, "last_output_status", packet_data.get("output_status"))
 
-    suntech_packet = build_suntech_packet(
-        "STT",
-        dev_id_str,
-        packet_data,
-        serial,
-        packet_data.get("is_realtime", True)
-    )
-
-    if suntech_packet:
-        logger.info(f"Pacote Localização SUNTECH traduzido de pacote NT40:\n{suntech_packet}")
-        send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"), raw_packet_hex)
+    send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol="NT40")
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
@@ -239,23 +221,13 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
     
     alarm_code = body[31]
 
-    suntech_alert_id = NT40_TO_SUNTECH_ALERT_MAP.get(alarm_code)
-
+    global_alert_id = settings.GLOBAL_ALERT_ID_DICTIONARY.get("nt40").get(alarm_code)
     
-    if suntech_alert_id:
-        logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
-        suntech_packet = build_suntech_packet(
-            hdr="ALT",
-            dev_id=dev_id_str,
-            packet_data=definitive_packet_data,
-            serial=serial,
-            is_realtime=True,
-            alert_id=suntech_alert_id
-        )
-        if suntech_packet:
-            logger.info(f"Pacote Alerta SUNTECH traduzido de pacote NT40:\n{suntech_packet}")
-
-            send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
+    if global_alert_id:
+        logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Global ID {global_alert_id} device_id={dev_id_str}")
+        
+        definitive_packet_data["is_realtime"] = True
+        send_to_main_server(dev_id_str, definitive_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
     else:
         logger.warning(f"Alarme NT40 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
@@ -271,11 +243,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     redis_client.hset(dev_id_str, "last_output_status", output_status)
     redis_client.hset(dev_id_str, "last_serial", serial)
 
-    # Keep-Alive da Suntech
-    suntech_packet = build_suntech_alv_packet(dev_id_str)
-    if suntech_packet:
-        logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote NT40:\n{suntech_packet}")
-        send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
+    send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="NT40", type="heartbeat")
 
 
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
@@ -289,12 +257,10 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
             last_packet_data = json.loads(last_packet_data_str)
             last_packet_data["timestamp"] = datetime.now(timezone.utc)
 
-            packet = None
-            
             if command_content_str == "RELAYER ENABLE OK!":
-                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "01"], last_packet_data)
+                last_packet_data["REPLY"] = "OUTPUT ON"
             elif command_content_str == "RELAYER DISABLE OK!":
-                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "02"], last_packet_data)
+                last_packet_data["REPLY"] = "OUTPUT OFF"
             else:
                 logger.info(f"command_content_str: {command_content_str!r}, length: {len(command_content_str)}")
                 logger.info(f"command_content_str == 'RELAYER ENABLE OK!': {command_content_str == 'RELAYER ENABLE OK!'}")
@@ -302,7 +268,6 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
                 logger.info(f"len('RELAYER ENABLE OK!') = {len('RELAYER ENABLE OK!')}")
                 logger.info(f"len('RELAYER DISABLE OK!') = {len('RELAYER DISABLE OK!')}")
 
-            if packet:
-                send_to_main_server(dev_id, serial, packet.encode("ascii"), raw_packet_hex)
+            send_to_main_server(dev_id, last_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="command_reply")
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY")

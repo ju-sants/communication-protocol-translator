@@ -49,7 +49,7 @@ def handle_ignition_change(dev_id_str: str, serial, packet_data: dict, raw_packe
                 packet_data["alert_id"] = alert_id
 
             # Envia o pacote de alerta de ignição para o servidor principal
-            send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol=original_protocol)
+            send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol=original_protocol, type="alert")
 
         # Atualiza o estado no Redis para a próxima verificação
         redis_client.hset(dev_id_str, 'acc_status', current_acc_status)
