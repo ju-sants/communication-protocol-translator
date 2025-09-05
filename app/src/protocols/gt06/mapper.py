@@ -5,29 +5,11 @@ import copy
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from app.src.output.suntech.utils import build_reply_packet as build_suntech_reply_packet
 from app.src.connection.main_server_connection import send_to_main_server
+from app.config.settings import settings
 
 logger = get_logger(__name__)
 redis_client = get_redis()
-
-
-GT06_TO_SUNTECH_ALERT_MAP = {
-    0x01: 42,  # SOS -> Suntech: Panic Button
-    0x02: 41,  # Power Cut Alarm -> Suntech: Backup Battery Disconnected
-    0x19: 14,  # Battery low voltage alarm -> Suntech: Battery Low
-    0x03: 15,  # Shock Alarm -> Suntech: Shocked
-    0x06: 1,   # Overspeed Alarm -> Suntech: Over Speed
-    0xF0: 46,  # Urgent acceleration alarm -> Suntech: Harsh Acceleration
-    0xF1: 47,  # Rapid deceleration alarm -> Suntech: Harsh Braking
-    0x04: 6,   # Fence In Alarm -> Suntech: Enter Geo-Fence
-    0x05: 5,   # Fence Out Alarm -> Suntech: Exit Geo-Fence
-    0x13: 147, # Remove alarm -> Suntech: Absent Device Recovered
-    0x14: 73,  # car door alarm -> Suntech: Anti-theft
-    0xFE: 33,  # ACC On -> Suntech: Ignition On
-    0xFF: 34   # ACC Off -> Suntech: Ignition Off
-}
-
 
 def decode_location_packet_v3(body: bytes):
 
@@ -238,8 +220,6 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     redis_client.hset(dev_id_str, "acc_status", packet_data.get('acc_status', 0))
     redis_client.hset(dev_id_str, "power_status", 0 if packet_data.get('voltage', 0.0) > 0 else 1)
 
-    packet_data["hdr"] = "STT"
-
     send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, "GT06")
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
@@ -273,17 +253,16 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
     
     alarm_code = body[30]
 
-    suntech_alert_id = GT06_TO_SUNTECH_ALERT_MAP.get(alarm_code)
+    global_alert_id = settings.GLOBAL_ALERT_ID_DICTIONARY.get("gt06").get(alarm_code)
 
     
-    if suntech_alert_id:
-        logger.info(f"Alarme GT06 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
+    if global_alert_id:
+        logger.info(f"Alarme GT06 (0x{alarm_code:02X}) traduzido para Global ID {global_alert_id} device_id={dev_id_str}")
 
-        definitive_packet_data["hdr"] = "ALT"
         definitive_packet_data["is_realtime"] = True
-        definitive_packet_data["alert_id"] = suntech_alert_id
+        definitive_packet_data["global_alert_id"] = global_alert_id
 
-        send_to_main_server(dev_id_str, definitive_packet_data, serial, raw_packet_hex, "GT06")
+        send_to_main_server(dev_id_str, definitive_packet_data, serial, raw_packet_hex, "GT06", type="alert")
 
     else:
         logger.warning(f"Alarme GT06 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
@@ -301,7 +280,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     redis_client.hset(dev_id_str, "last_serial", serial)
 
     # Keep-Alive da Suntech
-    send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="GT06")
+    send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="GT06", type="heartbeat")
 
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
     try:
