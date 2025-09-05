@@ -2,6 +2,7 @@ from datetime import datetime
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
+from app.config.settings import settings
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -21,18 +22,19 @@ def build_login_packet(dev_id_str: str) -> bytes:
     logger.info(f"Construído pacote de apresentação MNT, pacote={packet_str}")
     return packet_str.encode('ascii')
 
-def build_location_packet(dev_id: str, packet_data: dict, serial: int) -> bytes:
+def build_location_packet(dev_id: str, packet_data: dict, serial: int, type: str) -> bytes:
     """Função central para construir pacotes Suntech STT e ALT, agora com suporte a ID de geocerca."""
     
-    hdr = packet_data.get("hdr")
+    hdr = "STT" if type == "location" else "ALT" if type == "alert" else ""
     is_realtime = packet_data.get("is_realtime")
-    alert_id = packet_data.get("alert_id")
+    global_alert_id = packet_data.get("global_alert_id")
+    suntech_alert_id = settings.REVERSE_GLOBAL_ALERT_ID_DICTIONARY.get("suntech").get(global_alert_id)
     geo_fence_id = packet_data.get("geo_fence_id")
     voltage_stored = packet_data.get("voltage_stored")
 
     logger.debug(
         f"Construindo pacote Suntech: HDR={hdr}, DevID={dev_id}, Realtime={is_realtime}, "
-        f"AlertID={alert_id}, GeoFenceID={geo_fence_id}, LocationData={packet_data}"
+        f"GlobalAlertID={global_alert_id}, AlertID={suntech_alert_id}, GeoFenceID={geo_fence_id}, LocationData={packet_data}"
     )
     
     dev_id_normalized = ''.join(filter(str.isdigit, dev_id))
@@ -91,9 +93,9 @@ def build_location_packet(dev_id: str, packet_data: dict, serial: int) -> bytes:
         fields.extend(telemetry_fields)
     
     elif hdr == "ALT":
-        alert_mod = str(geo_fence_id) if alert_id in [5, 6] and geo_fence_id is not None else ""
+        alert_mod = str(geo_fence_id) if suntech_alert_id in [5, 6] and geo_fence_id is not None else ""
         
-        fields.extend([str(alert_id), alert_mod, "", ""]) # ALERT_ID, ALERT_MOD, ALERT_DATA, RESERVED
+        fields.extend([str(suntech_alert_id), alert_mod, "", ""]) # ALERT_ID, ALERT_MOD, ALERT_DATA, RESERVED
         fields.extend(telemetry_fields)
     
     packet = ";".join(fields)
