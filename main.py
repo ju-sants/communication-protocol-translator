@@ -1,6 +1,9 @@
 import threading
 import socket
 import importlib
+from dotenv import load_dotenv
+load_dotenv()
+
 from app.config.settings import settings
 from app.core.logger import get_logger
 
