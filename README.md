@@ -8,11 +8,11 @@ A força deste projeto reside em sua arquitetura inteligente e desacoplada, que 
 
 *   **Arquitetura "Plug-and-Play"**: Adicionar suporte a um novo protocolo é tão simples quanto criar um novo diretório. A estrutura modular isola completamente a lógica de cada protocolo, permitindo que o sistema cresça sem complexidade adicional. O orquestrador em [`main.py`](main.py) carrega dinamicamente cada protocolo configurado em [`app/config/settings.py`](app/config/settings.py), iniciando listeners dedicados em threads separadas.
 
-*   **Tradução para um Dicionário Universal**: A genialidade do sistema está na sua camada de `mapper` (ex: [`app/src/protocols/gt06/mapper.py`](app/src/protocols/gt06/mapper.py)). Cada `mapper` converte o dialeto específico de seu protocolo para um **dicionário Python padronizado**. Isso significa que a lógica de saída (o módulo Suntech) não precisa saber nada sobre os protocolos de entrada, garantindo um desacoplamento total.
+*   **Tradução de Múltiplos Protocolos de Entrada para Múltiplos Protocolos de Saída**: A genialidade do sistema está na sua camada de `mapper` (ex: [`app/src/protocols/gt06/mapper.py`](app/src/protocols/gt06/mapper.py)). Cada `mapper` converte o dialeto específico de seu protocolo para um **dicionário Python padronizado**. A camada de `output` (ex: [`app/src/output/suntech/utils.py`](app/src/output/suntech/utils.py)) utiliza esse dicionário para construir pacotes em múltiplos formatos de saída, como **Suntech** e **GT06**. Isso significa que a lógica de saída não precisa saber nada sobre os protocolos de entrada, garantindo um desacoplamento total.
 
 *   **Geração de Eventos com Estado (Inteligência Agregada)**: O gateway não é um tradutor "burro". Utilizando o Redis ([`app/services/redis_service.py`](app/services/redis_service.py)), ele armazena o estado de cada dispositivo (como ignição ligada/desligada). Ao receber um novo pacote, ele compara o estado atual com o anterior e pode **gerar novos eventos de alerta** (ex: "Alerta de Ignição Ligada") que não existiam no protocolo original, agregando valor e inteligência aos dados brutos.
 
-*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente inteligente. Quando a plataforma principal envia um comando no formato Suntech, o [`app/src/connection/main_server_connection.py`](app/src/connection/main_server_connection.py) usa o Redis para identificar o protocolo de origem do dispositivo de destino. Em seguida, ele invoca o `builder` específico daquele protocolo (ex: [`app/src/protocols/gt06/builder.py`](app/src/protocols/gt06/builder.py)) para construir e enviar o comando no "idioma" nativo do rastreador.
+*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente inteligente. Quando a plataforma principal envia um comando, o [`app/src/connection/main_server_connection.py`](app/src/connection/main_server_connection.py) usa o Redis para identificar o protocolo de origem do dispositivo de destino. Em seguida, ele invoca o `builder` específico daquele protocolo (ex: [`app/src/protocols/gt06/builder.py`](app/src/protocols/gt06/builder.py)) para construir e enviar o comando no "idioma" nativo do rastreador.
 
 ## Arquitetura do Sistema
 
@@ -28,8 +28,8 @@ graph TD
     B -- Bytes Brutos --> C{Handler};
     C -- Pacote Bruto --> D(Processor);
     D -- Dados Dissecados --> E(Mapper);
-    E -- Dicionário Padrão --> F(Suntech Utils);
-    F -- String Formato Suntech --> G(Main Server Connection);
+    E -- Dicionário Padrão --> F(Output Utils);
+    F -- Pacote de Saída Formatado --> G(Main Server Connection);
     G -- Pacote TCP --> H[Plataforma Principal];
 
     subgraph "Módulo de Protocolo (Ex: GT06, JT808)"
@@ -50,7 +50,7 @@ Este diagrama ilustra como os comandos são enviados da plataforma de volta para
 
 ```mermaid
 graph TD
-    A[Plataforma Principal] -- Comando Suntech --> B(Main Server Connection);
+    A[Plataforma Principal] -- Comando --> B(Main Server Connection);
     B -- Consulta Protocolo (DevID) --> C{Redis};
     C -- Retorna Protocolo (ex: 'gt06') --> B;
     B -- Comando + Protocolo --> D(Roteador de Comandos);
@@ -80,6 +80,7 @@ Para cada rastreador conectado ou que já se conectou, um hash é mantido no Red
 | Campo                  | Tipo      | Descrição                                                                         | Exemplo             |
 | :--------------------- | :-------- | :-------------------------------------------------------------------------------- | :------------------ |
 | `protocol`             | `string`  | O protocolo que o dispositivo utiliza (ex: `gt06`, `jt808`, `vl01`, `nt40`).        | `"gt06"`            |
+| `output_protocol`      | `string`  | O protocolo de saída que o dispositivo utiliza (ex: `suntech`, `gt06`).        | `"suntech"`            |
 | `imei`                 | `string`  | O IMEI do dispositivo.                                                            | `"358204012345678"` |
 | `last_serial`          | `integer` | O último número de série do pacote recebido do dispositivo.                       | `"12345"`           |
 | `last_active_timestamp`| `string`  | Timestamp UTC da última vez que o dispositivo enviou qualquer tipo de pacote (ISO 8601). | `"2023-10-27T10:35:00.123456+00:00"` |
@@ -118,13 +119,20 @@ Para cada dispositivo, uma lista é mantida no Redis contendo os pacotes brutos 
 | Campo            | Tipo      | Descrição                                         | Exemplo                       |
 | :--------------- | :-------- | :------------------------------------------------ | :---------------------------- |
 | `raw_packet`     | `string`  | O pacote original recebido do rastreador (hex).   | `"78780d01..."`               |
-| `suntech_packet` | `string`  | O pacote traduzido para o formato Suntech.        | `">STT,IMEI,..."`             |
+| `translated_packet` | `string`  | O pacote traduzido para o formato de saída.        | `">STT,IMEI,..."` ou `"7878..."` |
 
 ## Protocolos Suportados
+
+### Entrada
 
 *   **GT06**: Um dos protocolos mais comuns em dispositivos de rastreamento genéricos.
 *   **JT/T 808**: Um protocolo padrão robusto, amplamente utilizado em veículos comerciais.
 *   **VL01**: Protocolo específico com gerenciamento avançado de dados no servidor.
+
+### Saída
+
+*   **Suntech**
+*   **GT06**
 
 
 ## Endpoints da API
@@ -240,17 +248,17 @@ Exemplo de Resposta:
 ```
 
 ### `GET /trackers/<dev_id>/history`
-Recupera o histórico de pacotes (brutos e traduzidos para Suntech) para um rastreador específico.
+Recupera o histórico de pacotes (brutos e traduzidos) para um rastreador específico.
 Exemplo de Resposta:
 ```json
 [
   {
     "raw_packet": "7878...",
-    "suntech_packet": ">STT..."
+    "translated_packet": ">STT..."
   },
   {
     "raw_packet": "7878...",
-    "suntech_packet": ">ALT..."
+    "translated_packet": ">ALT..."
   }
 ]
 ```
@@ -263,7 +271,7 @@ Exemplo de Resposta:
 ```
 
 ### `GET /sessions/main-server`
-Retorna uma lista dos IDs de dispositivos com sessões ativas com o servidor principal Suntech.
+Retorna uma lista dos IDs de dispositivos com sessões ativas com o servidor principal.
 Exemplo de Resposta:
 ```json
 ["IMEI_RASTREADOR_1", "IMEI_RASTREADOR_3"]
@@ -299,8 +307,10 @@ Exemplo de Resposta:
     Crie um arquivo `.env` na raiz do projeto e preencha as variáveis de ambiente. Você pode usar o arquivo `.env.example` como modelo.
     ```
     LOG_LEVEL=INFO
-    MAIN_SERVER_HOST=127.0.0.1
-    MAIN_SERVER_PORT=12345
+    SUNTECH_MAIN_SERVER_HOST=127.0.0.1
+    SUNTECH_MAIN_SERVER_PORT=12345
+    GT06_MAIN_SERVER_HOST=127.0.0.1
+    GT06_MAIN_SERVER_PORT=54321
     REDIS_DB_MAIN=2
     REDIS_PASSWORD=...
     REDIS_HOST=127.0.0.1
@@ -318,7 +328,7 @@ O servidor iniciará os listeners para todos os protocolos definidos em [`app/co
 
 ## Como Adicionar um Novo Protocolo
 
-A arquitetura foi pensada para que a adição de novos protocolos seja um processo simples e direto:
+### Protocolo de Entrada
 
 1.  **Crie o Diretório do Protocolo:**
     Dentro de `app/src/protocols/`, crie um novo diretório com o nome do seu protocolo (ex: `novo_protocolo`).
@@ -331,9 +341,9 @@ A arquitetura foi pensada para que a adição de novos protocolos seja um proces
     *   `builder.py`: Constrói pacotes no idioma nativo do protocolo para enviar respostas e comandos.
 
 3.  **Registre o Protocolo:**
-    Abra o arquivo [`app/config/settings.py`](app/config/settings.py) e adicione a configuração do seu novo protocolo no dicionário `PROTOCOLS`:
+    Abra o arquivo [`app/config/settings.py`](app/config/settings.py) e adicione a configuração do seu novo protocolo no dicionário `INPUT_PROTOCOL_HANDLERS`:
     ```python
-    PROTOCOLS = {
+    INPUT_PROTOCOL_HANDLERS = {
         # ... protocolos existentes
         "novo_protocolo": {
             "port": 65434,  # Escolha uma porta livre
@@ -343,7 +353,35 @@ A arquitetura foi pensada para que a adição de novos protocolos seja um proces
     ```
 
 4.  **Habilite a Tradução Reversa de Comandos:**
-    Em [`app/src/connection/main_server_connection.py`](app/src/connection/main_server_connection.py), importe a função `process_suntech_command` do seu novo `builder` e adicione-a ao dicionário `COMMAND_PROCESSORS`.
+    Em [`app/config/settings.py`](app/config/settings.py), importe a função `process_suntech_command` do seu novo `builder` e adicione-a ao dicionário `OUTPUT_PROTOCOL_COMMAND_PROCESSORS`.
+
+### Protocolo de Saída
+
+1.  **Crie o Diretório do Protocolo:**
+    Dentro de `app/src/output/`, crie um novo diretório com o nome do seu protocolo (ex: `novo_protocolo`).
+
+2.  **Implemente os Módulos Essenciais:**
+    Crie o arquivo `utils.py` dentro do novo diretório, seguindo a estrutura dos módulos `suntech` ou `gt06`. Ele deve conter, no mínimo, as seguintes funções:
+    *   `build_login_packet`: Constrói o pacote de login.
+    *   `build_location_packet`: Constrói o pacote de localização.
+    *   `build_heartbeat_packet`: Constrói o pacote de heartbeat.
+
+3.  **Registre o Protocolo:**
+    Abra o arquivo [`app/config/settings.py`](app/config/settings.py) e adicione a configuração do seu novo protocolo nos dicionários `OUTPUT_PROTOCOL_PACKET_BUILDERS` e `OUTPUT_PROTOCOL_HOST_ADRESSES`:
+    ```python
+    OUTPUT_PROTOCOL_PACKET_BUILDERS = {
+        # ... protocolos existentes
+        "novo_protocolo": {
+            "location": build_novo_protocolo_location_packet,
+            "heartbeat": build_novo_protocolo_heartbeat_packet,
+        }
+    }
+
+    OUTPUT_PROTOCOL_HOST_ADRESSES = {
+        # ... protocolos existentes
+        "novo_protocolo": (os.getenv("NOVO_PROTOCOLO_MAIN_SERVER_HOST"), os.getenv("NOVO_PROTOCOLO_MAIN_SERVER_PORT"))
+    }
+    ```
 
 ## Tecnologias Utilizadas
 
