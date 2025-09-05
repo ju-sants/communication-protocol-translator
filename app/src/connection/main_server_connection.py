@@ -100,18 +100,19 @@ class MainServerSession:
                 
                 device_info = redis_client.hgetall(self.dev_id)
                 protocol_type = device_info.get("protocol")
+                output_protocol = device_info.get("output_protocol")
 
                 if not protocol_type:
                     logger.error(f"Protocolo não encontrado no Redis para o device_id={self.dev_id}. Impossível traduzir comando.")
                     continue
 
-                processor_func = COMMAND_PROCESSORS.get(protocol_type)
+                processor_func = settings.OUTPUT_PROTOCOL_COMMAND_PROCESSORS.get(output_protocol).get(protocol_type)
 
                 if not processor_func:
-                    logger.error(f"Processador de comando para o protocolo '{protocol_type}' não encontrado.")
+                    logger.error(f"Processador de comando para o protocolo '{str(protocol_type).upper()}' com o protocolo de saida '{str(output_protocol).upper()}' não encontrado.")
                     continue
 
-                logger.info(f"Roteando comando para o processador do protocolo: '{protocol_type}'")
+                logger.info(f"Roteando comando para o processador do protocolo: '{str(protocol_type).upper()}' com protocolo de saida '{str(output_protocol).upper()}'")
                 processor_func(data, self.dev_id, self.serial)
 
 
