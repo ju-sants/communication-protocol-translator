@@ -6,7 +6,7 @@ from app.services.redis_service import get_redis
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-def build_suntech_mnt_packet(dev_id_str: str) -> bytes:
+def build_login_packet(dev_id_str: str) -> bytes:
     """Constrói um pacote de Manutenção (MNT) para 'apresentar' o dispositivo."""
 
     device_info = redis_client.hgetall(dev_id_str)
@@ -98,19 +98,19 @@ def build_location_packet(dev_id: str, location_data: dict, serial: int) -> byte
     
     packet = ";".join(fields)
     logger.debug(f"Pacote Suntech final construído: {packet}")
-    return packet
+    return packet.encode("ascii")
 
 
-def build_suntech_alv_packet(dev_id: str) -> str:
+def build_heartbeat_packet(dev_id: str, *args) -> str:
     """Constrói um pacote Keep-Alive (ALV) da Suntech."""
     dev_id_normalized = ''.join(filter(str.isdigit, dev_id))
     cutted_dev_id = dev_id_normalized[-10:]
 
     packet = f"ALV;{cutted_dev_id}"
     logger.debug(f"Construído pacote Suntech ALV: {packet}")
-    return packet
+    return packet.encode("ascii")
 
-def build_suntech_res_packet(dev_id: str, command_parts: list, location_data: dict) -> str:
+def build_reply_packet(dev_id: str, command_parts: list, location_data: dict) -> str:
     """
     Constrói um pacote de Resposta (RES) rico em dados, como o observado nos logs.
     """
