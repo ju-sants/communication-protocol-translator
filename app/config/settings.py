@@ -63,6 +63,37 @@ class Settings(BaseSettings):
         }
     }
 
+     # -------------- Dicionários Globais Para IDs de Alerta ----------------------
+    GLOBAL_ALERT_ID_DICTIONARY = {
+        "suntech": {
+            1: 6501, 3: 6503, 4: 6504, 5: 6505, 6: 6506, 14: 6514, 15: 6515, 33: 6533, 34: 6534,
+            41: 6541, 42: 6542, 46: 6546, 47: 6547, 73: 6573, 147: 6647
+        },
+        "gt06": {
+            0x01: 6542, 0x02: 6541, 0x19: 6514, 0x03: 6515, 0x06: 6501, 0xF0: 6546,
+            0xF1: 6547, 0x04: 6506, 0x05: 6505, 0x13: 6647, 0x14: 6573, 0xFE: 6533,
+            0xFF: 6534
+        },
+        "jt808": {
+            0: 6542, 1: 6501, 5: 6503, 8: 6541, 27: 6573, 20: 6505, 21: 6505
+        },
+        "vl01": {
+            0x01: 6542, 0x02: 6541, 0x03: 6515, 0x04: 6506, 0x05: 6505, 0x06: 6501,
+            0x19: 6514, 0xF0: 6546, 0xF1: 6547, 0x13: 6647, 0x14: 7653, 0xFE: 6533,
+            0xFF: 6534
+        },
+        "nt40": {
+            0x01: 6542, 0x02: 6541, 0x03: 6515, 0x04: 33, 0x05: 6534, 0x12: 6647
+        }
+    }
+
+    # Mapeamento reverso para consultas mais rápidas
+    REVERSE_GLOBAL_ALERT_ID_DICTIONARY = {
+        protocol: {v: k for k, v in alerts.items()}
+        for protocol, alerts in GLOBAL_ALERT_ID_DICTIONARY.items()
+    }
+
+
     # ---------- Utilitários para os protocolos de saída --------------------
     OUTPUT_PROTOCOL_PACKET_BUILDERS: Dict[str, Dict[str, Any]] = {
         "suntech": {
