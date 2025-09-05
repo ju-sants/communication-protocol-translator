@@ -235,7 +235,7 @@ def send_to_main_server(
     if not output_protocol: output_protocol = "suntech"
 
     output_packet_builder = settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get(type)
-    output_packet = output_packet_builder(dev_id, packet_data, serial)
+    output_packet = output_packet_builder(dev_id, packet_data, serial, type)
 
     if output_protocol == "suntech":
         str_output_packet = output_packet.decode("ascii")
