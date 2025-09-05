@@ -177,7 +177,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     
     handle_alarm_from_location(dev_id_str, serial, location_data, raw_packet_hex)
 
-    handle_ignition_change(dev_id_str, serial, location_data, raw_packet_hex)
+    handle_ignition_change(dev_id_str, serial, location_data, raw_packet_hex, "NT40")
     
     last_location_data = copy.deepcopy(location_data)
     

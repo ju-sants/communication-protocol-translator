@@ -109,8 +109,7 @@ def map_and_forward(dev_id_str: str, serial: int, msg_id: int, body: bytes, raw_
         redis_client.hset(dev_id_str, "power_status", (location_data.get('status_bits', 0) >> 8) & 0b1) # Main power status is bit 8
 
         # Funções que geram eventos adicionais (enviam seus próprios pacotes)
-        handle_ignition_change(dev_id_str, serial, location_data)
-        handle_power_change(dev_id_str, serial, location_data)
+        handle_ignition_change(dev_id_str, serial, location_data, "JT808")
 
         # Agora, gera o pacote principal para a localização/alerta atual
         alert_triggered = False

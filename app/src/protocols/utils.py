@@ -1,6 +1,5 @@
 from app.services.redis_service import get_redis
 from app.core.logger import get_logger
-from app.src.output.suntech.utils import build_suntech_packet
 from app.src.connection.main_server_connection import send_to_main_server
 
 redis_client = get_redis()
@@ -17,7 +16,7 @@ SUNTECH_GEOFENCE_ENTER_ALERT_ID: int = 6
 SUNTECH_GEOFENCE_EXIT_ALERT_ID: int = 5
 
 
-def handle_ignition_change(dev_id_str: str, serial, location_data: dict, raw_packet_hex: str):
+def handle_ignition_change(dev_id_str: str, serial, location_data: dict, raw_packet_hex: str, original_protocol: str):
     """
     Verifica se houve mudança no status da ignição e envia o alerta correspondente.
     """
@@ -32,26 +31,25 @@ def handle_ignition_change(dev_id_str: str, serial, location_data: dict, raw_pac
 
         # Se o estado mudou, gera um alerta
         if previous_acc_status is not None and previous_acc_status != current_acc_status:
-            ignition_alert_packet = None
+
+            location_data["hdr"] = "ALT"
+            location_data["is_realtime"] = True
             if current_acc_status == 1:
                 # Mudou de OFF para ON
                 alert_id = SUNTECH_IGNITION_ON_ALERT_ID
                 logger.info(f"EVENTO DETECTADO: Ignição Ligada para device_id={dev_id_str}")
-                ignition_alert_packet = build_suntech_packet(
-                    "ALT", dev_id_str, location_data, serial, is_realtime=True, alert_id=alert_id
-                )
+
+                location_data["alert_id"] = alert_id
 
             else:
                 # Mudou de ON para OFF
                 alert_id = SUNTECH_IGNITION_OFF_ALERT_ID
                 logger.info(f"EVENTO DETECTADO: Ignição Desligada para device_id={dev_id_str}")
-                ignition_alert_packet = build_suntech_packet(
-                    "ALT", dev_id_str, location_data, serial, is_realtime=True, alert_id=alert_id
-                )
-            
+
+                location_data["alert_id"] = alert_id
+
             # Envia o pacote de alerta de ignição para o servidor principal
-            if ignition_alert_packet:
-                send_to_main_server(dev_id_str, serial, ignition_alert_packet.encode('ascii'), raw_packet_hex)
+            send_to_main_server(dev_id_str, location_data, serial, raw_packet_hex, original_protocol=original_protocol)
 
         # Atualiza o estado no Redis para a próxima verificação
         redis_client.hset(dev_id_str, 'acc_status', current_acc_status)

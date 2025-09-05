@@ -222,11 +222,36 @@ class MainServerSessionsManager:
 
 sessions_manager = MainServerSessionsManager()
 
-def send_to_main_server(dev_id_str: str, serial: str, suntech_packet: bytes, raw_packet_hex: str):
-    add_packet_to_history(dev_id_str, raw_packet_hex, suntech_packet.decode('ascii', errors='ignore'))
+def send_to_main_server(
+        dev_id: str, location_data: dict = None, serial: str = None, 
+        raw_packet_hex: str = None, original_protocol: str = None, 
+        type: str = "location", packet: bytes = None, **reply_command_args
+    ):
+    """
+    Executa lógica de construção de pacotes se o mesmo não for fornecido, com base no protocolo de saída do dispositivo e o tipo de pacote especificado.
+    """
 
-    output_protocol = redis_client.hget(dev_id_str, "output_protocol")
-    if not output_protocol: output_protocol = "suntech"
-    
-    session = sessions_manager.get_session(dev_id_str, serial, output_protocol)
-    session.send(suntech_packet)
+    if not packet:
+        output_protocol = redis_client.hget(dev_id, "output_protocol")
+        if not output_protocol: output_protocol = "suntech"
+
+        output_packet_builder = settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get(type)
+        output_packet = output_packet_builder(dev_id, location_data, serial)
+
+        if output_protocol == "suntech":
+            str_output_packet = output_packet.decode("ascii")
+        else:
+            str_output_packet = output_packet.hex()
+
+    else:
+        output_packet = packet
+
+
+    # Lógica de envios
+    if output_packet:
+        logger.info(f"Pacote de {type.upper()} {output_protocol.upper()} traduzido de pacote {str(original_protocol).upper()}:\n{output_packet.hex()}")
+
+        add_packet_to_history(dev_id, raw_packet_hex, str_output_packet)
+        
+        session = sessions_manager.get_session(dev_id, serial, output_protocol)
+        session.send(output_packet)

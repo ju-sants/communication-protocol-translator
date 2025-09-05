@@ -21,8 +21,15 @@ def build_suntech_mnt_packet(dev_id_str: str) -> bytes:
     logger.info(f"Construído pacote de apresentação MNT, pacote={packet_str}")
     return packet_str.encode('ascii')
 
-def build_suntech_packet(hdr: str, dev_id: str, location_data: dict, serial: int, is_realtime: bool, alert_id: int = None, geo_fence_id: int = None, voltage_stored: bool = False) -> str:
+def build_location_packet(dev_id: str, location_data: dict, serial: int) -> bytes:
     """Função central para construir pacotes Suntech STT e ALT, agora com suporte a ID de geocerca."""
+    
+    hdr = location_data.get("hdr")
+    is_realtime = location_data.get("is_realtime")
+    alert_id = location_data.get("alert_id")
+    geo_fence_id = location_data.get("geo_fence_id")
+    voltage_stored = location_data.get("voltage_stored")
+
     logger.debug(
         f"Construindo pacote Suntech: HDR={hdr}, DevID={dev_id}, Realtime={is_realtime}, "
         f"AlertID={alert_id}, GeoFenceID={geo_fence_id}, LocationData={location_data}"
