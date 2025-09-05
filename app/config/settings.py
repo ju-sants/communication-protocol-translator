@@ -15,7 +15,7 @@ from app.src.output.gt06.utils import (
     build_alarm_packet as build_gt06_alarm_packet
 )
 
-from app.src.protocols.jt808.builder import process_suntech_command as process_suntech_command_to_jt808
+# from app.src.protocols.jt808.builder import process_suntech_command as process_suntech_command_to_jt808
 from app.src.protocols.gt06.builder import process_suntech_command as process_suntech_command_to_gt06
 from app.src.protocols.vl01.builder import process_suntech_command as process_suntech_command_to_vl01
 from app.src.protocols.nt40.builder import process_suntech_command as process_suntech_command_to_nt40
@@ -113,7 +113,7 @@ class Settings(BaseSettings):
 
     OUTPUT_PROTOCOL_COMMAND_PROCESSORS: Dict[str, Dict[str, Any]] = {
         "suntech": {
-            "jt808": process_suntech_command_to_jt808,
+            # "jt808": process_suntech_command_to_jt808,
             "gt06": process_suntech_command_to_gt06,
             "vl01": process_suntech_command_to_vl01,
             "nt40": process_suntech_command_to_nt40
