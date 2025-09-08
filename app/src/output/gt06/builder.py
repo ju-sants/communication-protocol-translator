@@ -9,7 +9,7 @@ from app.config.settings import settings
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-def build_location_packet(packet_data: dict, protocol_number: int, serial_number: int, *args) -> bytes:
+def build_location_packet(dev_id, packet_data: dict, protocol_number: int, serial_number: int, *args) -> bytes:
     """
     Constrói um pacote de localização GT06 a partir de dados de packet_data.
     Suporta diferentes protocol_number (0x22, 0x32, 0xA0).
