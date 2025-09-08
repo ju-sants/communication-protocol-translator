@@ -2,13 +2,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Dict, Any
 import os
 
-from app.src.output.suntech.utils import (
+from app.src.output.suntech.builder import (
     build_location_packet as build_suntech_alert_location_packet,
     build_heartbeat_packet as build_suntech_heartbeat_packet, 
     build_reply_packet as build_suntech_reply_packet
 )
 
-from app.src.output.gt06.utils import (
+from app.src.output.gt06.builder import (
     build_location_packet as build_gt06_location_packet,
     build_heartbeat_packet as build_gt06_heartbeat_packet,
     build_reply_packet as build_gt06_reply_packet,

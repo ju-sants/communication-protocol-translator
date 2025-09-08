@@ -6,8 +6,8 @@ from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.services.history_service import add_packet_to_history
 from app.config.settings import settings
-from app.src.output.suntech.utils import build_login_packet as build_suntech_login_packet
-from app.src.output.gt06.utils import build_login_packet as build_gt06_login_packet
+from app.src.output.suntech.builder import build_login_packet as build_suntech_login_packet
+from app.src.output.gt06.builder import build_login_packet as build_gt06_login_packet
 
 logger = get_logger(__name__)
 redis_client = get_redis()
