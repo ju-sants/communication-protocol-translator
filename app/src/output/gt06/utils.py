@@ -293,3 +293,49 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
 
     logger.debug(f"Construído pacote de Alarme GT06 (Protocol {hex(protocol_number)}): {final_packet.hex()}")
     return final_packet
+
+def build_reply_packet(dev_id: str, packet_data: dict, serial_number: int, *args) -> bytes:
+    """
+    Constrói um pacote de RESPOSTA de um comando, enviado do terminal para o servidor.
+    Protocolo 0x15.
+    """
+    protocol_number = 0x15
+
+    command_reply = packet_data.get("REPLY")
+
+    command_bytes = command_reply.encode('ascii')
+    
+    server_flag = b"\x00\x00\x00\x01"
+
+    len_of_command = len(server_flag) + len(command_bytes)
+    len_of_command_bytes = struct.pack(">B", len_of_command)
+    
+    language_bytes = struct.pack(">H", 0x0002)
+
+    # O corpo do conteúdo da informação
+    information_content = len_of_command_bytes + server_flag + command_bytes + language_bytes
+
+    # 1 (protocolo) + len(information_content) + 2 (serial) + 2 (CRC)
+    packet_length_value = 1 + len(information_content) + 2 + 2
+    packet_length_bytes = struct.pack(">B", packet_length_value)
+    
+    # Montando os dados para o cálculo do CRC
+    data_for_crc = (
+        packet_length_bytes +
+        struct.pack(">B", protocol_number) +
+        information_content +
+        struct.pack(">H", serial_number)
+    )
+    
+    crc = crc_itu(data_for_crc)
+    crc_bytes = struct.pack(">H", crc)
+
+    final_packet = (
+        b"\x78\x78" +
+        data_for_crc +
+        crc_bytes +
+        b"\x0d\x0a"
+    )
+
+    logger.debug(f"Construído pacote de Resposta do Terminal GT06 (Protocol {hex(protocol_number)}): {final_packet.hex()}")
+    return final_packet
