@@ -19,13 +19,6 @@ def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | 
         logger.warning(f"Pacote NT40 recebido muito curto para processar: {packet_body.hex()}")
         return None, None
 
-    # Configurando protocolo de saída
-    if dev_id_str:
-        if redis_client.hget(dev_id_str, "is_hybrid"):
-            redis_client.hset(dev_id_str, "output_protocol", "gt06")
-        else:
-            redis_client.hset(dev_id_str, "output_protocol", "suntech")
-
     # CRC
     data_to_check = packet_body[:-2]
     received_crc = struct.unpack('>H', packet_body[-2:])[0]

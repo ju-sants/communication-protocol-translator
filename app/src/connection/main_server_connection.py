@@ -232,7 +232,14 @@ def send_to_main_server(
     """
 
     output_protocol = redis_client.hget(dev_id, "output_protocol")
-    if not output_protocol: output_protocol = "suntech"
+    if not output_protocol:
+        if redis_client.hget(dev_id, "is_hybrid"):
+            output_protocol = "gt06"
+        else:
+            output_protocol = "suntech"
+        
+        redis_client.hset(dev_id, "output_protocol", output_protocol)
+    
 
     output_packet_builder = output_protocol_settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get(type)
     output_packet = output_packet_builder(dev_id, packet_data, serial, type)

@@ -18,9 +18,6 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, is_x79: bool = Fa
         logger.warning(f"Pacote VL01 recebido muito curto para processar: {packet_body.hex()}")
         return None, None
     
-    if dev_id_str:
-        redis_client.hset(dev_id_str, "output_protocol", "gt06")
-
     # CRC
     data_to_check = packet_body[:-2]
     received_crc = struct.unpack('>H', packet_body[-2:])[0]
