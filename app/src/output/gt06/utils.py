@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from app.core.logger import get_logger
 from app.src.protocols.gt06.utils import crc_itu
 from app.services.redis_service import get_redis
+from app.config.settings import settings
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -188,3 +189,107 @@ def build_heartbeat_packet(dev_id: str, *args) -> bytes:
     )
 
     return full_packet
+
+
+def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args) -> bytes:
+    """
+    Constrói um pacote de alarme GT06 a partir dos dados em packet_data.
+    O pacote de alarme é um pacote de localização com informações de status adicionais.
+    """
+
+    protocol_number = 0x16
+
+    timestamp: datetime = packet_data.get("timestamp", datetime.now(timezone.utc))
+    time_bytes = struct.pack(
+        ">BBBBBB",
+        timestamp.year % 100,
+        timestamp.month,
+        timestamp.day,
+        timestamp.hour,
+        timestamp.minute,
+        timestamp.second,
+    )
+
+    satellites = packet_data.get("satellites", 0) & 0x0F
+    gps_info_byte = struct.pack(">B", satellites)
+
+    latitude_val = packet_data.get("latitude", 0.0)
+    longitude_val = packet_data.get("longitude", 0.0)
+    
+    lat_raw = int(abs(latitude_val) * 1800000)
+    lon_raw = int(abs(longitude_val) * 1800000)
+    lat_lon_bytes = struct.pack(">II", lat_raw, lon_raw)
+
+    speed_kmh = int(packet_data.get("speed_kmh", 0))
+    speed_kmh_bytes = struct.pack(">B", speed_kmh)
+
+    direction = int(packet_data.get("direction", 0)) & 0x03FF
+    gps_fixed = 1 if packet_data.get("gps_fixed", False) else 0
+    is_latitude_north = 1 if latitude_val >= 0 else 0
+    is_longitude_west = 1 if longitude_val < 0 else 0
+
+    course_status = (gps_fixed << 12) | (is_longitude_west << 11) | (is_latitude_north << 10) | direction
+    course_status_bytes = struct.pack(">H", course_status)
+
+    gps_content = time_bytes + gps_info_byte + lat_lon_bytes + speed_kmh_bytes + course_status_bytes
+
+
+    # Montando início do pacote
+                                # LBS Content
+    content_body = gps_content + (b"\x00" * 8)
+
+    
+    output_status = redis_client.hget(dev_id, "last_output_status")
+    output_status = 0 if not output_status else output_status
+
+    gps_tracking = 1
+    charge = 1
+
+    acc = redis_client.hget(dev_id, "acc_status")
+    acc = 0 if not acc else acc
+
+    terminal_info_byte = (output_status << 7) | (gps_tracking << 6) | (charge << 2) | (acc << 1) | 1
+    terminal_info_bytes = struct.pack(">B", terminal_info_byte)
+
+    voltage_level = 6
+    voltage_level_bytes = struct.pack(">B", voltage_level)
+
+    gsm_strength = 4
+    gsm_strength_bytes = struct.pack(">B", gsm_strength)
+
+    
+    global_alarm_id = packet_data.get("global_alarm_id", "normal")
+    alarm_id = settings.REVERSE_GLOBAL_ALERT_ID_DICTIONARY.get("gt06").get(global_alarm_id)
+
+    if not alarm_id:
+        logger.info(f"Impossível continuar, alarme id não encontrado para dev_id={dev_id}")
+        return
+     
+    language = 0x02
+    alarm_language_bytes = struct.pack(">BB", alarm_id, language)
+    
+    status_content = terminal_info_bytes + voltage_level_bytes + gsm_strength_bytes + alarm_language_bytes
+
+
+    # Montagem Incremental do Pacote
+    content_body += status_content
+
+
+    # 1 (protocol_number) + len(content_body) + 2 (serial_number) + 2 (CRC)
+    length_value = 1 + len(content_body) + 2 + 2
+    length_byte = struct.pack(">B", length_value)
+
+    data_for_crc = length_byte + struct.pack(">B", protocol_number) + content_body + struct.pack(">H", serial_number)
+    
+    crc = crc_itu(data_for_crc)
+    crc_bytes = struct.pack(">H", crc)
+
+    final_packet = (
+        b"\x78\x78" +
+        data_for_crc +
+        crc_bytes +
+        b"\x0d\x0a"
+    )
+
+    logger.debug(f"Construído pacote de Alarme GT06 (Protocol {hex(protocol_number)}): {final_packet.hex()}")
+    return final_packet
