@@ -35,6 +35,7 @@ def get_all_trackers_data():
             
             device_data = redis_client.hgetall(key)
             device_data['is_connected'] = tracker_sessions_manager.exists(key, use_redis=True)
+            device_data["output_protocol"] = device_data.get("output_protocol") or "suntech"
             all_data[key] = device_data
         return jsonify(all_data)
     except Exception as e:
@@ -203,6 +204,7 @@ def get_tracker_details(dev_id):
             "device_id": dev_id,
             "imei": device_data.get('imei', dev_id),
             "protocol": device_data.get('protocol'),
+            "output_protocol": device_data.get("output_protocol") or "suntech",
             "is_connected_translator": tracker_sessions_manager.exists(dev_id, use_redis=True),
             "is_connected_main_server": dev_id in sessions_manager._sessions,
             "last_active_timestamp": device_data.get('last_active_timestamp'),
