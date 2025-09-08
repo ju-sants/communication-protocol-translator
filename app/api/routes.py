@@ -48,7 +48,7 @@ def get_trackers_summary():
     Returns high-level statistics for all trackers.
     """
     try:
-        all_tracker_keys = [key.decode('utf-8') for key in redis_client.keys('*') if redis_client.type(key) == b'hash']
+        all_tracker_keys = [key for key in redis_client.keys('*') if redis_client.type(key) == 'hash']
         
         total_registered_trackers = len(all_tracker_keys)
         total_active_translator_sessions = len(tracker_sessions_manager.active_trackers)
@@ -74,7 +74,7 @@ def get_trackers_summary():
         
         # Calculate total packets in history
         total_packets_in_history = 0
-        history_keys = [key.decode('utf-8') for key in redis_client.keys('history:*')]
+        history_keys = [key for key in redis_client.keys('history:*')]
         for history_key in history_keys:
             total_packets_in_history += redis_client.llen(history_key)
 
