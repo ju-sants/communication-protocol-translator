@@ -252,7 +252,7 @@ def send_to_main_server(
 
     # Lógica de envios
     if output_packet:
-        logger.info(f"Pacote de {type.upper()} {output_protocol.upper()} traduzido de pacote {str(original_protocol).upper()}:\n{output_packet.hex()}")
+        logger.info(f"Pacote de {type.upper()} {output_protocol.upper()} traduzido de pacote {str(original_protocol).upper()}:\n{output_packet}")
 
         add_packet_to_history(dev_id, raw_packet_hex, str_output_packet)
         
