@@ -200,7 +200,7 @@ class MainServerSessionsManager:
 
         return cls._instance
 
-    def get_session(self, dev_id: str, serial: str, output_protocol):
+    def get_session(self, dev_id: str, serial: str, output_protocol) -> MainServerSession:
         with self.lock:
             if dev_id not in self._sessions:
                 logger.info(f"Nenhuma sessão encontrada no MainServerSessionsManager. Criando uma nova. dev_id={dev_id}")
