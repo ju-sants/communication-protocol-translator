@@ -1,7 +1,6 @@
 import json
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from app.src.output.suntech.builder import build_suntech_packet
 from app.src.connection.main_server_connection import send_to_main_server
 
 logger = get_logger(__name__)
@@ -42,14 +41,7 @@ def map_data(raw_data: str):
         last_hybrid_location = {**last_gsm_location, **data}
         last_hybrid_location["voltage"] = 2.22
         last_hybrid_location["satellites"] = 2
-
-        packet = build_suntech_packet(
-            "STT",
-            hybrid_gsm,
-            last_hybrid_location,
-            last_serial,
-            False,
-        )
+        last_gsm_location["is_realtime"] = False
 
         send_to_main_server(hybrid_gsm, last_hybrid_location, last_serial, raw_data.encode("utf-8"), "SATELLITAL")
 
