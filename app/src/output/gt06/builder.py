@@ -154,18 +154,18 @@ def build_heartbeat_packet(dev_id: str, *args) -> bytes:
 
     protocol_number = struct.pack(">B", 0x13)
 
-    last_output_status = redis_client.hget(dev_id, "last_output_status")
-    acc_status = redis_client.hget(dev_id, "acc_status")
-    serial = redis_client.hget(dev_id, "last_serial")
+    last_output_status = redis_client.hget(dev_id, "last_output_status") or "0"
+    acc_status = redis_client.hget(dev_id, "acc_status") or "0"
+    serial = redis_client.hget(dev_id, "last_serial") or "0"
 
-    terminal_info_content = (last_output_status << 7) | (1 << 6) | (1 << 2) | (acc_status << 1) | 1
+    terminal_info_content = (int(last_output_status) << 7) | (1 << 6) | (1 << 2) | (int(acc_status) << 1) | 1
     terminal_info_content_bytes = struct.pack(">B", terminal_info_content)
 
     voltage_level = struct.pack(">B", 6)
     gsm_signal_strenght = struct.pack(">B", 0x04)
     alarm = struct.pack(">B", 0x00)
     language = struct.pack(">B", 0x02)
-    serial = struct.pack(">H", serial)
+    serial = struct.pack(">H", int(serial))
 
     data_for_crc = (
         protocol_number +
@@ -241,16 +241,14 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
     content_body = gps_content + (b"\x00" * 8)
 
     
-    output_status = redis_client.hget(dev_id, "last_output_status")
-    output_status = 0 if not output_status else output_status
+    output_status = redis_client.hget(dev_id, "last_output_status") or "0"
 
     gps_tracking = 1
     charge = 1
 
-    acc = redis_client.hget(dev_id, "acc_status")
-    acc = 0 if not acc else acc
+    acc = redis_client.hget(dev_id, "acc_status") or "0"
 
-    terminal_info_byte = (output_status << 7) | (gps_tracking << 6) | (charge << 2) | (acc << 1) | 1
+    terminal_info_byte = (int(output_status) << 7) | (gps_tracking << 6) | (charge << 2) | (int(acc) << 1) | 1
     terminal_info_bytes = struct.pack(">B", terminal_info_byte)
 
     voltage_level = 6
@@ -260,7 +258,7 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
     gsm_strength_bytes = struct.pack(">B", gsm_strength)
 
     
-    global_alarm_id = packet_data.get("global_alarm_id", "normal")
+    global_alarm_id = packet_data.get("global_alarm_id")
     alarm_id = settings.REVERSE_GLOBAL_ALERT_ID_DICTIONARY.get("gt06").get(global_alarm_id)
 
     if not alarm_id:
