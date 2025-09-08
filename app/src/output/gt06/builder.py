@@ -118,7 +118,9 @@ def build_login_packet(imei: str, serial_number: int) -> bytes:
     Constrói um pacote de login GT06.
     """
     protocol_number = 0x01
-    imei_bcd = imei_to_bcd(imei)
+
+    imei_normalized = ''.join(filter(str.isdigit, imei))
+    imei_bcd = imei_to_bcd(imei_normalized[-10:])
 
     packet_content_for_crc = (
         struct.pack(">B", protocol_number) +
