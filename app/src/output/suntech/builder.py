@@ -22,7 +22,7 @@ def build_login_packet(dev_id_str: str) -> bytes:
     logger.info(f"Construído pacote de apresentação MNT, pacote={packet_str}")
     return packet_str.encode('ascii')
 
-def build_location_packet(dev_id: str, packet_data: dict, serial: int, type: str) -> bytes:
+def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, type: str) -> bytes:
     """Função central para construir pacotes Suntech STT e ALT, agora com suporte a ID de geocerca."""
     
     hdr = "STT" if type == "location" else "ALT" if type == "alert" else ""

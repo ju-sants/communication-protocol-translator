@@ -363,7 +363,7 @@ O servidor iniciará os listeners para todos os protocolos definidos em [`app/co
 2.  **Implemente os Módulos Essenciais:**
     Crie o arquivo `utils.py` dentro do novo diretório, seguindo a estrutura dos módulos `suntech` ou `gt06`. Ele deve conter, no mínimo, as seguintes funções:
     *   `build_login_packet`: Constrói o pacote de login.
-    *   `build_location_packet`: Constrói o pacote de localização.
+    *   `build_location_alarm_packet`: Constrói o pacote de localização.
     *   `build_heartbeat_packet`: Constrói o pacote de heartbeat.
 
 3.  **Registre o Protocolo:**

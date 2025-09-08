@@ -3,7 +3,7 @@ from typing import Dict, Any
 import os
 
 from app.src.output.suntech.builder import (
-    build_location_packet as build_suntech_alert_location_packet,
+    build_location_alarm_packet as build_suntech_alert_location_packet,
     build_heartbeat_packet as build_suntech_heartbeat_packet, 
     build_reply_packet as build_suntech_reply_packet
 )
