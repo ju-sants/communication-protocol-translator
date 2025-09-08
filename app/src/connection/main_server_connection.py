@@ -5,7 +5,7 @@ import time
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.services.history_service import add_packet_to_history
-from app.config.settings import settings
+from app.config.output_protocol_settings import output_protocol_settings
 from app.src.output.suntech.builder import build_login_packet as build_suntech_login_packet
 from app.src.output.gt06.builder import build_login_packet as build_gt06_login_packet
 
@@ -33,7 +33,7 @@ class MainServerSession:
                     logger.info(f"Impossível iniciar conexão com server principal, tipo de protocolo de saída não especificado. dev_id={self.dev_id}")
                     return
                 
-                address = settings.OUTPUT_PROTOCOL_HOST_ADRESSES.get(self.output_protocol)
+                address = output_protocol_settings.OUTPUT_PROTOCOL_HOST_ADRESSES.get(self.output_protocol)
 
                 if not address:
                     logger.info(f"Impossível iniciar conexão com server principal, tipo de protocolo de saída não mapeado. dev_id={self.dev_id}, output_protocol={self.output_protocol}")
@@ -106,7 +106,7 @@ class MainServerSession:
                     logger.error(f"Protocolo não encontrado no Redis para o device_id={self.dev_id}. Impossível traduzir comando.")
                     continue
 
-                processor_func = settings.OUTPUT_PROTOCOL_COMMAND_PROCESSORS.get(output_protocol).get(protocol_type)
+                processor_func = output_protocol_settings.OUTPUT_PROTOCOL_COMMAND_PROCESSORS.get(output_protocol).get(protocol_type)
 
                 if not processor_func:
                     logger.error(f"Processador de comando para o protocolo '{str(protocol_type).upper()}' com o protocolo de saida '{str(output_protocol).upper()}' não encontrado.")
@@ -234,7 +234,7 @@ def send_to_main_server(
     output_protocol = redis_client.hget(dev_id, "output_protocol")
     if not output_protocol: output_protocol = "suntech"
 
-    output_packet_builder = settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get(type)
+    output_packet_builder = output_protocol_settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get(type)
     output_packet = output_packet_builder(dev_id, packet_data, serial, type)
 
     if output_protocol == "suntech":
