@@ -109,26 +109,6 @@ def send_tracker_command(dev_id):
         return jsonify({"error": "Device not found in Redis"}), 404
     
     protocol_type = device_info.get('protocol')
-    
-    response_internal = requests.post(f"http://{protocol_type}.railway.internal:5000/receive_command/{dev_id}", json=data)
-
-    if response_internal.status_code == 200:
-        return jsonify({"status": "Encaminhado ao serviço interno responsável"})
-    else:
-        return jsonify({"status": "error", "error_message": "Não foi possível encaminhar o comando ao serviço interno responsável."})
-@app.route("/receive_command/<string:dev_id>", methods=["POST"])
-def receive_command(dev_id):
-    data = request.get_json()
-    if not data or 'command' not in data:
-        return jsonify({"error": "Command not specified in request body"}), 400
-
-    command_str = data['command']
-    
-    device_info = redis_client.hgetall(dev_id)
-    if not device_info:
-        return jsonify({"error": "Device not found in Redis"}), 404
-
-    protocol_type = device_info.get('protocol')
     serial = int(device_info.get('last_serial', 0))
 
     if not protocol_type:
@@ -163,6 +143,7 @@ def receive_command(dev_id):
             
     except Exception as e:
         return jsonify({"error": f"Failed to send command: {str(e)}"}), 500
+
 @app.route('/trackers/<string:dev_id>/history', methods=['GET'])
 def get_tracker_history(dev_id):
     """
