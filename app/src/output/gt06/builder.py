@@ -57,23 +57,54 @@ def build_location_packet(dev_id, packet_data: dict, serial_number: int, *args) 
     voltage = float(packet_data.get("voltage", 0.0))
     voltage_raw = int(voltage * 100)
 
-    if protocol_number == 0x22:
-        content_body += b'\x00' * 8 # Cellular information bytes to fill up to acc status
+    # Getting the saved LBS information
+    global_data_info = redis_client.hgetall("global_data")
+    mcc = int(global_data_info.get("mcc", 0))
+    mnc = int(global_data_info.get("mnc", 0))
+    lac = int(global_data_info.get("lac", 0))
+    cell_id = int(global_data_info.get("cell_id", 0))
+
+    if protocol_number == 0x12:
+        content_body += struct.pack(">H", mcc)
+        content_body += struct.pack(">B", mnc)
+        content_body += struct.pack(">H", lac)
+        content_body += cell_id.to_bytes(3, "big")
+
+    elif protocol_number == 0x22:
+        content_body += struct.pack(">H", mcc)
+        content_body += struct.pack(">B", mnc)
+        content_body += struct.pack(">H", lac)
+        content_body += cell_id.to_bytes(3, "big")
+
         content_body += struct.pack(">B", acc_status)
         content_body += b'\x00' # Data Upload
         content_body += struct.pack(">B", is_realtime) # Real-time/Historical
         content_body += struct.pack(">I", gps_odometer) # Mileage
 
     elif protocol_number == 0x32:
-        content_body += b'\x00' * 9
+        content_body += struct.pack(">H", mcc)
+        content_body += struct.pack(">B", mnc)
+        content_body += struct.pack(">H", lac)
+        content_body += struct.pack(">I", cell_id)
+
         content_body += struct.pack(">B", acc_status)
         content_body += b'\x00'
         content_body += struct.pack(">B", is_realtime) 
         content_body += struct.pack(">I", gps_odometer)
         content_body += struct.pack(">H", voltage_raw)
+        content_body += b"\x00" * 6
 
     elif protocol_number == 0xA0:
-        content_body += b'\x00' * 16
+        content_body += struct.pack(">H", mcc)
+        if (mcc > 15) == 1:
+            content_body += struct.pack(">H", mnc)
+        else:
+            content_body += struct.pack(">B", mnc)
+
+        content_body += struct.pack(">I", lac)
+        content_body += struct.pack(">Q", cell_id)
+
+
         content_body += struct.pack(">B", acc_status)
         content_body += b'\x00'
         content_body += struct.pack(">B", is_realtime)
