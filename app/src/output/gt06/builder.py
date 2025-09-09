@@ -131,14 +131,12 @@ def build_location_packet(dev_id, packet_data: dict, serial_number: int, *args) 
     return final_packet
 
 def imei_to_bcd(imei: str) -> bytes:
-    if len(imei) != 15 or not imei.isdigit():
-        raise ValueError("IMEI must be a 15-digit string.")
-
-    imei_padded = '0' + imei
+    if len(imei) > 10 or not imei.isdigit():
+        raise ValueError("IMEI must be a 10-digit string.")
 
     bcd_bytes = bytearray()
-    for i in range(0, len(imei_padded), 2):
-        byte_val = (int(imei_padded[i]) << 4) | int(imei_padded[i+1])
+    for i in range(0, len(imei), 2):
+        byte_val = (int(imei[i]) << 4) | int(imei[i+1])
         bcd_bytes.append(byte_val)
     return bytes(bcd_bytes)
 
