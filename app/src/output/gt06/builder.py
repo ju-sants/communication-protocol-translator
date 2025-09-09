@@ -213,7 +213,7 @@ def build_heartbeat_packet(dev_id: str, *args) -> bytes:
     full_packet = (
         b"\x78\x78" + 
         data_for_crc +
-        struct.pack(">B", crc) +
+        struct.pack(">H", crc) +
         b"\x0D\x0A"
     )
 
