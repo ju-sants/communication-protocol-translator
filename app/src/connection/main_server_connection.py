@@ -155,7 +155,11 @@ class MainServerSession:
                     logger.info(f"Resposta do server principal recebida, continuando a entrega de pacotes. dev_id={self.dev_id}")
 
                 logger.info(f"Encaminhando pacote de {len(packet)} bytes device_id={self.dev_id}")
-                self.sock.sendall(packet + b'\r')
+
+                if self.output_protocol == "suntech":
+                    packet += b'\r'
+
+                self.sock.sendall(packet)
             except (ConnectionResetError, BrokenPipeError) as e:
                 logger.warning(f"Conexão com servidor Suntech caiu ao enviar ({type(e).__name__}) device_id={self.dev_id}")
 
