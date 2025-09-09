@@ -245,19 +245,19 @@ def send_to_main_server(
         
         redis_client.hset(dev_id, "output_protocol", output_protocol)
     
-
+    
     output_packet_builder = output_protocol_settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get(type)
     output_packet = output_packet_builder(dev_id, packet_data, serial, type)
 
-    if output_protocol == "suntech":
-        str_output_packet = output_packet.decode("ascii")
-    else:
-        str_output_packet = output_packet.hex()
-
-
     # Lógica de envios
     if output_packet:
-        logger.info(f"Pacote de {type.upper()} {output_protocol.upper()} traduzido de pacote {str(original_protocol).upper()}:\n{output_packet}")
+        if output_protocol == "suntech":
+            str_output_packet = output_packet.decode("ascii")
+        else:
+            str_output_packet = output_packet.hex()
+
+
+        logger.info(f"Pacote de {type.upper()} {output_protocol.upper()} traduzido de pacote {str(original_protocol).upper()}:\n{str_output_packet}")
 
         add_packet_to_history(dev_id, raw_packet_hex, str_output_packet)
         
