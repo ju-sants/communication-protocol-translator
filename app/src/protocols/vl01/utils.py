@@ -150,7 +150,7 @@ def format_vl01_packet_for_display(packet_body: bytes, is_x79: bool = False) -> 
            f"  Tamanho Declarado: {length}",
            f"  Serial: {serial}",
            f"  CRC: {hex(crc)}",
-           f"  Corpo (raw): {content_body.hex()}",
+           f"  Corpo (raw): {packet_body.hex()}",
            "--- Detalhes do Conteúdo ---"
        ]
 
