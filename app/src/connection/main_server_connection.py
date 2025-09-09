@@ -77,8 +77,9 @@ class MainServerSession:
 
             logger.info(f"Pacote de Login enviado. dev_id={self.dev_id}")
 
-    def handle_gt06_login(self):
+    def handle_gt06_login(self, data):
         self._is_gt06_login_step = False
+        logger.info(f"The server replyed the login data packet, dev_id={self.dev_id} data={data.hex()}")
 
     def _reader_loop(self):
         while self._is_connected:
@@ -95,7 +96,7 @@ class MainServerSession:
                 
                 # Lida com resposta do servidor para pacotes de login
                 if self._is_gt06_login_step:
-                    self.handle_gt06_login()
+                    self.handle_gt06_login(data)
                     continue
                 
                 device_info = redis_client.hgetall(self.dev_id)
