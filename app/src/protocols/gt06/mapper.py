@@ -44,6 +44,19 @@ def decode_location_packet_v3(body: bytes):
 
         try: # Colocando dentro de um try except pois essa funcao tbm recebe chamadas para decodificar pacotes de alerta, que não tem as infos abaixo, 
             # Na ordem em que estão abaixo
+            
+            # LBS INFORMATION
+            mcc = struct.unpack(">H", body[18:20])[0]
+            mnc = body[20]
+            lac = struct.unpack(">H", body[21:23])[0]
+            cell_id = int.from_bytes(body[23:26], "big")
+
+            # Saving LBS information globally
+            redis_client.hset("global_data", "mcc", mcc)
+            redis_client.hset("global_data", "mnc", mnc)
+            redis_client.hset("global_data", "lac", lac)
+            redis_client.hset("global_data", "cell_id", cell_id)
+
             acc_status = body[26]
             data["acc_status"] = acc_status
 
@@ -93,6 +106,18 @@ def decode_location_packet_v4(body: bytes):
 
         gps_fixed = (course_status >> 12) & 1
         data["gps_fixed"] = gps_fixed
+
+        # LBS INFORMATION
+        mcc = struct.unpack(">H", body[18:20])[0]
+        mnc = body[20]
+        lac = struct.unpack(">H", body[21:23])[0]
+        cell_id = struct.unpack(">I", body[23:27])[0]
+
+        # Saving LBS information globally
+        redis_client.hset("global_data", "mcc", mcc)
+        redis_client.hset("global_data", "mnc", mnc)
+        redis_client.hset("global_data", "lac", lac)
+        redis_client.hset("global_data", "cell_id", cell_id)
 
         acc_status = body[27]
         data["acc_status"] = acc_status
@@ -151,18 +176,31 @@ def decode_location_packet_4g(body: bytes):
         gps_fixed = (course_status >> 12) & 1
         data["gps_fixed"] = gps_fixed
 
-        mcc_raw = struct.unpack(">H", body[18:20])[0]
-        mcc_highest_bit = (mcc_raw >> 15) & 1
+        # LBS INFORMATION
+        mcc = struct.unpack(">H", body[18:20])[0]
+        
+        mcc_int = struct.unpack(">H", mcc)[0]
+        mcc_highest_bit = (mcc_int >> 15) & 1
         
         mnc_len = 2 if mcc_highest_bit == 1 else 1 # 
         
         if mnc_len == 1:
+            mnc = struct.unpack(">H", body[20:20 + mnc_len])[0]
             lac_start = 21
         else:
             lac_start = 22
             
         lac_end = lac_start + 4
+        lac = struct.unpack(">I", body[lac_start:lac_end])[0]
+
         cell_id_end = lac_end + 8
+        cell_id = struct.unpack(">Q", body[lac_end:cell_id_end])[0]
+        
+        # Saving LBS information globally
+        redis_client.hset("global_data", "mcc", mcc)
+        redis_client.hset("global_data", "mnc", mnc)
+        redis_client.hset("global_data", "lac", lac)
+        redis_client.hset("global_data", "cell_id", cell_id)
         
         acc_status_at = cell_id_end
         acc_status = body[acc_status_at]
