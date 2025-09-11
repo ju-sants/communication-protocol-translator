@@ -8,11 +8,11 @@ from app.src.output.suntech.builder import (
     build_reply_packet as build_suntech_reply_packet
 )
 
-from app.src.output.j16x.builder import (
-    build_location_packet as build_j16x_location_packet,
-    build_heartbeat_packet as build_j16x_heartbeat_packet,
-    build_reply_packet as build_j16x_reply_packet,
-    build_alarm_packet as build_j16x_alarm_packet
+from app.src.output.gt06.builder import (
+    build_location_packet as build_gt06_location_packet,
+    build_heartbeat_packet as build_gt06_heartbeat_packet,
+    build_reply_packet as build_gt06_reply_packet,
+    build_alarm_packet as build_gt06_alarm_packet
 )
 
 # from app.src.input.jt808.builder import process_suntech_command as process_suntech_command_to_jt808
@@ -48,6 +48,12 @@ class OutputProtocolSettings(BaseSettings):
             "gt06": process_suntech_command_to_gt06,
             "vl01": process_suntech_command_to_vl01,
             "nt40": process_suntech_command_to_nt40
+        },
+        "gt06": {
+            # "jt808": process_gt06_command_to_jt808,
+            "gt06": process_gt06_command_to_gt06,
+            "vl01": process_gt06_command_to_vl01,
+            "nt40": process_gt06_command_to_nt40,
         }
     }
 
