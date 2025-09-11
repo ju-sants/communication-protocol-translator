@@ -123,7 +123,7 @@ def decode_location_packet_x22(body: bytes):
         return None
 
 def handle_alarm_from_location(dev_id_str, serial,  alarm_packet_data, raw_packet_hex):
-    global_alert_id = None
+    universal_alert_id = None
     power_cut_alarm = None
     sos_alarm = None
 
@@ -134,24 +134,24 @@ def handle_alarm_from_location(dev_id_str, serial,  alarm_packet_data, raw_packe
         sos_alarm = 1 if (terminal_info >> 5) & 0b1 else 0
 
     if power_cut_alarm is not None and power_cut_alarm:
-        global_alert_id = settings.GLOBAL_ALERT_ID_DICTIONARY.get("nt40").get(0x02)
+        universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("nt40").get(0x02)
     if sos_alarm is not None and sos_alarm:
-        global_alert_id = settings.GLOBAL_ALERT_ID_DICTIONARY.get("nt40").get(0x01)
+        universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("nt40").get(0x01)
     else:
         alarm_code = alarm_packet_data.get("alarm", 0x00)
         logger.info(f"handle_alarm_from_location: alarm_code={alarm_code}")
 
         if alarm_code not in (0x0, 0x00):
-            global_alert_id = settings.GLOBAL_ALERT_ID_DICTIONARY.get(alarm_code, 0)
-            logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Suntech ID {global_alert_id} device_id={dev_id_str}")
+            universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get(alarm_code, 0)
+            logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Suntech ID {universal_alert_id} device_id={dev_id_str}")
 
     
-    if global_alert_id:
+    if universal_alert_id:
         alarm_packet_data["is_realtime"] = True
-        alarm_packet_data["global_alert_id"] = global_alert_id
+        alarm_packet_data["universal_alert_id"] = universal_alert_id
 
         send_to_main_server(dev_id_str, alarm_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
-    elif global_alert_id is not None:
+    elif universal_alert_id is not None:
         logger.warning(f"Alarme NT40 não mapeado recebido device_id={dev_id_str}, alarm_code={alarm_packet_data.get('alarm')}, terminal_info={alarm_packet_data.get('terminal_info')}")
 
 
@@ -221,10 +221,10 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
     
     alarm_code = body[31]
 
-    global_alert_id = settings.GLOBAL_ALERT_ID_DICTIONARY.get("nt40").get(alarm_code)
+    universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("nt40").get(alarm_code)
     
-    if global_alert_id:
-        logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Global ID {global_alert_id} device_id={dev_id_str}")
+    if universal_alert_id:
+        logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Global ID {universal_alert_id} device_id={dev_id_str}")
         
         definitive_packet_data["is_realtime"] = True
         send_to_main_server(dev_id_str, definitive_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")

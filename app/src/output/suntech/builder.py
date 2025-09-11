@@ -27,14 +27,14 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     
     hdr = "STT" if type == "location" else "ALT" if type == "alert" else ""
     is_realtime = packet_data.get("is_realtime")
-    global_alert_id = packet_data.get("global_alert_id")
-    suntech_alert_id = settings.REVERSE_GLOBAL_ALERT_ID_DICTIONARY.get("suntech").get(global_alert_id)
+    universal_alert_id = packet_data.get("universal_alert_id")
+    suntech_alert_id = settings.REVERSE_UNIVERSAL_ALERT_ID_DICTIONARY.get("suntech").get(universal_alert_id)
     geo_fence_id = packet_data.get("geo_fence_id")
     voltage_stored = packet_data.get("voltage_stored")
 
     logger.debug(
         f"Construindo pacote Suntech: HDR={hdr}, DevID={dev_id}, Realtime={is_realtime}, "
-        f"GlobalAlertID={global_alert_id}, AlertID={suntech_alert_id}, GeoFenceID={geo_fence_id}, LocationData={packet_data}"
+        f"GlobalAlertID={universal_alert_id}, AlertID={suntech_alert_id}, GeoFenceID={geo_fence_id}, LocationData={packet_data}"
     )
     
     dev_id_normalized = ''.join(filter(str.isdigit, dev_id))

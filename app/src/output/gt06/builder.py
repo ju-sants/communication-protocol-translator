@@ -58,11 +58,11 @@ def build_location_packet(dev_id, packet_data: dict, serial_number: int, *args) 
     voltage_raw = int(voltage * 100)
 
     # Getting the saved LBS information
-    global_data_info = redis_client.hgetall("global_data")
-    mcc = int(global_data_info.get("mcc", 0))
-    mnc = int(global_data_info.get("mnc", 0))
-    lac = int(global_data_info.get("lac", 0))
-    cell_id = int(global_data_info.get("cell_id", 0))
+    universal_data_info = redis_client.hgetall("universal_data")
+    mcc = int(universal_data_info.get("mcc", 0))
+    mnc = int(universal_data_info.get("mnc", 0))
+    lac = int(universal_data_info.get("lac", 0))
+    cell_id = int(universal_data_info.get("cell_id", 0))
 
     if protocol_number == 0x12:
         content_body += struct.pack(">H", mcc)
@@ -286,8 +286,8 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
     gsm_strength_bytes = struct.pack(">B", gsm_strength)
 
     
-    global_alarm_id = packet_data.get("global_alarm_id")
-    alarm_id = settings.REVERSE_GLOBAL_ALERT_ID_DICTIONARY.get("gt06").get(global_alarm_id)
+    universal_alarm_id = packet_data.get("universal_alarm_id")
+    alarm_id = settings.REVERSE_UNIVERSAL_ALERT_ID_DICTIONARY.get("vl01").get(universal_alarm_id)
 
     if not alarm_id:
         logger.info(f"Impossível continuar, alarme id não encontrado para dev_id={dev_id}")

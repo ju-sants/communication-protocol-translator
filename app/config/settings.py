@@ -38,16 +38,16 @@ class Settings(BaseSettings):
         },
         "nt40": {
             "port": 65433,
-            "handler_path": "app.src.protocols.nt40.handler.handle_connection"
+            "handler_path": "app.src.input.nt40.handler.handle_connection"
         },
         "satellite": {
             "port": 65434,
-            "handler_path": "app.src.protocols.satellite.handler.handle_connection"
+            "handler_path": "app.src.input.satellite.handler.handle_connection"
         }
     }
 
      # -------------- Dicionários Globais Para IDs de Alerta ----------------------
-    GLOBAL_ALERT_ID_DICTIONARY: Dict[str, Dict[int, int]] = {
+    UNIVERSAL_ALERT_ID_DICTIONARY: Dict[str, Dict[int, int]] = {
         "suntech": {
             1: 6501, 3: 6503, 4: 6504, 5: 6505, 6: 6506, 14: 6514, 15: 6515, 33: 6533, 34: 6534,
             41: 6541, 42: 6542, 46: 6546, 47: 6547, 73: 6573, 147: 6647
@@ -71,9 +71,9 @@ class Settings(BaseSettings):
     }
 
     # Mapeamento reverso para consultas mais rápidas
-    REVERSE_GLOBAL_ALERT_ID_DICTIONARY: Dict[str, Dict[int, int]] = {
+    REVERSE_UNIVERSAL_ALERT_ID_DICTIONARY: Dict[str, Dict[int, int]] = {
         protocol: {v: k for k, v in alerts.items()}
-        for protocol, alerts in GLOBAL_ALERT_ID_DICTIONARY.items()
+        for protocol, alerts in UNIVERSAL_ALERT_ID_DICTIONARY.items()
     }
 
 settings = Settings()

@@ -296,10 +296,10 @@ def _handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_h
     
     alarm_code = body[16]
 
-    global_alert_id = settings.GLOBAL_ALERT_ID_DICTIONARY.get("vl01").get(alarm_code)
+    universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("vl01").get(alarm_code)
 
-    if global_alert_id:
-        logger.info(f"Alarme VL01 (0x{alarm_code:02X}) traduzido para Global ID {global_alert_id} device_id={dev_id_str}")
+    if universal_alert_id:
+        logger.info(f"Alarme VL01 (0x{alarm_code:02X}) traduzido para Global ID {universal_alert_id} device_id={dev_id_str}")
 
         send_to_main_server(dev_id_str, definitive_packet_data, serial, raw_packet_hex, original_protocol="VL01", type="alert")
     else:
