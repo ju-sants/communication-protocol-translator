@@ -1,6 +1,7 @@
 import socket
 import threading
 import time
+import importlib
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -104,17 +105,28 @@ class MainServerSession:
                 output_protocol = device_info.get("output_protocol")
 
                 if not protocol_type:
-                    logger.error(f"Protocolo não encontrado no Redis para o device_id={self.dev_id}. Impossível traduzir comando.")
+                    logger.error(f"Protocolo não encontrado no Redis para o device_id={self.dev_id}. Impossível traduzir comando. dev_id={self.dev_id}")
                     continue
 
-                processor_func = output_protocol_settings.OUTPUT_PROTOCOL_COMMAND_PROCESSORS.get(output_protocol).get(protocol_type)
+                mapper_func = output_protocol_settings.OUTPUT_PROTOCOL_COMMAND_MAPPERS.get(output_protocol)
+                if not mapper_func:
+                    logger.error(f"Mapeador de comandos universais para o protocolo de saida '{str(output_protocol).upper()}' não encontrado. dev_id={self.dev_id}")
+                    return
+                
+                universal_command = mapper_func(self.dev_id, data)
+                if not universal_command:
+                    logger.error(f"Comando universal não encontrado, output_protocol={self.output_protocol}, dev_id={self.dev_id}")
+                    return
+                
+                target_module = importlib.import_module(f"app.src.input.{protocol_type}.builder")
+                processor_func = getattr(target_module, "process_command")
 
                 if not processor_func:
                     logger.error(f"Processador de comando para o protocolo '{str(protocol_type).upper()}' com o protocolo de saida '{str(output_protocol).upper()}' não encontrado.")
                     continue
 
                 logger.info(f"Roteando comando para o processador do protocolo: '{str(protocol_type).upper()}' com protocolo de saida '{str(output_protocol).upper()}'")
-                processor_func(data, self.dev_id, self.serial)
+                processor_func(self.dev_id, self.serial, universal_command)
 
 
             except socket.timeout:
