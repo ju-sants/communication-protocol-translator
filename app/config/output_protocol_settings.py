@@ -7,6 +7,7 @@ from app.src.output.suntech.builder import (
     build_heartbeat_packet as build_suntech_heartbeat_packet, 
     build_reply_packet as build_suntech_reply_packet
 )
+from app.src.output.suntech.mapper import map_to_universal_command as map_to_universal_suntech_command
 
 from app.src.output.gt06.builder import (
     build_location_packet as build_gt06_location_packet,
@@ -14,16 +15,7 @@ from app.src.output.gt06.builder import (
     build_reply_packet as build_gt06_reply_packet,
     build_alarm_packet as build_gt06_alarm_packet
 )
-
-# from app.src.input.jt808.builder import process_suntech_command as process_suntech_command_to_jt808
-from app.src.input.j16x.builder import process_suntech_command as process_suntech_command_to_gt06
-from app.src.input.vl01.builder import process_suntech_command as process_suntech_command_to_vl01
-from app.src.input.nt40.builder import process_suntech_command as process_suntech_command_to_nt40
-
-# from app.src.input.jt808.builder import process_gt06_command as process_gt06_command_to_jt808
-from app.src.input.j16x.builder import process_gt06_command as process_gt06_command_to_gt06
-from app.src.input.vl01.builder import process_gt06_command as process_gt06_command_to_vl01
-from app.src.input.nt40.builder import process_gt06_command as process_gt06_command_to_nt40
+from app.src.output.gt06.mapper import map_to_universal_command as map_to_universal_gt06_command
 
 class OutputProtocolSettings(BaseSettings):
     # ---------- Utilitários para os protocolos de saída --------------------
@@ -42,19 +34,9 @@ class OutputProtocolSettings(BaseSettings):
             }
     }
 
-    OUTPUT_PROTOCOL_COMMAND_PROCESSORS: Dict[str, Dict[str, Any]] = {
-        "suntech": {
-            # "jt808": process_suntech_command_to_jt808,
-            "gt06": process_suntech_command_to_gt06,
-            "vl01": process_suntech_command_to_vl01,
-            "nt40": process_suntech_command_to_nt40
-        },
-        "gt06": {
-            # "jt808": process_gt06_command_to_jt808,
-            "gt06": process_gt06_command_to_gt06,
-            "vl01": process_gt06_command_to_vl01,
-            "nt40": process_gt06_command_to_nt40,
-        }
+    OUTPUT_PROTOCOL_COMMAND_MAPPERS: Dict[str, Dict[str, Any]] = {
+        "gt06": map_to_universal_gt06_command,
+        "suntech": map_to_universal_suntech_command
     }
 
     OUTPUT_PROTOCOL_HOST_ADRESSES: Dict[str, tuple] = {

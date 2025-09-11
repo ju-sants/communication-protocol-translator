@@ -353,7 +353,7 @@ O servidor iniciará os listeners para todos os protocolos definidos em [`app/co
     ```
 
 4.  **Habilite a Tradução Reversa de Comandos:**
-    Em [`app/config/settings.py`](app/config/settings.py), importe a função `process_suntech_command` do seu novo `builder` e adicione-a ao dicionário `OUTPUT_PROTOCOL_COMMAND_PROCESSORS`.
+    Em [`app/config/settings.py`](app/config/settings.py), importe a função `process_command` do seu novo `builder` e adicione-a ao dicionário `OUTPUT_PROTOCOL_COMMAND_PROCESSORS`.
 
 ### Protocolo de Saída
 
