@@ -341,6 +341,6 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
                 print(command_content_str)
             
             if packet:
-                send_to_main_server(dev_id, packet_data=last_packet_data, raw_packet_hex=raw_packet_hex, type="reply_command", original_protocol="GT06")
+                send_to_main_server(dev_id, packet_data=last_packet_data, raw_packet_hex=raw_packet_hex, type="command_reply", original_protocol="J16X")
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY")
