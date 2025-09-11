@@ -322,7 +322,8 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
 
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
     try:
-        command_content = body[5:-4]
+        command_length = body[0] - 4
+        command_content = body[5:5 + command_length]
         command_content_str = command_content.decode("ascii", errors="ignore")
 
         if command_content_str:
