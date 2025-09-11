@@ -286,8 +286,8 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
     gsm_strength_bytes = struct.pack(">B", gsm_strength)
 
     
-    universal_alarm_id = packet_data.get("universal_alarm_id")
-    alarm_id = settings.REVERSE_UNIVERSAL_ALERT_ID_DICTIONARY.get("vl01").get(universal_alarm_id)
+    universal_alert_id = packet_data.get("universal_alert_id")
+    alarm_id = settings.REVERSE_UNIVERSAL_ALERT_ID_DICTIONARY.get("vl01").get(universal_alert_id)
 
     if not alarm_id:
         logger.info(f"Impossível continuar, alarme id não encontrado para dev_id={dev_id}")
