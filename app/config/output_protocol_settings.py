@@ -34,7 +34,7 @@ class OutputProtocolSettings(BaseSettings):
             }
     }
 
-    OUTPUT_PROTOCOL_COMMAND_MAPPERS: Dict[str, Dict[str, Any]] = {
+    OUTPUT_PROTOCOL_COMMAND_MAPPERS: Dict[str, Any] = {
         "gt06": map_to_universal_gt06_command,
         "suntech": map_to_universal_suntech_command
     }
