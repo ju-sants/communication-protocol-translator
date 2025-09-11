@@ -6,7 +6,7 @@ import copy
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.src.connection.main_server_connection import send_to_main_server
-from app.src.protocols.utils import handle_ignition_change
+from app.src.input.utils import handle_ignition_change
 from app.config.settings import settings
 
 logger = get_logger(__name__)

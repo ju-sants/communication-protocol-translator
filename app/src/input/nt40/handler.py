@@ -3,7 +3,7 @@ from app.core.logger import get_logger
 from .processor import process_packet
 from .utils import format_nt40_packet_for_display 
 
-from app.src.protocols.session_manager import tracker_sessions_manager
+from app.src.input.session_manager import tracker_sessions_manager
 from app.services.redis_service import get_redis
 from app.src.connection.main_server_connection import sessions_manager
 

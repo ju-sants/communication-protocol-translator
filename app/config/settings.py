@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     INPUT_PROTOCOL_HANDLERS: Dict[str, Dict[str, Any]] = {
         # "jt808": {
         #     "port": 65430,
-        #     "handler_path": "app.src.protocols.jt808.handler.handle_connection"
+        #     "handler_path": "app.src.input.jt808.handler.handle_connection"
         # },
         "j16x": {
             "port": 65431,
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
         },
         "vl01": {
             "port": 65432,
-            "handler_path": "app.src.protocols.vl01.handler.handle_connection"
+            "handler_path": "app.src.input.vl01.handler.handle_connection"
         },
         "nt40": {
             "port": 65433,

@@ -98,7 +98,7 @@ Para cada rastreador conectado ou que já se conectou, um hash é mantido no Red
 
 ### Gerenciamento de Dados Específico do Protocolo VL01
 
-O módulo [`mapper.py`](app/src/protocols/vl01/mapper.py:1) do protocolo VL01 implementa estratégias avançadas de gerenciamento de pacotes e enriquecimento de dados diretamente no servidor gateway.
+O módulo [`mapper.py`](app/src/input/vl01/mapper.py:1) do protocolo VL01 implementa estratégias avançadas de gerenciamento de pacotes e enriquecimento de dados diretamente no servidor gateway.
 
 #### Estratégias de Gerenciamento de Pacotes:
 
@@ -347,7 +347,7 @@ O servidor iniciará os listeners para todos os protocolos definidos em [`app/co
         # ... protocolos existentes
         "novo_protocolo": {
             "port": 65434,  # Escolha uma porta livre
-            "handler_path": "app.src.protocols.novo_protocolo.handler.handle_connection"
+            "handler_path": "app.src.input.novo_protocolo.handler.handle_connection"
         }
     }
     ```
