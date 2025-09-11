@@ -334,9 +334,9 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
 
             packet = None
             
-            if command_content_str == "RELAY 1":
+            if command_content_str == "RELAY 1 OK":
                 last_packet_data["REPLY"] = "OUTPUT ON"
-            elif command_content_str == "RELAY 0":
+            elif command_content_str == "RELAY 0 OK":
                 last_packet_data["REPLY"] = "OUTPUT OFF"
             else:
                 print(command_content_str)

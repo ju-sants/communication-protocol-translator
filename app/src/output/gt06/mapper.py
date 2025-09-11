@@ -13,9 +13,9 @@ def map_to_universal_command(dev_id: str, command: bytes):
 
     command_mapping = {
         "RELAY,1#": "OUTPUT ON",
-        "DYD,000": "OUTPUT ON",
+        "DYD,000000#": "OUTPUT ON",
         "RELAY,0#": "OUTPUT OFF",
-        "HFYD,000": "OUTPUT OFF",
+        "HFYD,000000#": "OUTPUT OFF",
         "GPRS,GET,LOCATION#": "PING",
     }
 
