@@ -8,11 +8,11 @@ A força deste projeto reside em sua arquitetura inteligente e desacoplada, que 
 
 *   **Arquitetura "Plug-and-Play"**: Adicionar suporte a um novo protocolo é tão simples quanto criar um novo diretório. A estrutura modular isola completamente a lógica de cada protocolo, permitindo que o sistema cresça sem complexidade adicional. O orquestrador em [`main.py`](main.py) carrega dinamicamente cada protocolo configurado em [`app/config/settings.py`](app/config/settings.py), iniciando listeners dedicados em threads separadas.
 
-*   **Tradução de Múltiplos Protocolos de Entrada para Múltiplos Protocolos de Saída**: A genialidade do sistema está na sua camada de `mapper` (ex: [`app/src/protocols/gt06/mapper.py`](app/src/protocols/gt06/mapper.py)). Cada `mapper` converte o dialeto específico de seu protocolo para um **dicionário Python padronizado**. A camada de `output` (ex: [`app/src/output/suntech/utils.py`](app/src/output/suntech/utils.py)) utiliza esse dicionário para construir pacotes em múltiplos formatos de saída, como **Suntech** e **GT06**. Isso significa que a lógica de saída não precisa saber nada sobre os protocolos de entrada, garantindo um desacoplamento total.
+*   **Tradução de Múltiplos Protocolos de Entrada para Múltiplos Protocolos de Saída**: A genialidade do sistema está na sua camada de `mapper` (ex: [`app/src/input/j16x/mapper.py`](app/src/input/j16x/mapper.py)). Cada `mapper` converte o dialeto específico de seu protocolo para um **dicionário Python padronizado**. A camada de `output` (ex: [`app/src/output/suntech/utils.py`](app/src/output/suntech/utils.py)) utiliza esse dicionário para construir pacotes em múltiplos formatos de saída, como **Suntech** e **GT06**. Isso significa que a lógica de saída não precisa saber nada sobre os protocolos de entrada, garantindo um desacoplamento total.
 
 *   **Geração de Eventos com Estado (Inteligência Agregada)**: O gateway não é um tradutor "burro". Utilizando o Redis ([`app/services/redis_service.py`](app/services/redis_service.py)), ele armazena o estado de cada dispositivo (como ignição ligada/desligada). Ao receber um novo pacote, ele compara o estado atual com o anterior e pode **gerar novos eventos de alerta** (ex: "Alerta de Ignição Ligada") que não existiam no protocolo original, agregando valor e inteligência aos dados brutos.
 
-*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente inteligente. Quando a plataforma principal envia um comando, o [`app/src/connection/main_server_connection.py`](app/src/connection/main_server_connection.py) usa o Redis para identificar o protocolo de origem do dispositivo de destino. Em seguida, ele invoca o `builder` específico daquele protocolo (ex: [`app/src/protocols/gt06/builder.py`](app/src/protocols/gt06/builder.py)) para construir e enviar o comando no "idioma" nativo do rastreador.
+*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente inteligente. Quando a plataforma principal envia um comando, o [`app/src/connection/main_server_connection.py`](app/src/connection/main_server_connection.py) usa o Redis para identificar o protocolo de origem do dispositivo de destino. Em seguida, ele invoca o `builder` específico daquele protocolo (ex: [`app/src/input/j16x/builder.py`](app/src/input/j16x/builder.py)) para construir e enviar o comando no "idioma" nativo do rastreador.
 
 ## Arquitetura do Sistema
 
@@ -52,7 +52,7 @@ Este diagrama ilustra como os comandos são enviados da plataforma de volta para
 graph TD
     A[Plataforma Principal] -- Comando --> B(Main Server Connection);
     B -- Consulta Protocolo (DevID) --> C{Redis};
-    C -- Retorna Protocolo (ex: 'gt06') --> B;
+    C -- Retorna Protocolo (ex: 'j16x') --> B;
     B -- Comando + Protocolo --> D(Roteador de Comandos);
     D -- Comando para Builder Específico --> E{Builder do Protocolo};
     E -- Pacote Binário Nativo --> F(Socket do Dispositivo);
@@ -79,7 +79,7 @@ Para cada rastreador conectado ou que já se conectou, um hash é mantido no Red
 
 | Campo                  | Tipo      | Descrição                                                                         | Exemplo             |
 | :--------------------- | :-------- | :-------------------------------------------------------------------------------- | :------------------ |
-| `protocol`             | `string`  | O protocolo que o dispositivo utiliza (ex: `gt06`, `jt808`, `vl01`, `nt40`).        | `"gt06"`            |
+| `protocol`             | `string`  | O protocolo que o dispositivo utiliza (ex: `j16x`, `jt808`, `vl01`, `nt40`).        | `"j16x"`            |
 | `output_protocol`      | `string`  | O protocolo de saída que o dispositivo utiliza (ex: `suntech`, `gt06`).        | `"suntech"`            |
 | `imei`                 | `string`  | O IMEI do dispositivo.                                                            | `"358204012345678"` |
 | `last_serial`          | `integer` | O último número de série do pacote recebido do dispositivo.                       | `"12345"`           |
@@ -145,7 +145,7 @@ Exemplo de Resposta:
 ```json
 {
   "IMEI_DO_RASTREADOR_1": {
-    "protocol": "gt06",
+    "protocol": "j16x",
     "last_active_timestamp": "2023-10-27T10:30:00.000000+00:00",
     "is_connected": true,
     "last_packet_data": "{\"latitude\": -23.55052, ...}",
@@ -176,7 +176,7 @@ Exemplo de Resposta:
   "total_active_translator_sessions": 25,
   "total_active_main_server_sessions": 20,
   "protocol_distribution": {
-    "gt06": 30,
+    "j16x": 30,
     "jt808": 15,
     "vl01": 5
   },
@@ -195,7 +195,7 @@ Exemplo de Resposta:
 {
   "device_id": "IMEI_DO_RASTREADOR",
   "imei": "IMEI_DO_RASTREADOR",
-  "protocol": "gt06",
+  "protocol": "j16x",
   "is_connected_translator": true,
   "is_connected_main_server": true,
   "last_active_timestamp": "2023-10-27T10:35:00.000000+00:00",
@@ -331,10 +331,10 @@ O servidor iniciará os listeners para todos os protocolos definidos em [`app/co
 ### Protocolo de Entrada
 
 1.  **Crie o Diretório do Protocolo:**
-    Dentro de `app/src/protocols/`, crie um novo diretório com o nome do seu protocolo (ex: `novo_protocolo`).
+    Dentro de `app/src/input/`, crie um novo diretório com o nome do seu protocolo (ex: `novo_protocolo`).
 
 2.  **Implemente os Módulos Essenciais:**
-    Crie os seguintes arquivos dentro do novo diretório, seguindo a estrutura dos módulos `gt06` ou `jt808`:
+    Crie os seguintes arquivos dentro do novo diretório, seguindo a estrutura dos módulos `j16x` ou `jt808`:
     *   `handler.py`: Gerencia o ciclo de vida da conexão TCP.
     *   `processor.py`: Valida a integridade e disseca a estrutura dos pacotes.
     *   `mapper.py`: **O coração da tradução**. Converte os dados do protocolo para o dicionário Python padronizado.

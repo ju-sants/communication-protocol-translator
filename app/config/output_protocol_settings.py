@@ -8,17 +8,22 @@ from app.src.output.suntech.builder import (
     build_reply_packet as build_suntech_reply_packet
 )
 
-from app.src.output.gt06.builder import (
-    build_location_packet as build_gt06_location_packet,
-    build_heartbeat_packet as build_gt06_heartbeat_packet,
-    build_reply_packet as build_gt06_reply_packet,
-    build_alarm_packet as build_gt06_alarm_packet
+from app.src.output.j16x.builder import (
+    build_location_packet as build_j16x_location_packet,
+    build_heartbeat_packet as build_j16x_heartbeat_packet,
+    build_reply_packet as build_j16x_reply_packet,
+    build_alarm_packet as build_j16x_alarm_packet
 )
 
-# from app.src.protocols.jt808.builder import process_suntech_command as process_suntech_command_to_jt808
-from app.src.protocols.gt06.builder import process_suntech_command as process_suntech_command_to_gt06
-from app.src.protocols.vl01.builder import process_suntech_command as process_suntech_command_to_vl01
-from app.src.protocols.nt40.builder import process_suntech_command as process_suntech_command_to_nt40
+# from app.src.input.jt808.builder import process_suntech_command as process_suntech_command_to_jt808
+from app.src.input.j16x.builder import process_suntech_command as process_suntech_command_to_gt06
+from app.src.input.vl01.builder import process_suntech_command as process_suntech_command_to_vl01
+from app.src.input.nt40.builder import process_suntech_command as process_suntech_command_to_nt40
+
+# from app.src.input.jt808.builder import process_gt06_command as process_gt06_command_to_jt808
+from app.src.input.j16x.builder import process_gt06_command as process_gt06_command_to_gt06
+from app.src.input.vl01.builder import process_gt06_command as process_gt06_command_to_vl01
+from app.src.input.nt40.builder import process_gt06_command as process_gt06_command_to_nt40
 
 class OutputProtocolSettings(BaseSettings):
     # ---------- Utilitários para os protocolos de saída --------------------

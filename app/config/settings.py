@@ -28,9 +28,9 @@ class Settings(BaseSettings):
         #     "port": 65430,
         #     "handler_path": "app.src.protocols.jt808.handler.handle_connection"
         # },
-        "gt06": {
+        "j16x": {
             "port": 65431,
-            "handler_path": "app.src.protocols.gt06.handler.handle_connection"
+            "handler_path": "app.src.input.j16x.handler.handle_connection"
         },
         "vl01": {
             "port": 65432,
@@ -52,7 +52,7 @@ class Settings(BaseSettings):
             1: 6501, 3: 6503, 4: 6504, 5: 6505, 6: 6506, 14: 6514, 15: 6515, 33: 6533, 34: 6534,
             41: 6541, 42: 6542, 46: 6546, 47: 6547, 73: 6573, 147: 6647
         },
-        "gt06": {
+        "j16x": {
             0x01: 6542, 0x02: 6541, 0x19: 6514, 0x03: 6515, 0x06: 6501, 0xF0: 6546,
             0xF1: 6547, 0x04: 6506, 0x05: 6505, 0x13: 6647, 0x14: 6573, 0xFE: 6533,
             0xFF: 6534

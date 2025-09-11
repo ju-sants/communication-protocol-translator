@@ -4,18 +4,18 @@ from datetime import datetime, timezone
 import requests
 
 from app.services.redis_service import get_redis
-from app.src.protocols.session_manager import tracker_sessions_manager
+from app.src.input.session_manager import tracker_sessions_manager
 from app.src.connection.main_server_connection import sessions_manager
 from app.services.history_service import get_packet_history
-from app.src.protocols.gt06.builder import build_command as build_gt06_command
-from app.src.protocols.vl01.builder import build_command as build_vl01_command
-from app.src.protocols.nt40.builder import build_command as build_nt40_command
-# from app.src.protocols.jt808.builder import build_command as build_jt808_command
+from app.src.input.j16x.builder import build_command as build_j16x_command
+from app.src.input.vl01.builder import build_command as build_vl01_command
+from app.src.input.nt40.builder import build_command as build_nt40_command
+# from app.src.input.jt808.builder import build_command as build_jt808_command
 
 redis_client = get_redis()
 
 COMMAND_BUILDERS = {
-    "gt06": build_gt06_command,
+    "j16x": build_j16x_command,
     "vl01": build_vl01_command,
     "nt40": build_nt40_command
     # "jt808": build_jt808_command
