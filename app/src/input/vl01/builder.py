@@ -74,29 +74,20 @@ def build_command(command_content_str: str, serial_number: int):
 
     return command_packet
 
-def process_suntech_command(command: bytes, dev_id: str, serial: int):
-    logger.info(f"Iniciando tradução de comando Suntech para VL01 device_id={dev_id}, comando={command}")
-
-    command_str = command.decode("ascii", errors="ignore")
-    parts = command_str.split(';')
-
-    if len(parts) < 4:
-        logger.warning(f"Comando Suntech mal formatado, ignorando. comando={command}")
-        return
-
-    command_key = f"{parts[0]};{';'.join(parts[2:])}"
+def process_command(dev_id: str, serial: int, universal_command: str):
+    logger.info(f"Iniciando tradução de comando Suntech para VL01 device_id={dev_id}, comando={universal_command}")
 
     command_mapping = {
-        "CMD;04;01": "RELAY,1#",
-        "CMD;04;02": "RELAY,0#",
-        "CMD;03;01": "GPRS,GET,LOCATION#",
+        "OUTPUT ON": "RELAY,1#",
+        "OUTPUT OFF": "RELAY,0#",
+        "PING": "GPRS,GET,LOCATION#",
     }
 
     vl01_text_command = None
-    if command_key.startswith("CMD;05;03"):
-        meters = command_key.split(";")[-1]
+    if universal_command.startswith("HODOMETRO"):
+        meters = universal_command.split(":")[-1]
         if not meters.isdigit():
-            logger.info(f"Comando com metragem incorreta: {command_key}")
+            logger.info(f"Comando com metragem incorreta: {universal_command}")
             return
         
         # kilometers = int(meters) / 1000
@@ -107,10 +98,10 @@ def process_suntech_command(command: bytes, dev_id: str, serial: int):
         redis_client.hset(dev_id, "odometer", meters)
 
     else:
-        vl01_text_command = command_mapping.get(command_key)
+        vl01_text_command = command_mapping.get(universal_command)
 
     if not vl01_text_command:
-        logger.warning(f"Nenhum mapeamento VL01 encontrado para o comando Suntech comando={command_key}")
+        logger.warning(f"Nenhum mapeamento VL01 encontrado para o comando Suntech comando={universal_command}")
         return
 
     vl01_binary_command = build_command(vl01_text_command, serial)
