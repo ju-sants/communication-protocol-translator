@@ -3,7 +3,7 @@ from app.core.logger import get_logger
 logger = get_logger(__name__)
 
 def map_to_universal_command(dev_id: str, command: bytes):
-    logger.info(f"Iniciando tradução de comando GT06 para Comando Universal device_id={dev_id}, comando={command}")
+    logger.info(f"Iniciando tradução de comando GT06 para Comando Universal device_id={dev_id}, comando={command.hex()}")
 
     command_content = command[8:-8]
     command_key = command_content.decode("ascii", errors="ignore")
