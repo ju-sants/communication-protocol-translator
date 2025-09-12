@@ -329,7 +329,16 @@ def build_reply_packet(dev_id: str, packet_data: dict, serial_number: int, *args
     """
     protocol_number = 0x15
 
-    command_reply = packet_data.get("REPLY")
+    universal_command_reply = packet_data.get("REPLY")
+
+    command_reply = None
+    if universal_command_reply == "OUTPUT ON":
+        command_reply = "RELAY 1 OK"
+    elif universal_command_reply == "OUTPUT OFF":
+        command_reply = "RELAY 0 OK"
+    else:
+        logger.warning(f"Resposta de comando universal desconhecido recebido: {universal_command_reply}, dev_id={dev_id}")
+        return b''
 
     command_bytes = command_reply.encode('ascii')
     
