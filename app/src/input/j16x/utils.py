@@ -125,7 +125,7 @@ def format_j16x_packet_for_display(packet_body: bytes) -> str:
        content_body = packet_body[2:-4]
 
        display_str = [
-           "--- Pacote GT06 Recebido ---",
+           "--- Pacote J16X Recebido ---",
            f"  Protocolo: {hex(protocol)}",
            f"  Tamanho Declarado: {length}",
            f"  Serial: {serial}",
