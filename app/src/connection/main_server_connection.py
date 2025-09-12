@@ -159,6 +159,7 @@ class MainServerSession:
             
             if current_output_protocol and current_output_protocol.lower() != self.output_protocol:
                 logger.warning(f"Protocolo de saída mudou de {self.output_protocol} para {current_output_protocol}, desconectando sessão atual e criando uma nova.")
+                
                 self.disconnect()
                 self.output_protocol = current_output_protocol
                 if not self.connect():
