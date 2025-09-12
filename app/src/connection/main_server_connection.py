@@ -19,7 +19,7 @@ class MainServerSession:
         self.dev_id = dev_id
         self.serial = serial
         self.sock: socket.socket = None
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self._is_connected = False
         self._conection_retries = 0
         self._is_gt06_login_step = False
