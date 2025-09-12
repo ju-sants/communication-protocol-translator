@@ -338,7 +338,8 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
                 last_packet_data["REPLY"] = "OUTPUT OFF"
             else:
                 print(command_content_str)
-            
-            send_to_main_server(dev_id, packet_data=last_packet_data, raw_packet_hex=raw_packet_hex, type="command_reply", original_protocol="J16X")
-    except Exception as e:
-        logger.error(f"Erro ao decodificar comando de REPLY")
+
+            send_to_main_server(dev_id, packet_data=last_packet_data, serial=serial, raw_packet_hex=raw_packet_hex, type="command_reply", original_protocol="J16X")
+    except Exception:
+        import traceback
+        logger.error(f"Erro ao decodificar comando de REPLY: {traceback.format_exc()}, body={body.hex()}, dev_id={dev_id}")
