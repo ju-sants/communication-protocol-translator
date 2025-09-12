@@ -148,7 +148,7 @@ class MainServerSession:
                 self.disconnect()
                 break
     
-    def send(self, packet: bytes):
+    def send(self, packet: bytes, current_output_protocol: str = None):
         with self.lock:
             if not self._is_connected:
                 logger.warning(f"Conexão perdida, tentando reconectar... dev_id={self.dev_id}")
@@ -157,6 +157,14 @@ class MainServerSession:
                     logger.error(f"Não foi possível conectar ao servidor principal. Pacote descartado. dev_id={self.dev_id}")
                     return
             
+            if current_output_protocol and current_output_protocol.lower() != self.output_protocol:
+                logger.warning(f"Protocolo de saída mudou de {self.output_protocol} para {current_output_protocol}, desconectando sessão atual e criando uma nova.")
+                self.disconnect()
+                self.output_protocol = current_output_protocol
+                if not self.connect():
+                    logger.error(f"Não foi possível conectar ao servidor principal com o novo protocolo. Pacote descartado. dev_id={self.dev_id}")
+                    return
+                
             try:
                 if self._is_gt06_login_step:
                     logger.info(f"Aguardadndo resposta do server principal sobre o pacote de login. dev_id={self.dev_id}")
@@ -274,4 +282,4 @@ def send_to_main_server(
         add_packet_to_history(dev_id, raw_packet_hex, str_output_packet)
         
         session = sessions_manager.get_session(dev_id, serial, output_protocol)
-        session.send(output_packet)
+        session.send(output_packet, output_protocol)
