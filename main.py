@@ -1,6 +1,9 @@
 import threading
 import socket
 import importlib
+from dotenv import load_dotenv
+load_dotenv()
+
 from app.config.settings import settings
 from app.core.logger import get_logger
 
@@ -35,7 +38,7 @@ def main():
     flask_thread.start()
     logger.info("✅ Servidor Flask iniciado em http://0.0.0.0:5000")
     
-    for protocol_name, config in settings.PROTOCOLS.items():
+    for protocol_name, config in settings.INPUT_PROTOCOL_HANDLERS.items():
         try:
             port = config['port']
             module_path, func_name = config['handler_path'].rsplit('.', 1)

@@ -1,33 +1,28 @@
 import socket
 import threading
+import time
+import importlib
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.services.history_service import add_packet_to_history
-from app.config.settings import settings
-from app.src.suntech.utils import build_suntech_mnt_packet
-# from app.src.protocols.jt808.builder import process_suntech_command as process_suntech_command_to_jt808
-from app.src.protocols.gt06.builder import process_suntech_command as process_suntech_command_to_gt06
-from app.src.protocols.vl01.builder import process_suntech_command as process_suntech_command_to_vl01
-from app.src.protocols.nt40.builder import process_suntech_command as process_suntech_command_to_nt40
+from app.config.output_protocol_settings import output_protocol_settings
+from app.src.output.suntech.builder import build_login_packet as build_suntech_login_packet
+from app.src.output.gt06.builder import build_login_packet as build_gt06_login_packet
 
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-COMMAND_PROCESSORS = {
-    # "jt808": process_suntech_command_to_jt808,
-    "gt06": process_suntech_command_to_gt06,
-    "vl01": process_suntech_command_to_vl01,
-    "nt40": process_suntech_command_to_nt40
-    }
 class MainServerSession:
-    def __init__(self, dev_id: str, serial: str):
+    def __init__(self, dev_id: str, serial: str, output_protocol: str):
+        self.output_protocol = output_protocol
         self.dev_id = dev_id
         self.serial = serial
         self.sock: socket.socket = None
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self._is_connected = False
         self._conection_retries = 0
+        self._is_gt06_login_step = False
     
     def connect(self):
         with self.lock:
@@ -35,18 +30,27 @@ class MainServerSession:
                 return True
 
             try:
-                logger.info(f"Iniciando nova conexão para {settings.MAIN_SERVER_HOST}:{settings.MAIN_SERVER_PORT}")
-                self.sock = socket.create_connection((settings.MAIN_SERVER_HOST, settings.MAIN_SERVER_PORT), timeout=5)
+                if not self.output_protocol:
+                    logger.info(f"Impossível iniciar conexão com server principal, tipo de protocolo de saída não especificado. dev_id={self.dev_id}")
+                    return
+                
+                address = output_protocol_settings.OUTPUT_PROTOCOL_HOST_ADRESSES.get(self.output_protocol)
+
+                if not address:
+                    logger.info(f"Impossível iniciar conexão com server principal, tipo de protocolo de saída não mapeado. dev_id={self.dev_id}, output_protocol={self.output_protocol}")
+                    return
+
+
+                logger.info(f"Iniciando nova conexão para {address[0]}:{address[1]}")
+                self.sock = socket.create_connection(address, timeout=5)
                 self._is_connected = True
 
-                logger.info("Criando Thread para ouvir comandos do lado do server")
+                logger.info(f"Criando Thread para ouvir comandos do lado do server. dev_id={self.dev_id}")
                 self._reader_thread = threading.Thread(target=self._reader_loop, daemon=True)
                 self._reader_thread.start()
 
-                logger.info("Enviando pacote MNT para apresentar a conexão")
-                mnt_packet = build_suntech_mnt_packet(self.dev_id)
+                self.present_connection()
 
-                self.sock.sendall(mnt_packet)
                 logger.info(f"Conexão e thread de escuta iniciadas device_id={self.dev_id}")
 
                 return True
@@ -55,6 +59,29 @@ class MainServerSession:
                 self._is_connected = False
                 return False
     
+    def present_connection(self):
+
+        if self.output_protocol == "suntech":
+            logger.info(f"Enviando pacote MNT para apresentar a conexão dev_id={self.dev_id}")
+            mnt_packet = build_suntech_login_packet(self.dev_id)
+
+            self.sock.sendall(mnt_packet)
+            logger.info(f"Pacote de apresentação MNT enviado. dev_id={self.dev_id}")
+        
+        elif self.output_protocol == "gt06":
+            logger.info(f"Iniciando login... dev_id={self.dev_id}")
+            self._is_gt06_login_step = True
+
+            login_packet = build_gt06_login_packet(self.dev_id, self.serial)
+
+            self.sock.sendall(login_packet)
+
+            logger.info(f"Pacote de Login enviado. dev_id={self.dev_id}")
+
+    def handle_gt06_login(self, data):
+        self._is_gt06_login_step = False
+        logger.info(f"The server replyed the login data packet, dev_id={self.dev_id} data={data.hex()}")
+
     def _reader_loop(self):
         while self._is_connected:
             try:
@@ -64,25 +91,42 @@ class MainServerSession:
 
                 data = self.sock.recv(1024)
                 if not data:
-                    logger.warning(f"Conexão fechada pelo servidor Suntech (recv vazio) device_id={self.dev_id}")
+                    logger.warning(f"Conexão fechada pelo servidor principal (recv vazio) device_id={self.dev_id}")
                     self.disconnect()
                     break
                 
+                # Lida com resposta do servidor para pacotes de login
+                if self._is_gt06_login_step:
+                    self.handle_gt06_login(data)
+                    continue
+                
                 device_info = redis_client.hgetall(self.dev_id)
                 protocol_type = device_info.get("protocol")
+                output_protocol = device_info.get("output_protocol")
 
                 if not protocol_type:
-                    logger.error(f"Protocolo não encontrado no Redis para o device_id={self.dev_id}. Impossível traduzir comando.")
+                    logger.error(f"Protocolo não encontrado no Redis para o device_id={self.dev_id}. Impossível traduzir comando. dev_id={self.dev_id}")
                     continue
 
-                processor_func = COMMAND_PROCESSORS.get(protocol_type)
+                mapper_func = output_protocol_settings.OUTPUT_PROTOCOL_COMMAND_MAPPERS.get(output_protocol)
+                if not mapper_func:
+                    logger.error(f"Mapeador de comandos universais para o protocolo de saida '{str(output_protocol).upper()}' não encontrado. dev_id={self.dev_id}")
+                    return
+                
+                universal_command = mapper_func(self.dev_id, data)
+                if not universal_command:
+                    logger.error(f"Comando universal não encontrado, output_protocol={self.output_protocol}, dev_id={self.dev_id}")
+                    return
+                
+                target_module = importlib.import_module(f"app.src.input.{protocol_type}.builder")
+                processor_func = getattr(target_module, "process_command")
 
                 if not processor_func:
-                    logger.error(f"Processador de comando para o protocolo '{protocol_type}' não encontrado.")
+                    logger.error(f"Processador de comando para o protocolo '{str(protocol_type).upper()}' com o protocolo de saida '{str(output_protocol).upper()}' não encontrado.")
                     continue
 
-                logger.info(f"Roteando comando para o processador do protocolo: '{protocol_type}'")
-                processor_func(data, self.dev_id, self.serial)
+                logger.info(f"Roteando comando para o processador do protocolo: '{str(protocol_type).upper()}' com protocolo de saida '{str(output_protocol).upper()}'")
+                processor_func(self.dev_id, self.serial, universal_command)
 
 
             except socket.timeout:
@@ -104,18 +148,39 @@ class MainServerSession:
                 self.disconnect()
                 break
     
-    def send(self, packet: bytes):
+    def send(self, packet: bytes, current_output_protocol: str = None):
         with self.lock:
             if not self._is_connected:
-                logger.warning("Conexão perdida, tentando reconectar...")
+                logger.warning(f"Conexão perdida, tentando reconectar... dev_id={self.dev_id}")
 
                 if not self.connect():
-                    logger.error("Não foi possível conectar ao servidor principal. Pacote descartado.")
+                    logger.error(f"Não foi possível conectar ao servidor principal. Pacote descartado. dev_id={self.dev_id}")
                     return
             
+            if current_output_protocol and current_output_protocol.lower() != self.output_protocol:
+                logger.warning(f"Protocolo de saída mudou de {self.output_protocol} para {current_output_protocol}, desconectando sessão atual e criando uma nova.")
+                
+                self.disconnect()
+                self.output_protocol = current_output_protocol
+                if not self.connect():
+                    logger.error(f"Não foi possível conectar ao servidor principal com o novo protocolo. Pacote descartado. dev_id={self.dev_id}")
+                    return
+                
             try:
+                if self._is_gt06_login_step:
+                    logger.info(f"Aguardadndo resposta do server principal sobre o pacote de login. dev_id={self.dev_id}")
+
+                    while self._is_gt06_login_step:
+                        time.sleep(1)
+                    
+                    logger.info(f"Resposta do server principal recebida, continuando a entrega de pacotes. dev_id={self.dev_id}")
+
                 logger.info(f"Encaminhando pacote de {len(packet)} bytes device_id={self.dev_id}")
-                self.sock.sendall(packet + b'\r')
+
+                if self.output_protocol == "suntech":
+                    packet += b'\r'
+
+                self.sock.sendall(packet)
             except (ConnectionResetError, BrokenPipeError) as e:
                 logger.warning(f"Conexão com servidor Suntech caiu ao enviar ({type(e).__name__}) device_id={self.dev_id}")
 
@@ -126,7 +191,7 @@ class MainServerSession:
                         self.send(packet)
                         
                 else:
-                    logger.error("Número máximo de tentativas de conexão para essa sessão atingida")
+                    logger.error(f"Número máximo de tentativas de conexão para essa sessão atingida dev_id={self.dev_id}")
                     self._conection_retries = 0
                     return
 
@@ -161,11 +226,11 @@ class MainServerSessionsManager:
 
         return cls._instance
 
-    def get_session(self, dev_id: str, serial: str):
+    def get_session(self, dev_id: str, serial: str, output_protocol) -> MainServerSession:
         with self.lock:
             if dev_id not in self._sessions:
                 logger.info(f"Nenhuma sessão encontrada no MainServerSessionsManager. Criando uma nova. dev_id={dev_id}")
-                self._sessions[dev_id] = MainServerSession(dev_id, serial)
+                self._sessions[dev_id] = MainServerSession(dev_id, serial, output_protocol)
             
             session = self._sessions[dev_id]
             session.connect()
@@ -183,7 +248,39 @@ class MainServerSessionsManager:
 
 sessions_manager = MainServerSessionsManager()
 
-def send_to_main_server(dev_id_str: str, serial: str, suntech_packet: bytes, raw_packet_hex: str):
-    add_packet_to_history(dev_id_str, raw_packet_hex, suntech_packet.decode('ascii', errors='ignore'))
-    session = sessions_manager.get_session(dev_id_str, serial)
-    session.send(suntech_packet)
+def send_to_main_server(
+        dev_id: str, packet_data: dict = None, serial: str = None, 
+        raw_packet_hex: str = None, original_protocol: str = None, 
+        type: str = "location"
+    ):
+    """
+    Executa lógica de construção de pacotes se o mesmo não for fornecido, com base no protocolo de saída do dispositivo e o tipo de pacote especificado.
+    """
+
+    output_protocol = redis_client.hget(dev_id, "output_protocol")
+    if not output_protocol:
+        if redis_client.hget(dev_id, "is_hybrid") or str(redis_client.hget(dev_id, "protocol")).lower() == "vl01":
+            output_protocol = "gt06"
+        else:
+            output_protocol = "suntech"
+        
+        redis_client.hset(dev_id, "output_protocol", output_protocol)
+    
+    
+    output_packet_builder = output_protocol_settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get(type)
+    output_packet = output_packet_builder(dev_id, packet_data, serial, type)
+
+    # Lógica de envios
+    if output_packet:
+        if output_protocol == "suntech":
+            str_output_packet = output_packet.decode("ascii")
+        else:
+            str_output_packet = output_packet.hex()
+
+
+        logger.info(f"Pacote de {type.upper()} {output_protocol.upper()} traduzido de pacote {str(original_protocol).upper()}:\n{str_output_packet}")
+
+        add_packet_to_history(dev_id, raw_packet_hex, str_output_packet)
+        
+        session = sessions_manager.get_session(dev_id, serial, output_protocol)
+        session.send(output_packet, output_protocol)

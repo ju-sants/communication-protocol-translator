@@ -4,18 +4,18 @@ from datetime import datetime, timezone
 import requests
 
 from app.services.redis_service import get_redis
-from app.src.protocols.session_manager import tracker_sessions_manager
+from app.src.input.session_manager import tracker_sessions_manager
 from app.src.connection.main_server_connection import sessions_manager
 from app.services.history_service import get_packet_history
-from app.src.protocols.gt06.builder import build_command as build_gt06_command
-from app.src.protocols.vl01.builder import build_command as build_vl01_command
-from app.src.protocols.nt40.builder import build_command as build_nt40_command
-# from app.src.protocols.jt808.builder import build_command as build_jt808_command
+from app.src.input.j16x.builder import build_command as build_j16x_command
+from app.src.input.vl01.builder import build_command as build_vl01_command
+from app.src.input.nt40.builder import build_command as build_nt40_command
+# from app.src.input.jt808.builder import build_command as build_jt808_command
 
 redis_client = get_redis()
 
 COMMAND_BUILDERS = {
-    "gt06": build_gt06_command,
+    "j16x": build_j16x_command,
     "vl01": build_vl01_command,
     "nt40": build_nt40_command
     # "jt808": build_jt808_command
@@ -35,6 +35,7 @@ def get_all_trackers_data():
             
             device_data = redis_client.hgetall(key)
             device_data['is_connected'] = tracker_sessions_manager.exists(key, use_redis=True)
+            device_data["output_protocol"] = device_data.get("output_protocol") or "suntech"
             all_data[key] = device_data
         return jsonify(all_data)
     except Exception as e:
@@ -108,26 +109,6 @@ def send_tracker_command(dev_id):
         return jsonify({"error": "Device not found in Redis"}), 404
     
     protocol_type = device_info.get('protocol')
-    
-    response_internal = requests.post(f"http://{protocol_type}.railway.internal:5000/receive_command/{dev_id}", json=data)
-
-    if response_internal.status_code == 200:
-        return jsonify({"status": "Encaminhado ao serviço interno responsável"})
-    else:
-        return jsonify({"status": "error", "error_message": "Não foi possível encaminhar o comando ao serviço interno responsável."})
-@app.route("/receive_command/<string:dev_id>", methods=["POST"])
-def receive_command(dev_id):
-    data = request.get_json()
-    if not data or 'command' not in data:
-        return jsonify({"error": "Command not specified in request body"}), 400
-
-    command_str = data['command']
-    
-    device_info = redis_client.hgetall(dev_id)
-    if not device_info:
-        return jsonify({"error": "Device not found in Redis"}), 404
-
-    protocol_type = device_info.get('protocol')
     serial = int(device_info.get('last_serial', 0))
 
     if not protocol_type:
@@ -162,6 +143,7 @@ def receive_command(dev_id):
             
     except Exception as e:
         return jsonify({"error": f"Failed to send command: {str(e)}"}), 500
+
 @app.route('/trackers/<string:dev_id>/history', methods=['GET'])
 def get_tracker_history(dev_id):
     """
@@ -203,12 +185,13 @@ def get_tracker_details(dev_id):
             "device_id": dev_id,
             "imei": device_data.get('imei', dev_id),
             "protocol": device_data.get('protocol'),
+            "output_protocol": device_data.get("output_protocol") or "suntech",
             "is_connected_translator": tracker_sessions_manager.exists(dev_id, use_redis=True),
             "is_connected_main_server": dev_id in sessions_manager._sessions,
             "last_active_timestamp": device_data.get('last_active_timestamp'),
             "last_event_type": device_data.get('last_event_type'),
             "total_packets_received": int(device_data.get('total_packets_received', 0)),
-            "last_location_data": json.loads(device_data.get('last_location_data', '{}')),
+            "last_packet_data": json.loads(device_data.get('last_packet_data', '{}')),
             "last_full_location": json.loads(device_data.get('last_full_location', '{}')),
             "odometer": float(device_data.get('odometer', 0.0)),
             "acc_status": int(device_data.get('acc_status', 0)),

@@ -2,8 +2,9 @@ import struct
 
 from . import builder, mapper, utils
 from app.core.logger import get_logger
+from app.services.redis_service import get_redis
 
-
+redis_client = get_redis()
 logger = get_logger(__name__)
 
 def process_packet(dev_id_str: str | None, packet_body: bytes, is_x79: bool = False) -> tuple[bytes | None, str | None]:
@@ -16,7 +17,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, is_x79: bool = Fa
     if len(packet_body) < 6:
         logger.warning(f"Pacote VL01 recebido muito curto para processar: {packet_body.hex()}")
         return None, None
-
+    
     # CRC
     data_to_check = packet_body[:-2]
     received_crc = struct.unpack('>H', packet_body[-2:])[0]

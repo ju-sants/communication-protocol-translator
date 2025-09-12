@@ -7,8 +7,8 @@ import redis
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
+from app.config.settings import settings
 from .utils import _decode_alarm_location_packet
-from app.src.suntech.utils import build_suntech_packet, build_suntech_alv_packet, build_suntech_res_packet
 from app.src.connection.main_server_connection import send_to_main_server
 from .utils import haversine
 
@@ -212,12 +212,12 @@ def _decode_location_packet(body: bytes):
         return None
 
 def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
-    location_data = _decode_location_packet(body)
+    packet_data = _decode_location_packet(body)
 
-    if not location_data:
+    if not packet_data:
         return
     
-    if location_data.get("acc_status"):
+    if packet_data.get("acc_status"):
         # Haversine Odometer Calculation
         last_location_str = redis_client.hget(dev_id_str, "last_location")
         current_odometer = float(redis_client.hget(dev_id_str, "odometer") or 0.0)
@@ -227,8 +227,8 @@ def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
             last_lat = last_location["latitude"]
             last_lon = last_location["longitude"]
             
-            current_lat = location_data["latitude"]
-            current_lon = location_data["longitude"]
+            current_lat = packet_data["latitude"]
+            current_lon = packet_data["longitude"]
 
             distance = haversine(last_lat, last_lon, current_lat, current_lon) * 1000  # Convert to meters
             current_odometer += distance
@@ -236,42 +236,31 @@ def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
         else:
             logger.info(f"No previous location for {dev_id_str}. Odometer starting at {current_odometer/1000:.2f} km.")
 
-        location_data["gps_odometer"] = current_odometer
+        packet_data["gps_odometer"] = current_odometer
         redis_client.hset(dev_id_str, "odometer", str(current_odometer))
-        redis_client.hset(dev_id_str, "last_location", json.dumps({"latitude": location_data["latitude"], "longitude": location_data["longitude"]}))
+        redis_client.hset(dev_id_str, "last_location", json.dumps({"latitude": packet_data["latitude"], "longitude": packet_data["longitude"]}))
 
     else:
         last_odometer = redis_client.hget(dev_id_str, "odometer")
         if last_odometer:
-            location_data["gps_odometer"] = float(last_odometer)
+            packet_data["gps_odometer"] = float(last_odometer)
         else:
-            location_data["gps_odometer"] = 0.0
+            packet_data["gps_odometer"] = 0.0
 
-    last_location_data = copy.deepcopy(location_data)
+    last_packet_data = copy.deepcopy(packet_data)
     
-    last_location_data["timestamp"] = last_location_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
+    last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
 
     # Salvando para uso em caso de alarmes
     redis_client.hset(dev_id_str, "imei", dev_id_str) # Explicitly save IMEI
-    redis_client.hset(dev_id_str, "last_location_data", json.dumps(last_location_data))
-    redis_client.hset(dev_id_str, "last_full_location", json.dumps(location_data, default=str)) # Full location data
+    redis_client.hset(dev_id_str, "last_packet_data", json.dumps(last_packet_data))
+    redis_client.hset(dev_id_str, "last_full_location", json.dumps(packet_data, default=str)) # Full location data
     redis_client.hset(dev_id_str, "last_serial", serial)
     redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
     redis_client.hset(dev_id_str, "last_event_type", "location")
     redis_client.hincrby(dev_id_str, "total_packets_received", 1)
 
-    suntech_packet = build_suntech_packet(
-        "STT",
-        dev_id_str,
-        location_data,
-        serial,
-        location_data.get("is_realtime", True),
-        voltage_stored=True
-    )
-
-    if suntech_packet:
-        logger.info(f"Pacote Localização SUNTECH traduzido de pacote VL01:\n{suntech_packet}")
-        send_to_main_server(dev_id_str, serial, suntech_packet.encode("ascii"), raw_packet_hex)
+    send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol="VL01")
 
 def _handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
@@ -282,12 +271,12 @@ def _handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_h
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
     
-    alarm_location_data = _decode_alarm_location_packet(body[0:16])
-    if not alarm_location_data:
+    alarm_packet_data = _decode_alarm_location_packet(body[0:16])
+    if not alarm_packet_data:
         logger.info(f"Pacote de alarme sem dados de localização, descartando... dev_id={dev_id_str}, packet={body}")
         return
     
-    alarm_datetime = alarm_location_data.get("timestamp")
+    alarm_datetime = alarm_packet_data.get("timestamp")
     if not alarm_datetime:
         logger.info(f"Pacote de alarme sem data e hora, descartando... dev_id={dev_id_str}")
         return
@@ -297,32 +286,22 @@ def _handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_h
     if not alarm_datetime > limit:
         logger.info(f"Alarme da memória, descartando... dev_id={dev_id_str}")
 
-    last_location_data_str = redis_client.hget(dev_id_str, "last_location_data")
-    last_location_data = json.loads(last_location_data_str)
+    last_packet_data_str = redis_client.hget(dev_id_str, "last_packet_data")
+    last_packet_data = json.loads(last_packet_data_str)
 
-    definitive_location_data = {**last_location_data, **alarm_location_data}
+    definitive_packet_data = {**last_packet_data, **alarm_packet_data}
 
-    if not definitive_location_data:
+    if not definitive_packet_data:
         return
     
     alarm_code = body[16]
 
-    suntech_alert_id = VL01_TO_SUNTECH_ALERT_MAP.get(alarm_code)
+    universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("vl01").get(alarm_code)
 
-    if suntech_alert_id:
-        logger.info(f"Alarme VL01 (0x{alarm_code:02X}) traduzido para Suntech ID {suntech_alert_id} device_id={dev_id_str}")
-        suntech_packet = build_suntech_packet(
-            hdr="ALT",
-            dev_id=dev_id_str,
-            location_data=definitive_location_data,
-            serial=serial,
-            is_realtime=True,
-            alert_id=suntech_alert_id
-        )
-        if suntech_packet:
-            logger.info(f"Pacote Alerta SUNTECH traduzido de pacote VL01:\n{suntech_packet}")
+    if universal_alert_id:
+        logger.info(f"Alarme VL01 (0x{alarm_code:02X}) traduzido para Global ID {universal_alert_id} device_id={dev_id_str}")
 
-            send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
+        send_to_main_server(dev_id_str, definitive_packet_data, serial, raw_packet_hex, original_protocol="VL01", type="alert")
     else:
         logger.warning(f"Alarme VL01 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
@@ -344,31 +323,25 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     redis_client.hset(dev_id_str, "last_serial", serial)
 
     # Keep-Alive da Suntech
-    suntech_packet = build_suntech_alv_packet(dev_id_str)
-    if suntech_packet:
-        logger.info(f"Pacote de Heartbeat/KeepAlive SUNTECH traduzido de pacote NT40:\n{suntech_packet}")
-        send_to_main_server(dev_id_str, serial, suntech_packet.encode('ascii'), raw_packet_hex)
+    send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="VL01", type="heartbeat")
 
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
     try:
         command_content = body[5:]
         command_content_str = command_content.decode("ascii", errors="ignore")
         if command_content_str:
-            last_location_data_str = redis_client.hget(dev_id, "last_location_data")
-            last_location_data = json.loads(last_location_data_str)
-            last_location_data["timestamp"] = datetime.now(timezone.utc)
+            last_packet_data_str = redis_client.hget(dev_id, "last_packet_data")
+            last_packet_data = json.loads(last_packet_data_str)
+            last_packet_data["timestamp"] = datetime.now(timezone.utc)
 
-            packet = None
-            
             if command_content_str == "RELAY:ON":
                 redis_client.hset(dev_id, "last_output_status", 1)
-                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "01"], last_location_data)
+                last_packet_data["REPLY"] = "OUTPUT ON"
             elif command_content_str == "RELAY:OFF":
                 redis_client.hset(dev_id, "last_output_status", 0)
-                packet = build_suntech_res_packet(dev_id, ["CMD", dev_id, "04", "02"], last_location_data)
-                
-            if packet:
-                send_to_main_server(dev_id, serial, packet.encode("ascii"), raw_packet_hex)
+                last_packet_data["REPLY"] = "OUTPUT OFF"
+
+            send_to_main_server(dev_id, last_packet_data, serial, raw_packet_hex, original_protocol="VL01", type="command_reply")
 
             pass
     except Exception as e:
@@ -394,14 +367,14 @@ def packet_queuer(dev_id_str: str, protocol_number: int, serial: int, body: byte
     # For location packets, try to extract timestamp from the body for accurate ordering
     timestamp = datetime.now(timezone.utc)
     if protocol_number == 0xA0: # Location Packet
-        location_data = _decode_location_packet(body)
-        if location_data and "timestamp" in location_data:
-            timestamp = location_data["timestamp"]
+        packet_data = _decode_location_packet(body)
+        if packet_data and "timestamp" in packet_data:
+            timestamp = packet_data["timestamp"]
         packet_queue.add_packet("location", dev_id_str, serial, body, raw_packet_hex, timestamp)
     elif protocol_number == 0x95: # Alarm Packet
-        alarm_location_data = _decode_alarm_location_packet(body[0:16])
-        if alarm_location_data and "timestamp" in alarm_location_data:
-            timestamp = alarm_location_data["timestamp"]
+        alarm_packet_data = _decode_alarm_location_packet(body[0:16])
+        if alarm_packet_data and "timestamp" in alarm_packet_data:
+            timestamp = alarm_packet_data["timestamp"]
         packet_queue.add_packet("alarm", dev_id_str, serial, body, raw_packet_hex, timestamp)
     elif protocol_number == 0x94:
         timestamp = datetime.now(timezone.utc)

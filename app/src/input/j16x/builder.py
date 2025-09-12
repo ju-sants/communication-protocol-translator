@@ -2,7 +2,7 @@ import struct
 
 from app.core.logger import get_logger
 from . import utils
-from app.src.protocols.session_manager import tracker_sessions_manager
+from app.src.input.session_manager import tracker_sessions_manager
 
 logger = get_logger(__name__)
 
@@ -68,49 +68,40 @@ def build_command(command_content_str: str, serial_number: int):
 
     return command_packet
 
-def process_suntech_command(command: bytes, dev_id: str, serial: int):
-    logger.info(f"Iniciando tradução de comando Suntech para GT06 device_id={dev_id}, comando={command}")
-
-    command_str = command.decode("ascii", errors="ignore")
-    parts = command_str.split(';')
-
-    if len(parts) < 4:
-        logger.warning(f"Comando Suntech mal formatado, ignorando. comando={command}")
-        return
-
-    command_key = f"{parts[0]};{';'.join(parts[2:])}"
+def process_command(dev_id: str, serial: int, universal_command: str):
+    logger.info(f"Iniciando tradução de comando Universal para GT06 device_id={dev_id}, comando={universal_command}")
 
     command_mapping = {
-        "CMD;04;01": "RELAY,1#",
-        "CMD;04;02": "RELAY,0#",
-        "CMD;03;01": "GPRS,GET,LOCATION#",
+        "OUTPUT ON": "RELAY,1#",
+        "OUTPUT OFF": "RELAY,0#",
+        "PING": "GPRS,GET,LOCATION#",
     }
 
-    gt06_text_command = None
-    if command_key.startswith("CMD;05;03"):
-        meters = command_key.split(";")[-1]
+    j16x_text_command = None
+    if universal_command.startswith("HODOMETRO"):
+        meters = universal_command.split(":")[-1]
         if not meters.isdigit():
-            logger.info(f"Comando com metragem incorreta: {command_key}")
+            logger.info(f"Comando com metragem incorreta: {universal_command}")
             return
         
         kilometers = int(meters) / 1000
 
-        gt06_text_command = f"MILEAGE={kilometers}#"
+        j16x_text_command = f"MILEAGE={kilometers}#"
     
     else:
-        gt06_text_command = command_mapping.get(command_key)
+        j16x_text_command = command_mapping.get(universal_command)
 
-    if not gt06_text_command:
-        logger.warning(f"Nenhum mapeamento GT06 encontrado para o comando Suntech comando={command_key}")
+    if not j16x_text_command:
+        logger.warning(f"Nenhum mapeamento GT06 encontrado para o comando Suntech comando={universal_command}")
         return
 
-    gt06_binary_command = build_command(gt06_text_command, serial)
+    j16x_binary_command = build_command(j16x_text_command, serial)
 
     tracker_socket = tracker_sessions_manager.get_tracker_client_socket(dev_id)
     if tracker_socket:
         try:
-            tracker_socket.sendall(gt06_binary_command)
-            logger.info(f"Comando GT06 enviado com sucesso device_id={dev_id}, comando_hex={gt06_binary_command.hex()}")
+            tracker_socket.sendall(j16x_binary_command)
+            logger.info(f"Comando GT06 enviado com sucesso device_id={dev_id}, comando_hex={j16x_binary_command.hex()}")
         except Exception:
             logger.exception(f"Falha ao enviar comando para o rastreador GT06 device_id={dev_id}")
     else:

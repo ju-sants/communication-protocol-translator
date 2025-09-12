@@ -1,7 +1,6 @@
 import json
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from app.src.suntech.utils import build_suntech_packet
 from app.src.connection.main_server_connection import send_to_main_server
 
 logger = get_logger(__name__)
@@ -35,23 +34,16 @@ def map_data(raw_data: str):
         last_serial = redis_client.hget(hybrid_gsm, "last_serial")
         last_serial = last_serial if last_serial else 0
 
-        last_gsm_location_str = redis_client.hget(hybrid_gsm, "last_location_data")
+        last_gsm_location_str = redis_client.hget(hybrid_gsm, "last_packet_data")
 
         last_gsm_location = json.loads(last_gsm_location_str)
 
         last_hybrid_location = {**last_gsm_location, **data}
         last_hybrid_location["voltage"] = 2.22
         last_hybrid_location["satellites"] = 2
+        last_gsm_location["is_realtime"] = False
 
-        packet = build_suntech_packet(
-            "STT",
-            hybrid_gsm,
-            last_hybrid_location,
-            last_serial,
-            False,
-        )
-
-        send_to_main_server(hybrid_gsm, last_serial, packet.encode("ascii"), raw_data.encode("utf-8"))
+        send_to_main_server(hybrid_gsm, last_hybrid_location, last_serial, raw_data.encode("utf-8"), "SATELLITAL")
 
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON: {e}")
