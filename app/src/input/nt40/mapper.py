@@ -176,24 +176,35 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
 
     # Salvando para uso em caso de alarmes
-    redis_client.hset(dev_id_str, "imei", dev_id_str) # Explicitly save IMEI
-    redis_client.hset(dev_id_str, "last_packet_data", json.dumps(last_packet_data))
-    redis_client.hset(dev_id_str, "last_full_location", json.dumps(packet_data, default=str)) # Full location data
-    redis_client.hset(dev_id_str, "last_serial", serial)
-    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
-    redis_client.hset(dev_id_str, "last_event_type", "location")
-    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
-    redis_client.hset(dev_id_str, "acc_status", packet_data.get('acc_status', 0))
-    redis_client.hset(dev_id_str, "power_status", 0 if packet_data.get('voltage', 0.0) > 0 else 1)
+    redis_data = {
+        "imei": dev_id_str,
+        "last_packet_data": json.dumps(last_packet_data),
+        "last_full_location": json.dumps(packet_data, default=str),
+        "last_serial": serial,
+        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_event_type": "location",
+        "acc_status": packet_data.get('acc_status', 0),
+        "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
+    }
     if packet_data.get("output_status") is not None:
-        redis_client.hset(dev_id_str, "last_output_status", packet_data.get("output_status"))
+        redis_data["last_output_status"] = packet_data.get("output_status")
+    
+    pipeline = redis_client.pipeline()
+    pipeline.hmset(dev_id_str, redis_data)
+    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.execute()
 
     send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol="NT40")
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
-    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
-    redis_client.hset(dev_id_str, "last_event_type", "alarm")
-    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
+    redis_data = {
+        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_event_type": "alarm",
+    }
+    pipeline = redis_client.pipeline()
+    pipeline.hmset(dev_id_str, redis_data)
+    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.execute()
 
     if len(body) < 32:
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
@@ -233,15 +244,20 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
 
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     # O pacote de Heartbeat (0x13) contém informações de status
-    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
-    redis_client.hset(dev_id_str, "last_event_type", "heartbeat")
-    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
-    
+    redis_data = {
+        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_event_type": "heartbeat",
+    }
     terminal_info = body[0]
     logger.info(f"HEARTBEAT TERMINAL INFO: {bin(terminal_info)}")
     output_status = (terminal_info >> 7) & 0b1
-    redis_client.hset(dev_id_str, "last_output_status", output_status)
-    redis_client.hset(dev_id_str, "last_serial", serial)
+    redis_data["last_output_status"] = output_status
+    redis_data["last_serial"] = serial
+    
+    pipeline = redis_client.pipeline()
+    pipeline.hmset(dev_id_str, redis_data)
+    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.execute()
 
     send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="NT40", type="heartbeat")
 
