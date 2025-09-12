@@ -52,10 +52,13 @@ def decode_location_packet_v3(body: bytes):
             cell_id = int.from_bytes(body[23:26], "big")
 
             # Saving LBS information universally
-            redis_client.hset("universal_data", "mcc", mcc)
-            redis_client.hset("universal_data", "mnc", mnc)
-            redis_client.hset("universal_data", "lac", lac)
-            redis_client.hset("universal_data", "cell_id", cell_id)
+            universal_data = {
+                "mcc": mcc,
+                "mnc": mnc,
+                "lac": lac,
+                "cell_id": cell_id
+            }
+            redis_client.hmset("universal_data", universal_data)
 
             acc_status = body[26]
             data["acc_status"] = acc_status
@@ -114,10 +117,13 @@ def decode_location_packet_v4(body: bytes):
         cell_id = struct.unpack(">I", body[23:27])[0]
 
         # Saving LBS information universally
-        redis_client.hset("universal_data", "mcc", mcc)
-        redis_client.hset("universal_data", "mnc", mnc)
-        redis_client.hset("universal_data", "lac", lac)
-        redis_client.hset("universal_data", "cell_id", cell_id)
+        universal_data = {
+            "mcc": mcc,
+            "mnc": mnc,
+            "lac": lac,
+            "cell_id": cell_id
+        }
+        redis_client.hmset("universal_data", universal_data)
 
         acc_status = body[27]
         data["acc_status"] = acc_status
@@ -197,10 +203,13 @@ def decode_location_packet_4g(body: bytes):
         cell_id = struct.unpack(">Q", body[lac_end:cell_id_end])[0]
         
         # Saving LBS information universally
-        redis_client.hset("universal_data", "mcc", mcc)
-        redis_client.hset("universal_data", "mnc", mnc)
-        redis_client.hset("universal_data", "lac", lac)
-        redis_client.hset("universal_data", "cell_id", cell_id)
+        universal_data = {
+            "mcc": mcc,
+            "mnc": mnc,
+            "lac": lac,
+            "cell_id": cell_id
+        }
+        redis_client.hmset("universal_data", universal_data)
         
         acc_status_at = cell_id_end
         acc_status = body[acc_status_at]
@@ -248,22 +257,32 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
     
     # Salvando para uso em caso de alarmes
-    redis_client.hset(dev_id_str, "imei", dev_id_str) # Explicitly save IMEI
-    redis_client.hset(dev_id_str, "last_packet_data", json.dumps(last_packet_data))
-    redis_client.hset(dev_id_str, "last_full_location", json.dumps(packet_data, default=str)) # Full location data
-    redis_client.hset(dev_id_str, "last_serial", serial)
-    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
-    redis_client.hset(dev_id_str, "last_event_type", "location")
-    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
-    redis_client.hset(dev_id_str, "acc_status", packet_data.get('acc_status', 0))
-    redis_client.hset(dev_id_str, "power_status", 0 if packet_data.get('voltage', 0.0) > 0 else 1)
+    redis_data = {
+        "imei": dev_id_str,
+        "last_packet_data": json.dumps(last_packet_data),
+        "last_full_location": json.dumps(packet_data, default=str),
+        "last_serial": serial,
+        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_event_type": "location",
+        "acc_status": packet_data.get('acc_status', 0),
+        "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
+    }
+    pipeline = redis_client.pipeline()
+    pipeline.hmset(dev_id_str, redis_data)
+    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.execute()
 
     send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, "GT06")
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
-    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
-    redis_client.hset(dev_id_str, "last_event_type", "alarm")
-    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
+    redis_data = {
+        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_event_type": "alarm",
+    }
+    pipeline = redis_client.pipeline()
+    pipeline.hmset(dev_id_str, redis_data)
+    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.execute()
 
     if len(body) < 32:
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
@@ -307,15 +326,20 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
 
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     # O pacote de Heartbeat (0x13) contém informações de status
-    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
-    redis_client.hset(dev_id_str, "last_event_type", "heartbeat")
-    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
-    
+    redis_data = {
+        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_event_type": "heartbeat",
+    }
     terminal_info = body[0]
 
     output_status = (terminal_info >> 7) & 0b1
-    redis_client.hset(dev_id_str, "last_output_status", output_status)
-    redis_client.hset(dev_id_str, "last_serial", serial)
+    redis_data["last_output_status"] = output_status
+    redis_data["last_serial"] = serial
+
+    pipeline = redis_client.pipeline()
+    pipeline.hmset(dev_id_str, redis_data)
+    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.execute()
 
     # Keep-Alive da Suntech
     send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="GT06", type="heartbeat")
