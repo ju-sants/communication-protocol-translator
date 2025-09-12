@@ -219,8 +219,10 @@ def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     
     if packet_data.get("acc_status"):
         # Haversine Odometer Calculation
-        last_location_str = redis_client.hget(dev_id_str, "last_location")
-        current_odometer = float(redis_client.hget(dev_id_str, "odometer") or 0.0)
+        # Fetch multiple values at once
+        redis_state = redis_client.hgetall(dev_id_str)
+        last_location_str = redis_state.get("last_location")
+        current_odometer = float(redis_state.get("odometer", 0.0))
 
         if last_location_str:
             last_location = json.loads(last_location_str)
@@ -237,12 +239,17 @@ def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
             logger.info(f"No previous location for {dev_id_str}. Odometer starting at {current_odometer/1000:.2f} km.")
 
         packet_data["gps_odometer"] = current_odometer
-        redis_client.hset(dev_id_str, "odometer", str(current_odometer))
-        redis_client.hset(dev_id_str, "last_location", json.dumps({"latitude": packet_data["latitude"], "longitude": packet_data["longitude"]}))
+        pipeline = redis_client.pipeline()
+        pipeline.hset(dev_id_str, "odometer", str(current_odometer))
+        pipeline.hset(dev_id_str, "last_location", json.dumps({"latitude": packet_data["latitude"], "longitude": packet_data["longitude"]}))
+        pipeline.execute()
 
     else:
-        last_odometer = redis_client.hget(dev_id_str, "odometer")
+        # Fetch multiple values at once
+        redis_state = redis_client.hgetall(dev_id_str)
+        last_odometer = redis_state.get("odometer")
         if last_odometer:
+            last_odometer = last_odometer.decode('utf-8')
             packet_data["gps_odometer"] = float(last_odometer)
         else:
             packet_data["gps_odometer"] = 0.0
@@ -252,20 +259,30 @@ def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
 
     # Salvando para uso em caso de alarmes
-    redis_client.hset(dev_id_str, "imei", dev_id_str) # Explicitly save IMEI
-    redis_client.hset(dev_id_str, "last_packet_data", json.dumps(last_packet_data))
-    redis_client.hset(dev_id_str, "last_full_location", json.dumps(packet_data, default=str)) # Full location data
-    redis_client.hset(dev_id_str, "last_serial", serial)
-    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
-    redis_client.hset(dev_id_str, "last_event_type", "location")
-    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
+    redis_data = {
+        "imei": dev_id_str,
+        "last_packet_data": json.dumps(last_packet_data),
+        "last_full_location": json.dumps(packet_data, default=str),
+        "last_serial": serial,
+        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_event_type": "location",
+    }
+    pipeline = redis_client.pipeline()
+    pipeline.hmset(dev_id_str, redis_data)
+    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.execute()
 
     send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol="VL01")
 
 def _handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
-    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
-    redis_client.hset(dev_id_str, "last_event_type", "alarm")
-    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
+    redis_data = {
+        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_event_type": "alarm",
+    }
+    pipeline = redis_client.pipeline()
+    pipeline.hmset(dev_id_str, redis_data)
+    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.execute()
 
     if len(body) < 17:
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
@@ -308,10 +325,10 @@ def _handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_h
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     logger.info(f"Pacote de heartbeat recebido de {dev_id_str}, body={body.hex()}")
     # O pacote de Heartbeat (0x13) contém informações de status
-    redis_client.hset(dev_id_str, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
-    redis_client.hset(dev_id_str, "last_event_type", "heartbeat")
-    redis_client.hincrby(dev_id_str, "total_packets_received", 1)
-    
+    redis_data = {
+        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_event_type": "heartbeat",
+    }
     terminal_info = body[0]
     acc_status = 1 if terminal_info & 0b10 else 0
     
@@ -320,7 +337,12 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     output_status = (terminal_info >> 7) & 0b1
 
     logger.info(f"DEVICE {dev_id_str} STATUS: ACC: {acc_status}, Power: {power_status}, Output: {output_status}")
-    redis_client.hset(dev_id_str, "last_serial", serial)
+    redis_data["last_serial"] = serial
+    
+    pipeline = redis_client.pipeline()
+    pipeline.hmset(dev_id_str, redis_data)
+    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.execute()
 
     # Keep-Alive da Suntech
     send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="VL01", type="heartbeat")
@@ -343,14 +365,17 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
 
             send_to_main_server(dev_id, last_packet_data, serial, raw_packet_hex, original_protocol="VL01", type="command_reply")
 
-            pass
     except Exception as e:
-        logger.error(f"Erro ao decodificar comando de REPLY")
+        logger.error(f"Erro ao decodificar comando de REPLY: {e} body={body.hex()}, dev_id={dev_id}")
 
 def _handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
-    redis_client.hset(dev_id, "last_active_timestamp", datetime.now(timezone.utc).isoformat())
-    redis_client.hset(dev_id, "last_event_type", "information")
-    redis_client.hincrby(dev_id, "total_packets_received", 1)
+    redis_data = {
+        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_event_type": "information",
+    }
+    pipeline = redis_client.pipeline()
+    pipeline.hmset(dev_id, redis_data)
+    pipeline.hincrby(dev_id, "total_packets_received", 1)
     
     type = body[0]
     if type == 0x00:
@@ -358,10 +383,11 @@ def _handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet
         voltage = struct.unpack(">H", body[1:])
         if voltage:
             voltage = voltage[0] / 100
-            redis_client.hset(dev_id, 'last_voltage', voltage)
-            redis_client.hset(dev_id, "power_status", 0 if voltage > 0 else 1) # Update power status based on voltage
+            pipeline.hset(dev_id, 'last_voltage', voltage)
+            pipeline.hset(dev_id, "power_status", 0 if voltage > 0 else 1) # Update power status based on voltage
     else:
         pass
+    pipeline.execute()
 
 def packet_queuer(dev_id_str: str, protocol_number: int, serial: int, body: bytes, raw_packet_hex: str):
     # For location packets, try to extract timestamp from the body for accurate ordering
