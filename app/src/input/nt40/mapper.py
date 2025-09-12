@@ -212,7 +212,7 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
         logger.info(f"Alarme da memória, descartando... dev_id={dev_id_str}")
 
     last_packet_data_str = redis_client.hget(dev_id_str, "last_packet_data")
-    last_packet_data = json.loads(last_packet_data_str)
+    last_packet_data = json.loads(last_packet_data_str) if last_packet_data_str else {}
 
     definitive_packet_data = {**last_packet_data, **alarm_packet_data}
 
@@ -254,7 +254,7 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
         if command_content_str:
             command_content_str = command_content_str.strip().upper().rstrip('\x00\x01')
             last_packet_data_str = redis_client.hget(dev_id, "last_packet_data")
-            last_packet_data = json.loads(last_packet_data_str)
+            last_packet_data = json.loads(last_packet_data_str) if last_packet_data_str else {}
             last_packet_data["timestamp"] = datetime.now(timezone.utc)
 
             if command_content_str == "RELAYER ENABLE OK!":
