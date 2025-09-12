@@ -332,8 +332,6 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
             last_packet_data = json.loads(last_packet_data_str)
             last_packet_data["timestamp"] = datetime.now(timezone.utc)
 
-            packet = None
-            
             if command_content_str == "RELAY 1 OK":
                 last_packet_data["REPLY"] = "OUTPUT ON"
             elif command_content_str == "RELAY 0 OK":
@@ -341,7 +339,6 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
             else:
                 print(command_content_str)
             
-            if packet:
-                send_to_main_server(dev_id, packet_data=last_packet_data, raw_packet_hex=raw_packet_hex, type="command_reply", original_protocol="J16X")
+            send_to_main_server(dev_id, packet_data=last_packet_data, raw_packet_hex=raw_packet_hex, type="command_reply", original_protocol="J16X")
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY")
