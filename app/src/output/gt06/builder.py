@@ -182,9 +182,10 @@ def build_heartbeat_packet(dev_id: str, *args) -> bytes:
 
     protocol_number = struct.pack(">B", 0x13)
 
-    last_output_status = redis_client.hget(dev_id, "last_output_status") or "0"
-    acc_status = redis_client.hget(dev_id, "acc_status") or "0"
-    serial = redis_client.hget(dev_id, "last_serial") or "0"
+    redis_data = redis_client.hmget(dev_id, "last_output_status", "acc_status", "last_serial")
+    last_output_status = redis_data[0] if redis_data[0] else "0"
+    acc_status = redis_data[1] if redis_data[1] else "0"
+    serial = redis_data[2] if redis_data[2] else "0"
 
     terminal_info_content = (int(last_output_status) << 7) | (1 << 6) | (1 << 2) | (int(acc_status) << 1) | 1
     terminal_info_content_bytes = struct.pack(">B", terminal_info_content)
@@ -268,13 +269,12 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
                                 # LBS Content
     content_body = gps_content + (b"\x00" * 8)
 
-    
-    output_status = redis_client.hget(dev_id, "last_output_status") or "0"
+    redis_data = redis_client.hmget(dev_id, "last_output_status", "acc_status")
+    output_status = redis_data[0] if redis_data[0] else "0"
+    acc = redis_data[1] if redis_data[1] else "0"
 
     gps_tracking = 1
     charge = 1
-
-    acc = redis_client.hget(dev_id, "acc_status") or "0"
 
     terminal_info_byte = (int(output_status) << 7) | (gps_tracking << 6) | (charge << 2) | (int(acc) << 1) | 1
     terminal_info_bytes = struct.pack(">B", terminal_info_byte)

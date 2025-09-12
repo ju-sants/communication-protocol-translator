@@ -36,6 +36,11 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
         f"Construindo pacote Suntech: HDR={hdr}, DevID={dev_id}, Realtime={is_realtime}, "
         f"GlobalAlertID={universal_alert_id}, AlertID={suntech_alert_id}, GeoFenceID={geo_fence_id}, LocationData={packet_data}"
     )
+
+    device_info = redis_client.hgetall(dev_id)
+    if not device_info:
+        logger.warning(f"Tentando construir pacote Suntech para dispositivo desconhecido: {dev_id}")
+        device_info = {}
     
     dev_id_normalized = ''.join(filter(str.isdigit, dev_id))
 
@@ -56,7 +61,7 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
         str(packet_data.get('satellites', 15)),
         "1" if packet_data.get('gps_fixed') else "0",
         f"0000000{int(packet_data.get('acc_status', 0))}",
-        f"0000000{redis_client.hget(dev_id, 'last_output_status') if redis_client.hget(dev_id, 'last_output_status') else '0'}"
+        f"0000000{device_info.get(b'last_output_status', b'0').decode('utf-8')}"
     ]
 
     # Campos de telemetria extra (Assign Headers)
@@ -68,7 +73,9 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     elif voltage_stored and not is_realtime:
         voltage = str(packet_data.get("voltage", "1.11"))
     elif voltage_stored and is_realtime:
-        voltage = redis_client.hget(dev_id, "last_voltage")
+        voltage = device_info.get(b"last_voltage")
+        if voltage:
+            voltage = voltage.decode('utf-8')
         
     telemetry_fields = [
         assign_map,
@@ -82,7 +89,7 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     fields = base_fields
 
     if hdr == "STT":
-        mode = "0" if redis_client.hget(dev_id, 'last_output_status') else "1"
+        mode = "0" if device_info.get(b'last_output_status') else "1"
         stt_rpt_type = "1"
 
         suntech_serial = serial % 10000
@@ -116,6 +123,11 @@ def build_reply_packet(dev_id: str, packet_data: dict, *args) -> str:
     """
     Constrói um pacote de Resposta (RES) rico em dados, como o observado nos logs.
     """
+    device_info = redis_client.hgetall(dev_id)
+    if not device_info:
+        logger.warning(f"Tentando construir pacote RES para dispositivo desconhecido: {dev_id}")
+        device_info = {}
+        
     reply = packet_data.get("REPLY")
 
     if reply:
@@ -132,7 +144,7 @@ def build_reply_packet(dev_id: str, packet_data: dict, *args) -> str:
         ts = packet_data.get('timestamp', datetime.now())
         date_fields = [ts.strftime('%Y'), ts.strftime('%m'), ts.strftime('%d'), ts.strftime('%H:%M:%S')]
 
-        mode = "0" if redis_client.hget(dev_id, 'last_output_status') else "1"
+        mode = "0" if device_info.get(b'last_output_status') else "1"
 
         dev_id_normalized = ''.join(filter(str.isdigit, dev_id))
 
@@ -152,7 +164,7 @@ def build_reply_packet(dev_id: str, packet_data: dict, *args) -> str:
             str(int(packet_data.get('gps_odometer', 0))),
             str(packet_data.get('power_voltage', 0.0)),
             f"0000000{int(packet_data.get('acc_status', 0))}",
-            f"0000000{redis_client.hget(dev_id, 'last_output_status') if redis_client.hget(dev_id, 'last_output_status') else '0'}",
+            f"0000000{device_info.get(b'last_output_status', b'0').decode('utf-8')}",
             mode,
             "0"  # ERR_CODE
         ]
