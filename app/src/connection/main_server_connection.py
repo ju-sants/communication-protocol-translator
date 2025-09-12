@@ -259,7 +259,7 @@ def send_to_main_server(
 
     output_protocol = redis_client.hget(dev_id, "output_protocol")
     if not output_protocol:
-        if redis_client.hget(dev_id, "is_hybrid") or str(redis_client.hget(dev_id, "protocol")).lower() == "vl01":
+        if redis_client.hget(dev_id, "is_hybrid"):
             output_protocol = "gt06"
         else:
             output_protocol = "suntech"
