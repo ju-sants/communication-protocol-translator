@@ -159,4 +159,4 @@ def build_reply_packet(dev_id: str, packet_data: dict, *args) -> str:
         
         packet = ";".join(packet_fields)
         logger.info(f"Construído pacote de Resposta (RES): {packet}")
-        return packet
+        return packet.encode("ascii")
