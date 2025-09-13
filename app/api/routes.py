@@ -1,7 +1,6 @@
 import json
 from flask import current_app as app, jsonify, request
 from datetime import datetime, timezone
-import requests
 
 from app.services.redis_service import get_redis
 from app.src.input.session_manager import tracker_sessions_manager
@@ -200,6 +199,8 @@ def get_tracker_details(dev_id):
             "last_command_sent": json.loads(device_data.get('last_command_sent', '{}')),
             "last_command_response": json.loads(device_data.get('last_command_response', '{}'))
         }
+
+        status_info = {**status_info, **device_data}
 
         # Determine a more descriptive device_status
         if status_info["is_connected_translator"]:

@@ -147,8 +147,10 @@ def build_login_packet(imei: str, serial_number: int) -> bytes:
     """
     protocol_number = 0x01
 
-    imei_normalized = ''.join(filter(str.isdigit, imei))
-    imei_bcd = imei_to_bcd(imei_normalized[-15:])
+    imei_normalized = ''.join(filter(str.isdigit, imei))[-15:]
+    redis_client.hsetnx(imei, "output_id", imei_normalized)
+
+    imei_bcd = imei_to_bcd(imei_normalized)
 
     packet_content_for_crc = (
         struct.pack(">B", protocol_number) +

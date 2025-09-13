@@ -42,12 +42,13 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
         logger.warning(f"Tentando construir pacote Suntech para dispositivo desconhecido: {dev_id}")
         device_info = {}
     
-    dev_id_normalized = ''.join(filter(str.isdigit, dev_id))
+    dev_id_normalized = ''.join(filter(str.isdigit, dev_id))[-10:]
+    redis_client.hsetnx(dev_id, "output_id", dev_id_normalized)
 
     # Campos básicos (comuns a todos)
     base_fields = [
         hdr,
-        dev_id_normalized[-10:],
+        dev_id_normalized,
         "FFF83F",
         "218",
         "1.0.12",
