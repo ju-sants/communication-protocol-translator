@@ -61,7 +61,7 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
         str(packet_data.get('satellites', 15)),
         "1" if packet_data.get('gps_fixed') else "0",
         f"0000000{int(packet_data.get('acc_status', 0))}",
-        f"0000000{device_info.get(b'last_output_status', b'0').decode('utf-8')}"
+        f"0000000{device_info.get('last_output_status')}"
     ]
 
     # Campos de telemetria extra (Assign Headers)
@@ -73,9 +73,9 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     elif voltage_stored and not is_realtime:
         voltage = str(packet_data.get("voltage", "1.11"))
     elif voltage_stored and is_realtime:
-        voltage = device_info.get(b"last_voltage")
+        voltage = device_info.get("last_voltage")
         if voltage:
-            voltage = voltage.decode('utf-8')
+            voltage = voltage
         
     telemetry_fields = [
         assign_map,
@@ -89,7 +89,7 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     fields = base_fields
 
     if hdr == "STT":
-        mode = "0" if device_info.get(b'last_output_status') else "1"
+        mode = "0" if device_info.get('last_output_status') else "1"
         stt_rpt_type = "1"
 
         suntech_serial = serial % 10000
@@ -164,7 +164,7 @@ def build_reply_packet(dev_id: str, packet_data: dict, *args) -> str:
             str(int(packet_data.get('gps_odometer', 0))),
             str(packet_data.get('power_voltage', 0.0)),
             f"0000000{int(packet_data.get('acc_status', 0))}",
-            f"0000000{device_info.get(b'last_output_status', b'0').decode('utf-8')}",
+            f"0000000{device_info.get('last_output_status', '0')}",
             mode,
             "0"  # ERR_CODE
         ]

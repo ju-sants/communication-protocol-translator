@@ -249,7 +249,7 @@ def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
         redis_state = redis_client.hgetall(dev_id_str)
         last_odometer = redis_state.get("odometer")
         if last_odometer:
-            last_odometer = last_odometer.decode('utf-8')
+            last_odometer = last_odometer
             packet_data["gps_odometer"] = float(last_odometer)
         else:
             packet_data["gps_odometer"] = 0.0
