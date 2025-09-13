@@ -14,7 +14,7 @@ def start_listener(port: int, handler_func):
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind(('', port))
-        server_socket.listen(10)
+        server_socket.listen(4096)
         logger.info(f"✅ Protocol listener iniciado com sucesso na porta {port}")
 
         while True:
