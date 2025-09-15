@@ -30,12 +30,10 @@ def map_data(raw_data: str):
         if not hybrid_gsm:
             logger.info("Satellite tracker without a GSM pair, dropping.")
             return
-        
-        last_serial = redis_client.hget(hybrid_gsm, "last_serial")
-        last_serial = last_serial if last_serial else 0
 
-        last_gsm_location_str = redis_client.hget(hybrid_gsm, "last_packet_data")
+        last_serial, last_gsm_location_str = redis_client.hmget(hybrid_gsm, "last_serial", "last_packet_data")
 
+        last_serial = int(last_serial) if last_serial else 0
         last_gsm_location = json.loads(last_gsm_location_str)
 
         last_hybrid_location = {**last_gsm_location, **data}
