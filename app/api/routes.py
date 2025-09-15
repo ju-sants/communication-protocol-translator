@@ -218,7 +218,7 @@ def get_tracker_details(dev_id):
             "last_command_response": json.loads(device_data.get('last_command_response', '{}'))
         }
 
-        status_info = {**status_info, **device_data}
+        status_info = {**device_data, **status_info}
 
         # Determine a more descriptive device_status
         if status_info["is_connected_translator"]:
