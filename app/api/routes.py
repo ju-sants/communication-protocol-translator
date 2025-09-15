@@ -1,6 +1,7 @@
 import json
 from flask import current_app as app, jsonify, request
 from datetime import datetime, timezone
+import os
 
 from app.services.redis_service import get_redis
 from app.src.input.session_manager import tracker_sessions_manager
@@ -20,6 +21,20 @@ COMMAND_BUILDERS = {
     # "jt808": build_jt808_command
 }
 
+@app.route('/gateway_info', methods=['GET'])
+def get_gateway_info():
+    """
+    Retorna informações básicas sobre o gateway.
+    """
+    try:
+        info = {
+            "input_protocols": [dir for dir in os.listdir('app/src/input') if os.path.isdir(os.path.join('app/src/input', dir)) and not dir.startswith('__')],
+            "output_protocols": [dir for dir in os.listdir('app/src/output') if os.path.isdir(os.path.join('app/src/output', dir)) and not dir.startswith('__')],
+            # Por enquanto, apenas enviaremos essas informações
+        }
+        return jsonify(info)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 @app.route('/trackers', methods=['GET'])
 def get_all_trackers_data():
     """
@@ -32,6 +47,9 @@ def get_all_trackers_data():
             if redis_client.type(key) != 'hash':
                 continue
             
+            if key in ("global_data", "universal_data"):
+                continue
+
             device_data = redis_client.hgetall(key)
             device_data['is_connected'] = tracker_sessions_manager.exists(key, use_redis=True)
             device_data["output_protocol"] = device_data.get("output_protocol") or "suntech"
