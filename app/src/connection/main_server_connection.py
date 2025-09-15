@@ -256,10 +256,10 @@ def send_to_main_server(
     """
     Executa lógica de construção de pacotes se o mesmo não for fornecido, com base no protocolo de saída do dispositivo e o tipo de pacote especificado.
     """
-
-    output_protocol = redis_client.hget(dev_id, "output_protocol")
+    
+    output_protocol, is_hybrid = redis_client.hmget(dev_id, "output_protocol", "is_hybrid")
     if not output_protocol:
-        if redis_client.hget(dev_id, "is_hybrid"):
+        if is_hybrid:
             output_protocol = "gt06"
         else:
             output_protocol = "suntech"
