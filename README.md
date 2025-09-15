@@ -1,22 +1,37 @@
 # Servidor Gateway Poliglota para Rastreamento Veicular
 
-Este não é apenas um servidor de rastreamento. É um **gateway de tradução universal**, projetado para resolver um dos maiores desafios no setor de telemétria: a **fragmentação de protocolos**. Com uma arquitetura modular e de alto desempenho, este projeto atua como a ponte definitiva entre centenas de modelos de rastreadores e a sua plataforma central.
+Este projeto é um **gateway de tradução universal** para o setor de telemétria, projetado para resolver o desafio da **fragmentação de protocolos**. Com uma arquitetura modular e de alto desempenho, ele atua como uma ponte entre diversos modelos de rastreadores e uma plataforma central.
 
-## O Poder do Gateway Poliglota
+## Tabela de Conteúdos
+- [Visão Geral](#visão-geral)
+- [Principais Funcionalidades](#principais-funcionalidades)
+- [Arquitetura do Sistema](#arquitetura-do-sistema)
+  - [Fluxo de Dados (Uplink)](#fluxo-de-dados-uplink-dispositivo---plataforma)
+  - [Fluxo de Comandos (Downlink)](#fluxo-de-comandos-downlink-plataforma---dispositivo)
+- [Dados Persistidos no Redis](#dados-persistidos-no-redis)
+- [Protocolos Suportados](#protocolos-suportados)
+- [Endpoints da API](#endpoints-da-api)
+- [Como Começar](#como-começar)
+- [Como Adicionar um Novo Protocolo](#como-adicionar-um-novo-protocolo)
+- [Tecnologias Utilizadas](#tecnologias-utilizadas)
 
-A força deste projeto reside em sua arquitetura inteligente e desacoplada, que oferece funcionalidades muito além de uma simples tradução de dados.
+## Visão Geral
 
-*   **Arquitetura "Plug-and-Play"**: Adicionar suporte a um novo protocolo é tão simples quanto criar um novo diretório. A estrutura modular isola completamente a lógica de cada protocolo, permitindo que o sistema cresça sem complexidade adicional. O orquestrador em [`main.py`](main.py) carrega dinamicamente cada protocolo configurado em [`app/config/settings.py`](app/config/settings.py), iniciando listeners dedicados em threads separadas.
+A força deste projeto reside em sua arquitetura inteligente e desacoplada, que oferece funcionalidades muito além de uma simples tradução de dados. Ele foi desenhado para ser uma solução "plug-and-play", onde adicionar suporte a novos protocolos de entrada ou saída exige o mínimo de esforço, sem impactar a estabilidade do sistema existente. O objetivo é fornecer uma base robusta e flexível para qualquer plataforma de rastreamento.
 
-*   **Tradução de Múltiplos Protocolos de Entrada para Múltiplos Protocolos de Saída**: A genialidade do sistema está na sua camada de `mapper` (ex: [`app/src/input/j16x/mapper.py`](app/src/input/j16x/mapper.py)). Cada `mapper` de entrada converte o dialeto específico de seu protocolo para um **dicionário Python padronizado**. A camada de `output` (ex: [`app/src/output/suntech/builder.py`](app/src/output/suntech/builder.py)) utiliza esse dicionário para construir pacotes em múltiplos formatos de saída, como **Suntech** e **GT06**. Isso significa que a lógica de saída não precisa saber nada sobre os protocolos de entrada, garantindo um desacoplamento total.
+## Principais Funcionalidades
 
-*   **Geração de Eventos com Estado (Inteligência Agregada)**: O gateway não é um tradutor "burro". Utilizando o Redis ([`app/services/redis_service.py`](app/services/redis_service.py)), ele armazena o estado de cada dispositivo (como ignição ligada/desligada). Ao receber um novo pacote, ele compara o estado atual com o anterior e pode **gerar novos eventos de alerta** (ex: "Alerta de Ignição Ligada") que não existiam no protocolo original, agregando valor e inteligência aos dados brutos.
+*   **Arquitetura Modular "Plug-and-Play"**: Adicionar suporte a um novo protocolo é tão simples quanto criar um novo módulo. A estrutura isola a lógica de cada protocolo, permitindo que o sistema evolua sem aumento de complexidade. O orquestrador em [`main.py`](main.py) carrega dinamicamente cada protocolo, iniciando listeners dedicados em threads separadas.
 
-*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente inteligente. Quando a plataforma principal envia um comando, o [`app/src/connection/main_server_connection.py`](app/src/connection/main_server_connection.py) o recebe e utiliza o `mapper` do protocolo de saída correspondente (ex: [`app/src/output/suntech/mapper.py`](app/src/output/suntech/mapper.py)) para traduzir o comando para um formato universal. Em seguida, o sistema usa o Redis para identificar o protocolo de origem do dispositivo de destino e invoca o `builder` específico daquele protocolo (ex: [`app/src/input/j16x/builder.py`](app/src/input/j16x/builder.py)) para construir e enviar o comando no "idioma" nativo do rastreador.
+*   **Tradução Bidirecional (N x N)**: O sistema traduz múltiplos protocolos de entrada para múltiplos protocolos de saída. Cada `mapper` de entrada converte o dialeto do dispositivo para um **dicionário Python padronizado**. A camada de `output` (ex: [`app/src/output/suntech/builder.py`](app/src/output/suntech/builder.py)) utiliza esse dicionário para construir pacotes nos formatos de saída desejados, garantindo um desacoplamento total.
+
+*   **Inteligência Agregada com Gestão de Estado**: O gateway utiliza o Redis ([`app/services/redis_service.py`](app/services/redis_service.py)) para armazenar o estado de cada dispositivo. Ao receber um novo pacote, ele compara o estado atual com o anterior e pode **gerar novos eventos de alerta** (ex: "Alerta de Ignição Ligada") que não existiam no protocolo original, agregando valor e inteligência aos dados.
+
+*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente robusto. Comandos recebidos pela plataforma são traduzidos por um `mapper` de saída (ex: [`app/src/output/suntech/mapper.py`](app/src/output/suntech/mapper.py)) para um formato universal. O sistema então identifica o protocolo de origem do dispositivo e invoca o `builder` correspondente (ex: [`app/src/input/j16x/builder.py`](app/src/input/j16x/builder.py)) para enviar o comando no formato nativo do rastreador.
 
 ## Arquitetura do Sistema
 
-A arquitetura foi desenhada para máxima clareza, escalabilidade e manutenibilidade.
+A arquitetura foi desenhada para máxima clareza, escalabilidade e manutenibilidade. A seguir, os fluxos de dados e comandos são detalhados para ilustrar o funcionamento interno do gateway.
 
 ### Fluxo de Dados (Uplink: Dispositivo -> Plataforma)
 
@@ -83,7 +98,7 @@ graph TD
 
 O Redis é utilizado como um armazenamento de estado de curto prazo e cache para otimizar as operações do gateway. As chaves são categorizadas principalmente por `device_id` (IMEI) para dados do rastreador e chaves `history:<device_id>` para o histórico de pacotes.
 
-### Hash de Dispositivo (`<device_id>`)
+### Estrutura de Dados do Dispositivo (`<device_id>`)
 
 Para cada rastreador conectado ou que já se conectou, um hash é mantido no Redis sob a chave sendo o `device_id` (geralmente o IMEI em formato hexadecimal ou string, dependendo do protocolo).
 
@@ -106,9 +121,9 @@ Para cada rastreador conectado ou que já se conectou, um hash é mantido no Red
 | `last_command_sent`    | `JSON string` | Detalhes do último comando enviado do servidor para o dispositivo.             | `{"command": "RELAY 0", "timestamp": "...", "packet_hex": "..."}` |
 | `last_command_response`| `JSON string` | Detalhes da última resposta de comando recebida do dispositivo. (Atualmente não implementado para todos os protocolos) | `{"response": "OK", "timestamp": "..."}` |
 
-### Gerenciamento de Dados Específico do Protocolo VL01
+### Gerenciamento Avançado de Dados (Exemplo: Protocolo VL01)
 
-O módulo [`mapper.py`](app/src/input/vl01/mapper.py:1) do protocolo VL01 implementa estratégias avançadas de gerenciamento de pacotes e enriquecimento de dados diretamente no servidor gateway.
+O sistema permite a implementação de lógicas avançadas de gerenciamento de dados diretamente no gateway. O protocolo VL01, por exemplo, utiliza o [`mapper.py`](app/src/input/vl01/mapper.py) para enriquecer os dados brutos com informações calculadas pelo servidor.
 
 #### Estratégias de Gerenciamento de Pacotes:
 
@@ -117,7 +132,7 @@ O módulo [`mapper.py`](app/src/input/vl01/mapper.py:1) do protocolo VL01 implem
 
 #### Informações Gerenciadas Exclusivamente pelo Servidor:
 
-Alguns dados cruciais são calculados ou mantidos inteiramente no servidor para o protocolo VL01, agregando inteligência aos dados brutos:
+Alguns dados cruciais são calculados ou mantidos inteiramente no servidor, agregando inteligência aos dados brutos:
 
 *   **Odômetro (`gps_odometer`)**: O valor do odômetro é calculado pelo servidor utilizando a fórmula de Haversine com base nas coordenadas de localização recebidas. Este valor é persistido no Redis e acumulado ao longo do tempo.
 *   **Voltagem (`last_voltage`)**: A voltagem da bateria do dispositivo é extraída de pacotes de informação específicos e armazenada no Redis, permitindo um acompanhamento preciso do estado de energia do rastreador.
@@ -147,7 +162,7 @@ Para cada dispositivo, uma lista é mantida no Redis contendo os pacotes brutos 
 
 ## Endpoints da API
 
-O servidor gateway expõe uma API RESTful para consulta de dados dos rastreadores e gerenciamento de sessões.
+O servidor gateway expõe uma API RESTful para consulta de dados em tempo real e gerenciamento de sessões, facilitando a integração com outras plataformas e painéis de monitoramento.
 
 ### `GET /trackers`
 Retorna um dicionário com todos os dados dos rastreadores salvos no Redis, incluindo o status de conexão (`is_connected`).
@@ -288,6 +303,8 @@ Exemplo de Resposta:
 ```
 
 ## Como Começar
+
+Siga os passos abaixo para configurar e executar o servidor em seu ambiente de desenvolvimento.
 
 ### Pré-requisitos
 
