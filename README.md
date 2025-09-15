@@ -8,11 +8,11 @@ A força deste projeto reside em sua arquitetura inteligente e desacoplada, que 
 
 *   **Arquitetura "Plug-and-Play"**: Adicionar suporte a um novo protocolo é tão simples quanto criar um novo diretório. A estrutura modular isola completamente a lógica de cada protocolo, permitindo que o sistema cresça sem complexidade adicional. O orquestrador em [`main.py`](main.py) carrega dinamicamente cada protocolo configurado em [`app/config/settings.py`](app/config/settings.py), iniciando listeners dedicados em threads separadas.
 
-*   **Tradução de Múltiplos Protocolos de Entrada para Múltiplos Protocolos de Saída**: A genialidade do sistema está na sua camada de `mapper` (ex: [`app/src/input/j16x/mapper.py`](app/src/input/j16x/mapper.py)). Cada `mapper` converte o dialeto específico de seu protocolo para um **dicionário Python padronizado**. A camada de `output` (ex: [`app/src/output/suntech/utils.py`](app/src/output/suntech/utils.py)) utiliza esse dicionário para construir pacotes em múltiplos formatos de saída, como **Suntech** e **GT06**. Isso significa que a lógica de saída não precisa saber nada sobre os protocolos de entrada, garantindo um desacoplamento total.
+*   **Tradução de Múltiplos Protocolos de Entrada para Múltiplos Protocolos de Saída**: A genialidade do sistema está na sua camada de `mapper` (ex: [`app/src/input/j16x/mapper.py`](app/src/input/j16x/mapper.py)). Cada `mapper` de entrada converte o dialeto específico de seu protocolo para um **dicionário Python padronizado**. A camada de `output` (ex: [`app/src/output/suntech/builder.py`](app/src/output/suntech/builder.py)) utiliza esse dicionário para construir pacotes em múltiplos formatos de saída, como **Suntech** e **GT06**. Isso significa que a lógica de saída não precisa saber nada sobre os protocolos de entrada, garantindo um desacoplamento total.
 
 *   **Geração de Eventos com Estado (Inteligência Agregada)**: O gateway não é um tradutor "burro". Utilizando o Redis ([`app/services/redis_service.py`](app/services/redis_service.py)), ele armazena o estado de cada dispositivo (como ignição ligada/desligada). Ao receber um novo pacote, ele compara o estado atual com o anterior e pode **gerar novos eventos de alerta** (ex: "Alerta de Ignição Ligada") que não existiam no protocolo original, agregando valor e inteligência aos dados brutos.
 
-*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente inteligente. Quando a plataforma principal envia um comando, o [`app/src/connection/main_server_connection.py`](app/src/connection/main_server_connection.py) usa o Redis para identificar o protocolo de origem do dispositivo de destino. Em seguida, ele invoca o `builder` específico daquele protocolo (ex: [`app/src/input/j16x/builder.py`](app/src/input/j16x/builder.py)) para construir e enviar o comando no "idioma" nativo do rastreador.
+*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente inteligente. Quando a plataforma principal envia um comando, o [`app/src/connection/main_server_connection.py`](app/src/connection/main_server_connection.py) o recebe e utiliza o `mapper` do protocolo de saída correspondente (ex: [`app/src/output/suntech/mapper.py`](app/src/output/suntech/mapper.py)) para traduzir o comando para um formato universal. Em seguida, o sistema usa o Redis para identificar o protocolo de origem do dispositivo de destino e invoca o `builder` específico daquele protocolo (ex: [`app/src/input/j16x/builder.py`](app/src/input/j16x/builder.py)) para construir e enviar o comando no "idioma" nativo do rastreador.
 
 ## Arquitetura do Sistema
 
@@ -24,23 +24,28 @@ Este diagrama mostra como os dados de um rastreador são recebidos, traduzidos e
 
 ```mermaid
 graph TD
-    A[Dispositivo Rastreador] -- Pacote TCP --> B(Listener de Protocolo);
+    A[Dispositivo Rastreador] -- Pacote TCP --> B(Listener de Protocolo de Entrada);
     B -- Bytes Brutos --> C{Handler};
     C -- Pacote Bruto --> D(Processor);
-    D -- Dados Dissecados --> E(Mapper);
-    E -- Dicionário Padrão --> F(Output Utils);
-    F -- Pacote de Saída Formatado --> G(Main Server Connection);
-    G -- Pacote TCP --> H[Plataforma Principal];
+    D -- Dados Dissecados --> E(Input Mapper);
+    E -- Dicionário Padrão --> F(send_to_main_server);
+    F -- Dicionário Padrão --> G{Output Builder};
+    G -- Pacote de Saída Formatado --> H(Main Server Connection);
+    H -- Pacote TCP --> I[Plataforma Principal];
 
-    subgraph "Módulo de Protocolo (Ex: GT06, JT808)"
+    subgraph "Módulo de Protocolo de Entrada (Ex: j16x, vl01)"
         C
         D
         E
     end
 
+    subgraph "Módulo de Protocolo de Saída (Ex: Suntech, GT06)"
+        G
+    end
+
     subgraph "Serviços Centrais"
         F
-        G
+        H
     end
 ```
 
@@ -50,21 +55,26 @@ Este diagrama ilustra como os comandos são enviados da plataforma de volta para
 
 ```mermaid
 graph TD
-    A[Plataforma Principal] -- Comando --> B(Main Server Connection);
-    B -- Consulta Protocolo (DevID) --> C{Redis};
-    C -- Retorna Protocolo (ex: 'j16x') --> B;
-    B -- Comando + Protocolo --> D(Roteador de Comandos);
-    D -- Comando para Builder Específico --> E{Builder do Protocolo};
-    E -- Pacote Binário Nativo --> F(Socket do Dispositivo);
-    F -- Pacote TCP --> G[Dispositivo Rastreador];
+    A[Plataforma Principal] -- Pacote TCP --> B(Main Server Connection);
+    B -- Bytes Brutos --> C{Output Mapper};
+    C -- Comando Universal --> D(Roteador de Comandos);
+    D -- Consulta Protocolo de Entrada (DevID) --> E{Redis};
+    E -- Retorna Protocolo (ex: 'j16x') --> D;
+    D -- Comando Universal para Builder Específico --> F{Input Builder};
+    F -- Pacote Binário Nativo --> G(Socket do Dispositivo);
+    G -- Pacote TCP --> H[Dispositivo Rastreador];
+
+    subgraph "Módulo de Protocolo de Saída (Ex: Suntech, GT06)"
+        C
+    end
+
+    subgraph "Módulo de Protocolo de Entrada (Ex: j16x, vl01)"
+        F
+    end
 
     subgraph "Serviços Centrais"
         B
-        C
         D
-    end
-
-    subgraph "Módulo de Protocolo (Ex: GT06, JT808)"
         E
     end
 ```
@@ -361,27 +371,12 @@ O servidor iniciará os listeners para todos os protocolos definidos em [`app/co
     Dentro de `app/src/output/`, crie um novo diretório com o nome do seu protocolo (ex: `novo_protocolo`).
 
 2.  **Implemente os Módulos Essenciais:**
-    Crie o arquivo `utils.py` dentro do novo diretório, seguindo a estrutura dos módulos `suntech` ou `gt06`. Ele deve conter, no mínimo, as seguintes funções:
-    *   `build_login_packet`: Constrói o pacote de login.
-    *   `build_location_alarm_packet`: Constrói o pacote de localização.
-    *   `build_heartbeat_packet`: Constrói o pacote de heartbeat.
+    Crie os arquivos `builder.py` e `mapper.py` dentro do novo diretório, seguindo a estrutura dos módulos `suntech` ou `gt06`.
+    *   `builder.py`: Deve conter as funções para construir os diferentes tipos de pacotes de saída (login, localização, heartbeat, etc.).
+    *   `mapper.py`: Deve conter a função `map_to_universal_command` para traduzir comandos recebidos da plataforma principal para o formato universal.
 
 3.  **Registre o Protocolo:**
-    Abra o arquivo [`app/config/settings.py`](app/config/settings.py) e adicione a configuração do seu novo protocolo nos dicionários `OUTPUT_PROTOCOL_PACKET_BUILDERS` e `OUTPUT_PROTOCOL_HOST_ADRESSES`:
-    ```python
-    OUTPUT_PROTOCOL_PACKET_BUILDERS = {
-        # ... protocolos existentes
-        "novo_protocolo": {
-            "location": build_novo_protocolo_location_packet,
-            "heartbeat": build_novo_protocolo_heartbeat_packet,
-        }
-    }
-
-    OUTPUT_PROTOCOL_HOST_ADRESSES = {
-        # ... protocolos existentes
-        "novo_protocolo": (os.getenv("NOVO_PROTOCOLO_MAIN_SERVER_HOST"), os.getenv("NOVO_PROTOCOLO_MAIN_SERVER_PORT"))
-    }
-    ```
+    Abra o arquivo [`app/config/output_protocol_settings.py`](app/config/output_protocol_settings.py) e adicione a configuração do seu novo protocolo nos dicionários `OUTPUT_PROTOCOL_PACKET_BUILDERS`, `OUTPUT_PROTOCOL_COMMAND_MAPPERS`, e `OUTPUT_PROTOCOL_HOST_ADRESSES`.
 
 ## Tecnologias Utilizadas
 
