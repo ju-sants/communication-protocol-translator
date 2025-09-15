@@ -47,7 +47,7 @@ def get_all_trackers_data():
             if redis_client.type(key) != 'hash':
                 continue
             
-            if key in ("global_data", "universal_data"):
+            if key in ("global_data", "universal_data", "SAT_GSM_MAPPING"):
                 continue
 
             device_data = redis_client.hgetall(key)
