@@ -9,7 +9,7 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 
-def map_data(raw_data: str):
+def map_data(raw_data: bytes):
     """
     Maps satellite data to a Suntech packet and sends it to the main server.
     """
@@ -44,7 +44,7 @@ def map_data(raw_data: str):
         last_hybrid_location["timestamp"] = datetime.fromisoformat(data.get("timestamp"))
         last_gsm_location["is_realtime"] = False
 
-        send_to_main_server(hybrid_gsm, last_hybrid_location, last_serial, raw_data.encode("utf-8"), "SATELLITAL")
+        send_to_main_server(hybrid_gsm, last_hybrid_location, last_serial, raw_data, "SATELLITAL")
 
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON: {e}")
