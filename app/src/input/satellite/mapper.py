@@ -44,7 +44,7 @@ def map_data(raw_data: bytes):
         last_hybrid_location["timestamp"] = datetime.fromisoformat(data.get("timestamp"))
         last_gsm_location["is_realtime"] = False
 
-        send_to_main_server(hybrid_gsm, last_hybrid_location, last_serial, raw_data, "SATELLITAL")
+        send_to_main_server(hybrid_gsm, last_hybrid_location, last_serial, raw_data.decode("utf-8"), "SATELLITAL")
 
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON: {e}")
