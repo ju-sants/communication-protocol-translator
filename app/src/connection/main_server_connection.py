@@ -8,7 +8,7 @@ from app.services.redis_service import get_redis
 from app.services.history_service import add_packet_to_history
 from app.config.output_protocol_settings import output_protocol_settings
 from app.src.output.suntech.builder import build_login_packet as build_suntech_login_packet
-from app.src.output.gt06.builder import build_login_packet as build_gt06_login_packet
+from app.src.output.gt06.builder import build_login_packet as build_gt06_login_packet, build_voltage_info_packet as build_gt06_voltage_info_packet
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -22,7 +22,9 @@ class MainServerSession:
         self.lock = threading.RLock()
         self._is_connected = False
         self._conection_retries = 0
+        
         self._is_gt06_login_step = False
+        self._is_realtime = False
     
     def connect(self):
         with self.lock:
@@ -48,6 +50,9 @@ class MainServerSession:
                 logger.info(f"Criando Thread para ouvir comandos do lado do server. dev_id={self.dev_id}")
                 self._reader_thread = threading.Thread(target=self._reader_loop, daemon=True)
                 self._reader_thread.start()
+
+                if self.output_protocol == "gt06":
+                    threading.Thread(target=self.gt06_info_sending_loop, daemon=True).start()
 
                 self.present_connection()
 
@@ -148,7 +153,28 @@ class MainServerSession:
                 self.disconnect()
                 break
     
-    def send(self, packet: bytes, current_output_protocol: str = None):
+    def gt06_info_sending_loop(self):
+        while self._is_connected:
+            try:
+                time.sleep(5)
+                if self._is_realtime:
+                    voltage = redis_client.hget(self.dev_id, "last_voltage")
+                    if voltage is not None:
+                        try:
+                            voltage = float(voltage)
+                        except ValueError:
+                            logger.warning(f"Valor de voltagem inválido no Redis para dev_id={self.dev_id}: {voltage}")
+                            continue
+                        
+                        voltage_packet = build_gt06_voltage_info_packet({"voltage": voltage}, int(self.serial))
+                        self.send(voltage_packet)
+                        logger.info(f"Pacote de voltagem GT06 enviado dev_id={self.dev_id}, voltage={voltage}V")
+            except Exception:
+                logger.exception(f"Erro inesperado no loop de envio de informações GT06 para dev_id={self.dev_id}")
+                self.disconnect()
+                break
+
+    def send(self, packet: bytes, current_output_protocol: str = None, is_realtime: bool = None):
         with self.lock:
             if not self._is_connected:
                 logger.warning(f"Conexão perdida, tentando reconectar... dev_id={self.dev_id}")
@@ -157,6 +183,9 @@ class MainServerSession:
                     logger.error(f"Não foi possível conectar ao servidor principal. Pacote descartado. dev_id={self.dev_id}")
                     return
             
+            if is_realtime is not None:
+                self._is_realtime = is_realtime
+
             if current_output_protocol and current_output_protocol.lower() != self.output_protocol:
                 logger.warning(f"Protocolo de saída mudou de {self.output_protocol} para {current_output_protocol}, desconectando sessão atual e criando uma nova.")
                 
@@ -283,4 +312,4 @@ def send_to_main_server(
         add_packet_to_history(dev_id, raw_packet_hex, str_output_packet)
         
         session = sessions_manager.get_session(dev_id, serial, output_protocol)
-        session.send(output_packet, output_protocol)
+        session.send(output_packet, output_protocol, packet_data.get("is_realtime", False) if packet_data and type == "location" else None)
