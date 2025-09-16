@@ -186,7 +186,8 @@ class MainServerSession:
                     if packet_data.get("device_type") == "satellital":
                         voltage = 2.22
                     else:
-                        voltage = packet_data.get("last_voltage", 0.0)
+                        voltage = packet_data.get("last_voltage") or "0.0"
+                        voltage = float(voltage)
 
                     voltage_packet = build_gt06_voltage_info_packet({"voltage": voltage}, int(self.serial))
                     logger.info(f"Enviando pacote de voltagem antes do pacote de localização em tempo real. dev_id={self.dev_id} voltage={voltage}V")
@@ -273,8 +274,8 @@ def send_to_main_server(
     """
     Executa lógica de construção de pacotes se o mesmo não for fornecido, com base no protocolo de saída do dispositivo e o tipo de pacote especificado.
     """
-    
-    output_protocol, is_hybrid = redis_client.hmget(dev_id, "output_protocol", "is_hybrid")
+
+    output_protocol, is_hybrid, last_voltage = redis_client.hmget(dev_id, "output_protocol", "is_hybrid", "last_voltage")
     if not output_protocol:
         if is_hybrid:
             output_protocol = "gt06"
@@ -296,6 +297,7 @@ def send_to_main_server(
 
         if packet_data is not None:
             packet_data["packet_type"] = type
+            packet_data["last_voltage"] = last_voltage if last_voltage else 0.0
 
         logger.info(f"Pacote de {type.upper()} {output_protocol.upper()} traduzido de pacote {str(original_protocol).upper()}:\n{str_output_packet}")
 
