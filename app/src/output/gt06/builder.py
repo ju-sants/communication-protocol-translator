@@ -378,3 +378,40 @@ def build_reply_packet(dev_id: str, packet_data: dict, serial_number: int, *args
 
     logger.debug(f"Construído pacote de Resposta do Terminal GT06 (Protocol {hex(protocol_number)}): {final_packet.hex()}")
     return final_packet
+
+def build_voltage_info_packet(packet_data: dict, serial_number: int) -> bytes:
+    """
+    Constrói um pacote de informação (Protocolo 0x94),
+    enviando exclusivamente a informação de voltagem externa (Sub-protocolo 0x00).
+    """
+    protocol_number = 0x94
+    sub_protocol_number = 0x00
+
+    voltage = float(packet_data.get("voltage", 0.0))
+    voltage_raw = int(voltage * 100)
+    information_content = struct.pack(">H", voltage_raw)
+
+    body_packet = (
+        struct.pack(">B", protocol_number) +
+        struct.pack(">B", sub_protocol_number) +
+        information_content +
+        struct.pack(">H", serial_number)
+    )
+
+    packet_length_value = len(body_packet) + 2
+    packet_length_bytes = struct.pack(">H", packet_length_value)
+
+    data_for_crc = packet_length_bytes + body_packet
+    
+    crc = crc_itu(data_for_crc)
+    crc_bytes = struct.pack(">H", crc)
+
+    final_packet = (
+        b"\x79\x79" + 
+        data_for_crc +
+        crc_bytes +   
+        b"\x0d\x0a"   
+    )
+
+    logger.debug(f"Construído pacote de Informação (Protocol {hex(protocol_number)}): {final_packet.hex()}")
+    return final_packet
