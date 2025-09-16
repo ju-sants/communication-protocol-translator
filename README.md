@@ -146,6 +146,22 @@ Para cada dispositivo, uma lista é mantida no Redis contendo os pacotes brutos 
 | `raw_packet`     | `string`  | O pacote original recebido do rastreador (hex).   | `"78780d01..."`               |
 | `translated_packet` | `string`  | O pacote traduzido para o formato de saída.        | `">STT,IMEI,..."` ou `"7878..."` |
 
+### Gerenciamento de Rastreadores Híbridos (GSM/Satélite)
+
+O sistema possui uma lógica especializada para lidar com rastreadores "híbridos", que combinam comunicação GSM/GPRS com um rastreador satelital secundário. Em vez de tratar os dois como dispositivos separados, o gateway os unifica sob uma única identidade, enriquecendo os dados de um com o outro.
+
+#### Fluxo de Dados Satelital:
+
+1.  **Recepção e Mapeamento**: Um listener dedicado em [`app/src/input/satellite/handler.py`](app/src/input/satellite/handler.py:14) aguarda conexões de dispositivos satelitais. Ao receber um pacote, ele o encaminha para o [`mapper.py`](app/src/input/satellite/mapper.py:12).
+
+2.  **Associação GSM**: O `mapper` extrai o Identificador Único do Equipamento (ESN) e consulta o Redis para encontrar o `device_id` (IMEI) do rastreador GSM correspondente. Essa associação é crucial, pois o dispositivo satelital atua como um "anexo" do GSM.
+
+3.  **Fusão de Dados**: O sistema recupera a última localização enviada pelo rastreador GSM e a funde com os dados recebidos do satélite. Para diferenciar os pacotes, ele **sobrescreve** os seguintes campos:
+    *   `voltage`: Alterado para `2.22` como um indicador de que a posição veio do módulo satelital.
+    *   `satellites`: Alterado para `2` para sinalizar a origem satelital.
+
+4.  **Envio Unificado**: O pacote híbrido resultante é enviado para a plataforma principal através da conexão e sessão já estabelecida pelo rastreador GSM ([`main_server_connection.py`](app/src/connection/main_server_connection.py:269)), garantindo que a plataforma veja apenas um dispositivo, mas com dados enriquecidos de ambas as fontes.
+
 ## Protocolos Suportados
 
 ### Entrada
