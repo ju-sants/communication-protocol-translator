@@ -43,6 +43,7 @@ def map_data(raw_data: bytes):
         last_hybrid_location["satellites"] = 2
         last_hybrid_location["timestamp"] = datetime.fromisoformat(data.get("timestamp"))
         last_gsm_location["is_realtime"] = False
+        last_hybrid_location["device_type"] = "satellital"
 
         send_to_main_server(hybrid_gsm, last_hybrid_location, last_serial, raw_data.decode("utf-8"), "SATELLITAL")
 

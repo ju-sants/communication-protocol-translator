@@ -51,9 +51,6 @@ class MainServerSession:
                 self._reader_thread = threading.Thread(target=self._reader_loop, daemon=True)
                 self._reader_thread.start()
 
-                if self.output_protocol == "gt06":
-                    threading.Thread(target=self.gt06_info_sending_loop, daemon=True).start()
-
                 self.present_connection()
 
                 logger.info(f"Conexão e thread de escuta iniciadas device_id={self.dev_id}")
@@ -153,28 +150,7 @@ class MainServerSession:
                 self.disconnect()
                 break
     
-    def gt06_info_sending_loop(self):
-        while self._is_connected:
-            try:
-                time.sleep(5)
-                if self._is_realtime:
-                    voltage = redis_client.hget(self.dev_id, "last_voltage")
-                    if voltage is not None:
-                        try:
-                            voltage = float(voltage)
-                        except ValueError:
-                            logger.warning(f"Valor de voltagem inválido no Redis para dev_id={self.dev_id}: {voltage}")
-                            continue
-                        
-                        voltage_packet = build_gt06_voltage_info_packet({"voltage": voltage}, int(self.serial))
-                        self.send(voltage_packet)
-                        logger.info(f"Pacote de voltagem GT06 enviado dev_id={self.dev_id}, voltage={voltage}V")
-            except Exception:
-                logger.exception(f"Erro inesperado no loop de envio de informações GT06 para dev_id={self.dev_id}")
-                self.disconnect()
-                break
-
-    def send(self, packet: bytes, current_output_protocol: str = None, is_realtime: bool = None):
+    def send(self, packet: bytes, current_output_protocol: str = None, packet_data: dict = None):
         with self.lock:
             if not self._is_connected:
                 logger.warning(f"Conexão perdida, tentando reconectar... dev_id={self.dev_id}")
@@ -183,6 +159,7 @@ class MainServerSession:
                     logger.error(f"Não foi possível conectar ao servidor principal. Pacote descartado. dev_id={self.dev_id}")
                     return
             
+            is_realtime = packet_data.get("is_realtime") if packet_data else None
             if is_realtime is not None:
                 self._is_realtime = is_realtime
 
@@ -203,6 +180,17 @@ class MainServerSession:
                         time.sleep(1)
                     
                     logger.info(f"Resposta do server principal recebida, continuando a entrega de pacotes. dev_id={self.dev_id}")
+
+                # Enviando pacote de info de voltagem antes de qualquer pacote de localização em tempo real
+                if self._is_realtime and self.output_protocol == "gt06" and packet_data and packet_data.get("packet_type") == "location":
+                    if packet_data.get("device_type") == "satellital":
+                        voltage = 2.22
+                    else:
+                        voltage = packet_data.get("last_voltage", 0.0)
+
+                    voltage_packet = build_gt06_voltage_info_packet({"voltage": voltage}, int(self.serial))
+                    logger.info(f"Enviando pacote de voltagem antes do pacote de localização em tempo real. dev_id={self.dev_id} voltage={voltage}V")
+                    self.sock.sendall(voltage_packet)
 
                 logger.info(f"Encaminhando pacote de {len(packet)} bytes device_id={self.dev_id}")
 
@@ -306,10 +294,12 @@ def send_to_main_server(
         else:
             str_output_packet = output_packet.hex()
 
+        if packet_data is not None:
+            packet_data["packet_type"] = type
 
         logger.info(f"Pacote de {type.upper()} {output_protocol.upper()} traduzido de pacote {str(original_protocol).upper()}:\n{str_output_packet}")
 
         add_packet_to_history(dev_id, raw_packet_hex, str_output_packet)
         
         session = sessions_manager.get_session(dev_id, serial, output_protocol)
-        session.send(output_packet, output_protocol, packet_data.get("is_realtime", False) if packet_data and type == "location" else None)
+        session.send(output_packet, output_protocol, packet_data)
