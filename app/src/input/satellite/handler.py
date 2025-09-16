@@ -53,12 +53,6 @@ def handle_connection(conn: socket.socket, addr):
     except Exception:
         logger.exception(f"Fatal error in Satellite connection address={addr}, device_id={dev_id_session}")
     finally:
-        logger.debug(f"[DIAGNOSTIC] Entering finally block for Satellite handler (addr={addr}, dev_id={dev_id_session}).")
-        if dev_id_session:
-            logger.info(f"Deleting Sessions on both sides for this tracker dev_id={dev_id_session}")
-            sessions_manager.delete_session(dev_id_session)
-            tracker_sessions_manager.remove_tracker_client(dev_id_session)
-
         logger.info(f"Closing connection and Satellite thread address={addr}, device_id={dev_id_session}")
 
         try:
