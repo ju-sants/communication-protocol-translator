@@ -76,7 +76,7 @@ class PacketQueue:
             elif packet["type"] == "alarm":
                 _handle_alarm_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
             elif packet["type"] == "information":
-                _handle_information_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
+                _handle_information_packet(packet["dev_id_str"], packet["body"])
         except Exception as e:
             logger.exception(f"Error processing queued packet: {e}")
         finally:
@@ -121,7 +121,7 @@ class PacketQueue:
                 elif packet["type"] == "alarm":
                     _handle_alarm_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
                 elif packet["type"] == "information":
-                    _handle_information_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
+                    _handle_information_packet(packet["dev_id_str"], packet["body"])
             except Exception as e:
                 logger.exception(f"Error processing queued packet: {e}")
             finally:
@@ -367,7 +367,7 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY: {e} body={body.hex()}, dev_id={dev_id}")
 
-def _handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
+def _handle_information_packet(dev_id: str, body: bytes):
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
         "last_event_type": "information",
@@ -383,7 +383,7 @@ def _handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet
         if voltage:
             voltage = voltage[0] / 100
             pipeline.hset(dev_id, 'last_voltage', voltage)
-            pipeline.hset(dev_id, "power_status", 0 if voltage > 0 else 1) # Update power status based on voltage
+            pipeline.hset(dev_id, "power_status", 0 if voltage > 0 else 1)
     else:
         pass
     pipeline.execute()
