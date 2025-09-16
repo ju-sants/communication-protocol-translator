@@ -14,7 +14,7 @@ def build_location_packet(dev_id, packet_data: dict, serial_number: int, *args) 
     Constrói um pacote de localização GT06 a partir de dados de packet_data.
     Suporta diferentes protocol_number (0x22, 0x32, 0xA0).
     """
-    protocol_number = 0x22 # Deixaremos um valor constante por hora
+    protocol_number = 0x32 # Deixaremos um valor constante por hora
 
     timestamp: datetime = packet_data.get("timestamp", datetime.now(timezone.utc))
     time_bytes = struct.pack(
