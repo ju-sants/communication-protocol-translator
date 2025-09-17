@@ -3,9 +3,9 @@ from app.core.logger import get_logger
 from .processor import process_packet
 from .utils import format_j16x_packet_for_display 
 
-from app.src.input.session_manager import tracker_sessions_manager
+from app.src.session.input_sessions_manager import input_sessions_manager
 from app.services.redis_service import get_redis
-from app.src.connection.main_server_connection import sessions_manager
+from app.src.session.output_sessions_manager import output_sessions_manager
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -54,8 +54,8 @@ def handle_connection(conn: socket.socket, addr):
                         if newly_logged_in_dev_id:
                             dev_id_session = newly_logged_in_dev_id
 
-                        if dev_id_session and not tracker_sessions_manager.exists(dev_id_session):
-                            tracker_sessions_manager.register_tracker_client(dev_id_session, conn)
+                        if dev_id_session and not input_sessions_manager.exists(dev_id_session):
+                            input_sessions_manager.register_tracker_client(dev_id_session, conn)
                             redis_client.hset(dev_id_session, "protocol", "j16x")
                             logger.info(f"Dispositivo GT06 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
 
@@ -83,8 +83,8 @@ def handle_connection(conn: socket.socket, addr):
         logger.debug(f"[DIAGNOSTIC] Entering finally block for GT06 handler (addr={addr}, dev_id={dev_id_session}).")
         if dev_id_session:
             logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}")
-            sessions_manager.delete_session(dev_id_session)
-            tracker_sessions_manager.remove_tracker_client(dev_id_session)
+            output_sessions_manager.delete_session(dev_id_session)
+            input_sessions_manager.remove_tracker_client(dev_id_session)
         
         logger.info(f"Fechando conexão e thread GT06 endereco={addr}, device_id={dev_id_session}")
 

@@ -1,8 +1,8 @@
 import struct
 
 from app.core.logger import get_logger
-from . import utils
-from app.src.input.session_manager import tracker_sessions_manager
+from .. import utils
+from app.src.session.input_sessions_manager import input_sessions_manager
 
 logger = get_logger(__name__)
 
@@ -97,7 +97,7 @@ def process_command(dev_id: str, serial: int, universal_command: str):
 
     nt40_binary_command = build_command(nt40_text_command, serial)
 
-    tracker_socket = tracker_sessions_manager.get_tracker_client_socket(dev_id)
+    tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
     if tracker_socket:
         try:
             tracker_socket.sendall(nt40_binary_command)

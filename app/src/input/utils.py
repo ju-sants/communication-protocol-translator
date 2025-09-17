@@ -1,6 +1,8 @@
+from crc import Calculator, Configuration
+
 from app.services.redis_service import get_redis
 from app.core.logger import get_logger
-from app.src.connection.main_server_connection import send_to_main_server
+from app.src.session.output_sessions_manager import send_to_main_server
 
 redis_client = get_redis()
 logger = get_logger(__name__)

@@ -7,7 +7,7 @@ from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.config.settings import settings
 from .utils import _decode_alarm_location_packet
-from app.src.connection.main_server_connection import send_to_main_server
+from app.src.session.output_sessions_manager import send_to_main_server
 from .utils import haversine
 
 logger = get_logger(__name__)

@@ -2,7 +2,7 @@ import struct
 from datetime import datetime, timezone
 
 from app.core.logger import get_logger
-from app.src.input.j16x.utils import crc_itu
+from app.src.input.utils import crc_itu
 from app.services.redis_service import get_redis
 from app.config.settings import settings
 

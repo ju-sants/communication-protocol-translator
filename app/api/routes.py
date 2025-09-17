@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 import os
 
 from app.services.redis_service import get_redis
-from app.src.input.session_manager import tracker_sessions_manager
-from app.src.connection.main_server_connection import sessions_manager
+from app.src.session.input_sessions_manager import input_sessions_manager
+from app.src.session.output_sessions_manager import output_sessions_manager
 from app.services.history_service import get_packet_history
 from app.src.input.j16x.builder import build_command as build_j16x_command
 from app.src.input.vl01.builder import build_command as build_vl01_command
@@ -51,7 +51,7 @@ def get_all_trackers_data():
                 continue
 
             device_data = redis_client.hgetall(key)
-            device_data['is_connected'] = tracker_sessions_manager.exists(key)
+            device_data['is_connected'] = input_sessions_manager.exists(key)
             device_data["output_protocol"] = device_data.get("output_protocol") or "suntech4g"
             all_data[key] = device_data
         return jsonify(all_data)
@@ -68,8 +68,8 @@ def get_trackers_summary():
         all_tracker_keys = [key for key in redis_client.keys('*') if redis_client.type(key) == 'hash']
         
         total_registered_trackers = len(all_tracker_keys)
-        total_active_translator_sessions = len(tracker_sessions_manager.active_trackers)
-        total_active_main_server_sessions = len(sessions_manager._sessions)
+        total_active_translator_sessions = len(input_sessions_manager.active_trackers)
+        total_active_main_server_sessions = len(output_sessions_manager._sessions)
 
         protocol_distribution = {}
         last_active_trackers = []
@@ -138,7 +138,7 @@ def send_tracker_command(dev_id):
     try:
         command_packet = builder_func(command_str, serial)
         
-        tracker_socket = tracker_sessions_manager.get_tracker_client_socket(dev_id)
+        tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
         if tracker_socket:
             tracker_socket.sendall(command_packet)
             # Store command sent in Redis
@@ -177,7 +177,7 @@ def get_tracker_sessions():
     """
     Returns a list of device IDs with active socket connections to the translator.
     """
-    active_sessions = list(tracker_sessions_manager.active_trackers.keys())
+    active_sessions = list(input_sessions_manager.active_trackers.keys())
     return jsonify(active_sessions)
 
 @app.route('/sessions/main-server', methods=['GET'])
@@ -185,7 +185,7 @@ def get_main_server_sessions():
     """
     Returns a list of device IDs with active sessions to the main Suntech4G server.
     """
-    active_sessions = list(sessions_manager._sessions.keys())
+    active_sessions = list(output_sessions_manager._sessions.keys())
     return jsonify(active_sessions)
 
 @app.route('/trackers/<string:dev_id>/details', methods=['GET'])
@@ -203,8 +203,8 @@ def get_tracker_details(dev_id):
             "imei": device_data.get('imei', dev_id),
             "protocol": device_data.get('protocol'),
             "output_protocol": device_data.get("output_protocol") or "suntech4g",
-            "is_connected_translator": tracker_sessions_manager.exists(dev_id, use_redis=True),
-            "is_connected_main_server": dev_id in sessions_manager._sessions,
+            "is_connected_translator": input_sessions_manager.exists(dev_id, use_redis=True),
+            "is_connected_main_server": dev_id in output_sessions_manager._sessions,
             "last_active_timestamp": device_data.get('last_active_timestamp'),
             "last_event_type": device_data.get('last_event_type'),
             "total_packets_received": int(device_data.get('total_packets_received', 0)),

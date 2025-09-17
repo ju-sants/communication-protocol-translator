@@ -1,6 +1,7 @@
 import struct
 
-from . import builder, mapper, utils
+from . import builder, mapper
+from .. import utils
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 
