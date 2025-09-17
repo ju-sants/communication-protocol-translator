@@ -436,6 +436,46 @@ O servidor iniciará os listeners para todos os protocolos definidos em [`app/co
 3.  **Registre o Protocolo:**
     Abra o arquivo [`app/config/output_protocol_settings.py`](app/config/output_protocol_settings.py) e adicione a configuração do seu novo protocolo nos dicionários `OUTPUT_PROTOCOL_PACKET_BUILDERS`, `OUTPUT_PROTOCOL_COMMAND_MAPPERS`, e `OUTPUT_PROTOCOL_HOST_ADRESSES`.
 
+## Estrutura do Projeto
+
+A estrutura de diretórios foi organizada para separar claramente as responsabilidades, facilitando a manutenção e a adição de novas funcionalidades.
+
+```
+/
+├── app/
+│   ├── api/              # Módulo da API RESTful (endpoints para consulta)
+│   ├── config/           # Arquivos de configuração (portas, protocolos, etc.)
+│   ├── core/             # Componentes centrais (logger)
+│   ├── services/         # Serviços de background (Redis, histórico)
+│   └── src/              # Lógica principal da aplicação
+│       ├── input/        # Módulos de protocolos de entrada (rastreadores)
+│       │   ├── j16x/
+│       │   ├── nt40/
+│       │   ├── satellite/
+│       │   └── vl01/
+│       ├── output/       # Módulos de protocolos de saída (plataforma)
+│       │   ├── gt06/
+│       │   └── suntech4g/
+│       └── session/      # Gerenciamento de sessões TCP
+├── main.py               # Ponto de entrada da aplicação
+└── README.md             # Documentação do projeto
+```
+
+### Principais Componentes:
+
+-   **`main.py`**: Orquestrador principal. Carrega as configurações, inicializa os listeners de protocolo em threads separadas e inicia a API.
+-   **`app/config/settings.py`**: Define quais protocolos de entrada são carregados e em quais portas.
+-   **`app/config/output_protocol_settings.py`**: Mapeia os protocolos de saída para seus respectivos `builders` e `mappers` de comando.
+-   **`app/src/input/{protocolo}/`**: Cada diretório aqui representa um "dialeto" de rastreador.
+   -   `handler.py`: Ponto de entrada da conexão TCP.
+   -   `processor.py`: Valida e extrai dados do pacote bruto.
+   -   `mapper.py`: Converte os dados para o formato padronizado do sistema.
+   -   `builder.py`: Constrói comandos no formato nativo do rastreador (downlink).
+-   **`app/src/output/{protocolo}/`**: Cada diretório representa um formato de saída para a plataforma.
+   -   `builder.py`: Constrói pacotes (login, localização, etc.) no formato de saída.
+   -   `mapper.py`: Converte comandos da plataforma para o formato universal.
+-   **`app/src/session/`**: Contém os singletons que gerenciam as sessões de socket ativas, tanto de entrada quanto de saída, essenciais para a comunicação bidirecional.
+
 ## Tecnologias Utilizadas
 
 *   **Python**: Linguagem principal do projeto.
