@@ -148,7 +148,7 @@ def build_login_packet(imei: str, serial_number: int) -> bytes:
     protocol_number = 0x01
 
     imei_normalized = ''.join(filter(str.isdigit, imei))[-15:]
-    redis_client.hsetnx(imei, "output_id", imei_normalized)
+    redis_client.hset(imei, "output_id", imei_normalized)
 
     imei_bcd = imei_to_bcd(imei_normalized)
 
