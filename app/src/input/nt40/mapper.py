@@ -158,7 +158,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     handle_alarm_from_location(dev_id_str, serial, packet_data, raw_packet_hex)
 
     alert_packet_data = handle_ignition_change(dev_id_str, serial, packet_data, raw_packet_hex, "NT40")
-    if alert_packet_data:
+    if alert_packet_data and alert_packet_data.get("universal_alert_id"):
         send_to_main_server(dev_id_str, alert_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
     
     last_packet_data = copy.deepcopy(packet_data)

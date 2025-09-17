@@ -7,14 +7,8 @@ redis_client = get_redis()
 logger = get_logger(__name__)
 
 # IDs de Alerta Suntech4G que são INFERIDOS, não traduzidos diretamente
-SUNTECH_IGNITION_ON_ALERT_ID: int = 33
-SUNTECH_IGNITION_OFF_ALERT_ID: int = 34
-SUNTECH_POWER_CONNECTED_ALERT_ID: int = 40
-SUNTECH_POWER_DISCONNECTED_ALERT_ID: int = 41
-
-# IDs de Alerta Suntech4G para Geocerca (baseado na direção)
-SUNTECH_GEOFENCE_ENTER_ALERT_ID: int = 6
-SUNTECH_GEOFENCE_EXIT_ALERT_ID: int = 5
+IGNITION_ON_UNIVERSAL_ALERT_ID: int = 6533
+IGNITION_OFF_UNIVERSAL_ALERT_ID: int = 6534
 
 def crc_itu(data_bytes: bytes) -> int:
     config = Configuration(
@@ -50,17 +44,17 @@ def handle_ignition_change(dev_id_str: str, serial, packet_data: dict, raw_packe
             packet_data["is_realtime"] = True
             if current_acc_status == 1:
                 # Mudou de OFF para ON
-                alert_id = SUNTECH_IGNITION_ON_ALERT_ID
+                alert_id = IGNITION_ON_UNIVERSAL_ALERT_ID
                 logger.info(f"EVENTO DETECTADO: Ignição Ligada para device_id={dev_id_str}")
 
-                packet_data["alert_id"] = alert_id
+                packet_data["universal_alert_id"] = alert_id
 
             else:
                 # Mudou de ON para OFF
-                alert_id = SUNTECH_IGNITION_OFF_ALERT_ID
+                alert_id = IGNITION_OFF_UNIVERSAL_ALERT_ID
                 logger.info(f"EVENTO DETECTADO: Ignição Desligada para device_id={dev_id_str}")
 
-                packet_data["alert_id"] = alert_id
+                packet_data["universal_alert_id"] = alert_id
 
         # Atualiza o estado no Redis para a próxima verificação
         redis_client.hset(dev_id_str, 'acc_status', current_acc_status)
@@ -86,14 +80,14 @@ def handle_power_change(dev_id_str: str, serial, packet_data: dict):
             power_alert_packet = None
             if current_power_disconnected == 1:
                 # Mudou de Conectado (0) para Desconectado (1)
-                alert_id = SUNTECH_POWER_DISCONNECTED_ALERT_ID # Alerta 41
+                # alert_id = SUNTECH_POWER_DISCONNECTED_ALERT_ID # Alerta 41
                 logger.info(f"EVENTO DETECTADO: Alimentação Principal Desconectada para device_id={dev_id_str}")
                 # power_alert_packet = build_suntech_packet(
                 #     "ALT", dev_id_str, packet_data, serial, is_realtime=True, alert_id=alert_id
                 # )
             else:
                 # Mudou de Desconectado (1) para Conectado (0)
-                alert_id = SUNTECH_POWER_CONNECTED_ALERT_ID # Alerta 40
+                # alert_id = SUNTECH_POWER_CONNECTED_ALERT_ID # Alerta 40
                 logger.info(f"EVENTO DETECTADO: Alimentação Principal Conectada para device_id={dev_id_str}")
                 # power_alert_packet = build_suntech_packet(
                 #     "ALT", dev_id_str, packet_data, serial, is_realtime=True, alert_id=alert_id
