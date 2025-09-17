@@ -2,7 +2,6 @@ from crc import Calculator, Configuration
 
 from app.services.redis_service import get_redis
 from app.core.logger import get_logger
-from app.src.session.output_sessions_manager import send_to_main_server
 
 redis_client = get_redis()
 logger = get_logger(__name__)
@@ -63,11 +62,10 @@ def handle_ignition_change(dev_id_str: str, serial, packet_data: dict, raw_packe
 
                 packet_data["alert_id"] = alert_id
 
-            # Envia o pacote de alerta de ignição para o servidor principal
-            send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol=original_protocol, type="alert")
-
         # Atualiza o estado no Redis para a próxima verificação
         redis_client.hset(dev_id_str, 'acc_status', current_acc_status)
+
+        return packet_data
 
     except Exception:
         logger.exception(f"Erro ao processar mudança de ignição para device_id={dev_id_str}")
@@ -101,8 +99,8 @@ def handle_power_change(dev_id_str: str, serial, packet_data: dict):
                 #     "ALT", dev_id_str, packet_data, serial, is_realtime=True, alert_id=alert_id
                 # )
             
-            if power_alert_packet:
-                send_to_main_server(dev_id_str, serial, power_alert_packet.encode('ascii'))
+            # if power_alert_packet:
+            #     send_to_main_server(dev_id_str, serial, power_alert_packet.encode('ascii'))
 
         redis_client.hset(dev_id_str, 'power_status', current_power_disconnected)
     except Exception:
