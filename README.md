@@ -9,10 +9,13 @@ Este projeto é um **gateway de tradução universal** para o setor de telemétr
   - [Fluxo de Dados (Uplink)](#fluxo-de-dados-uplink-dispositivo---plataforma)
   - [Fluxo de Comandos (Downlink)](#fluxo-de-comandos-downlink-plataforma---dispositivo)
 - [Dados Persistidos no Redis](#dados-persistidos-no-redis)
+- [Gerenciamento de Sessões TCP](#gerenciamento-de-sessões-tcp)
+- [Gerenciamento de Rastreadores Híbridos (GSM/Satélite)](#gerenciamento-de-rastreadores-híbridos-gsm-satélite)
 - [Protocolos Suportados](#protocolos-suportados)
 - [Endpoints da API](#endpoints-da-api)
 - [Como Começar](#como-começar)
 - [Como Adicionar um Novo Protocolo](#como-adicionar-um-novo-protocolo)
+- [Estrutura do Projeto (Árvore de Diretórios)](#estrutura-do-projeto)
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 
 ## Visão Geral
