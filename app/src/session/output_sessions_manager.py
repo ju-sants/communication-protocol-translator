@@ -230,7 +230,7 @@ class MainServerSession:
                     self.sock.close()
                 self.sock = None
 
-class MainServerSessionsManager:
+class OutputSessionsManager:
     _lock = threading.Lock()
     _instance = None
 
@@ -264,7 +264,7 @@ class MainServerSessionsManager:
                 del self._sessions[dev_id]
                 logger.info(f"Sessão para dev_id={dev_id} deletada do MainServerSessionsManager.")
 
-sessions_manager = MainServerSessionsManager()
+output_sessions_manager = OutputSessionsManager()
 
 def send_to_main_server(
         dev_id: str, packet_data: dict = None, serial: str = None, 
@@ -304,5 +304,5 @@ def send_to_main_server(
 
         add_packet_to_history(dev_id, raw_packet_hex, str_output_packet)
         
-        session = sessions_manager.get_session(dev_id, serial, output_protocol)
+        session = output_sessions_manager.get_session(dev_id, serial, output_protocol)
         session.send(output_packet, output_protocol, packet_data)
