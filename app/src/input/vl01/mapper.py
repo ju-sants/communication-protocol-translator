@@ -19,7 +19,7 @@ redis_client = get_redis()
 REDIS_QUEUE_KEY = "vl01_persistent_packet_queue"
 
 class PacketQueue:
-    def __init__(self, redis_client: redis.Redis, queue_key: str, batch_processing: bool = False, batch_size: int = 70):
+    def __init__(self, redis_client: redis.Redis, queue_key: str, batch_processing: bool = True, batch_size: int = 70):
         self.redis_client = redis_client
         self.queue_key = queue_key
         self.batch_size = batch_size
