@@ -24,7 +24,6 @@ def start_listener(port: int, handler_func):
     except Exception as e:
         logger.critical(f"❌ Falha ao iniciar listener na porta {port} error={e}")
 
-
 def run_flask_app():
     from app.api import create_app
     app = create_app()

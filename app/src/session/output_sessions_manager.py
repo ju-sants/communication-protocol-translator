@@ -211,6 +211,7 @@ class MainServerSession:
                 else:
                     logger.error(f"Número máximo de tentativas de conexão para essa sessão atingida dev_id={self.dev_id}")
                     self._conection_retries = 0
+                    self.disconnect()
                     return
 
             except Exception:
