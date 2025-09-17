@@ -48,7 +48,7 @@ class Settings(BaseSettings):
 
      # -------------- Dicionários Globais Para IDs de Alerta ----------------------
     UNIVERSAL_ALERT_ID_DICTIONARY: Dict[str, Dict[int, int]] = {
-        "suntech": {
+        "suntech4g": {
             1: 6501, 3: 6503, 4: 6504, 5: 6505, 6: 6506, 14: 6514, 15: 6515, 33: 6533, 34: 6534,
             41: 6541, 42: 6542, 46: 6546, 47: 6547, 73: 6573, 147: 6647
         },

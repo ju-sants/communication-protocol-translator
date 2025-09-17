@@ -342,7 +342,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     pipeline.hincrby(dev_id_str, "total_packets_received", 1)
     pipeline.execute()
 
-    # Keep-Alive da Suntech
+    # Keep-Alive da Suntech4G
     send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="GT06", type="heartbeat")
 
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):

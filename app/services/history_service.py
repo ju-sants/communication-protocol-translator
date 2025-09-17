@@ -6,7 +6,7 @@ HISTORY_LIMIT = 10000  # Limite de entradas no histórico por dispositivo
 
 def add_packet_to_history(dev_id: str, raw_packet_hex: str, translated_packet: str):
     """
-    Adiciona um par de pacotes (raw e suntech) ao histórico de um dispositivo no Redis.
+    Adiciona um par de pacotes (raw e traduzido) ao histórico de um dispositivo no Redis.
     Usa uma lista do Redis (LPUSH) e apara para manter um tamanho fixo (LTRIM).
     """
     try:

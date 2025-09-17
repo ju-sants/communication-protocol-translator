@@ -7,7 +7,7 @@ from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.services.history_service import add_packet_to_history
 from app.config.output_protocol_settings import output_protocol_settings
-from app.src.output.suntech.builder import build_login_packet as build_suntech_login_packet
+from app.src.output.suntech4g.builder import build_login_packet as build_suntech_login_packet
 from app.src.output.gt06.builder import build_login_packet as build_gt06_login_packet, build_voltage_info_packet as build_gt06_voltage_info_packet
 
 logger = get_logger(__name__)
@@ -63,7 +63,7 @@ class MainServerSession:
     
     def present_connection(self):
 
-        if self.output_protocol == "suntech":
+        if self.output_protocol == "suntech4g":
             logger.info(f"Enviando pacote MNT para apresentar a conexão dev_id={self.dev_id}")
             mnt_packet = build_suntech_login_packet(self.dev_id)
 
@@ -135,7 +135,7 @@ class MainServerSession:
                 continue
             
             except (ConnectionResetError, BrokenPipeError):
-                logger.warning(f"Conexão com servidor Suntech resetada (reader) device_id={self.dev_id}")
+                logger.warning(f"Conexão com servidor principal resetada (reader) device_id={self.dev_id}")
                 self.disconnect()
                 break
             except OSError as e:
@@ -195,12 +195,12 @@ class MainServerSession:
 
                 logger.info(f"Encaminhando pacote de {len(packet)} bytes device_id={self.dev_id}")
 
-                if self.output_protocol == "suntech":
+                if self.output_protocol == "suntech4g":
                     packet += b'\r'
 
                 self.sock.sendall(packet)
             except (ConnectionResetError, BrokenPipeError) as e:
-                logger.warning(f"Conexão com servidor Suntech caiu ao enviar ({type(e).__name__}) device_id={self.dev_id}")
+                logger.warning(f"Conexão com servidor Principal caiu ao enviar ({type(e).__name__}) device_id={self.dev_id}")
 
                 if self._conection_retries < 5:
                     self._conection_retries += 1
@@ -281,7 +281,7 @@ def send_to_main_server(
         if is_hybrid or (protocol and protocol == "vl01"):
             output_protocol = "gt06"
         else:
-            output_protocol = "suntech"
+            output_protocol = "suntech4g"
         
         redis_client.hset(dev_id, "output_protocol", output_protocol)
     
@@ -291,7 +291,7 @@ def send_to_main_server(
 
     # Lógica de envios
     if output_packet:
-        if output_protocol == "suntech":
+        if output_protocol == "suntech4g":
             str_output_packet = output_packet.decode("ascii")
         else:
             str_output_packet = output_packet.hex()

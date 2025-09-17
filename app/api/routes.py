@@ -52,7 +52,7 @@ def get_all_trackers_data():
 
             device_data = redis_client.hgetall(key)
             device_data['is_connected'] = tracker_sessions_manager.exists(key)
-            device_data["output_protocol"] = device_data.get("output_protocol") or "suntech"
+            device_data["output_protocol"] = device_data.get("output_protocol") or "suntech4g"
             all_data[key] = device_data
         return jsonify(all_data)
     except Exception as e:
@@ -183,7 +183,7 @@ def get_tracker_sessions():
 @app.route('/sessions/main-server', methods=['GET'])
 def get_main_server_sessions():
     """
-    Returns a list of device IDs with active sessions to the main Suntech server.
+    Returns a list of device IDs with active sessions to the main Suntech4G server.
     """
     active_sessions = list(sessions_manager._sessions.keys())
     return jsonify(active_sessions)
@@ -202,7 +202,7 @@ def get_tracker_details(dev_id):
             "device_id": dev_id,
             "imei": device_data.get('imei', dev_id),
             "protocol": device_data.get('protocol'),
-            "output_protocol": device_data.get("output_protocol") or "suntech",
+            "output_protocol": device_data.get("output_protocol") or "suntech4g",
             "is_connected_translator": tracker_sessions_manager.exists(dev_id, use_redis=True),
             "is_connected_main_server": dev_id in sessions_manager._sessions,
             "last_active_timestamp": device_data.get('last_active_timestamp'),

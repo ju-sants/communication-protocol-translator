@@ -11,7 +11,7 @@ redis_client = get_redis()
 
 def map_data(raw_data: bytes):
     """
-    Maps satellite data to a Suntech packet and sends it to the main server.
+    Maps satellite data to a structured python dict and sends it to the main server.
     """
     try:
         data = json.loads(raw_data)

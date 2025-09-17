@@ -92,7 +92,7 @@ def process_command(dev_id: str, serial: int, universal_command: str):
         j16x_text_command = command_mapping.get(universal_command)
 
     if not j16x_text_command:
-        logger.warning(f"Nenhum mapeamento GT06 encontrado para o comando Suntech comando={universal_command}")
+        logger.warning(f"Nenhum mapeamento GT06 encontrado para o comando Universal comando={universal_command}")
         return
 
     j16x_binary_command = build_command(j16x_text_command, serial)

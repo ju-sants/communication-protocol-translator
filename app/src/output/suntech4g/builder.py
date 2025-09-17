@@ -28,7 +28,7 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     hdr = "STT" if type == "location" else "ALT" if type == "alert" else ""
     is_realtime = packet_data.get("is_realtime")
     universal_alert_id = packet_data.get("universal_alert_id")
-    suntech_alert_id = settings.REVERSE_UNIVERSAL_ALERT_ID_DICTIONARY.get("suntech").get(universal_alert_id)
+    suntech_alert_id = settings.REVERSE_UNIVERSAL_ALERT_ID_DICTIONARY.get("suntech4g").get(universal_alert_id)
     geo_fence_id = packet_data.get("geo_fence_id")
     voltage_stored = packet_data.get("voltage_stored")
 

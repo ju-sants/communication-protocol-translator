@@ -13,24 +13,6 @@ from .utils import haversine
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-
-VL01_TO_SUNTECH_ALERT_MAP = {
-    0x01: 42,  # SOS -> Suntech: Panic Button
-    0x02: 41,  # Power Cut Alarm -> Suntech: Power Disconected
-    0x03: 15,  # Shock Alarm -> Suntech: Shocked
-    0x04: 6,   # Fence In Alarm -> Suntech: Enter Geo-Fence
-    0x05: 5,   # Fence Out Alarm -> Suntech: Exit Geo-Fence
-    0x06: 1,   # Overspeed Alarm -> Suntech: Over Speed
-    0x19: 14,  # Battery low voltage alarm -> Suntech: Battery Low
-    0xF0: 46,  # Urgent acceleration alarm -> Suntech: Harsh Acceleration
-    0xF1: 47,  # Rapid deceleration alarm -> Suntech: Harsh Braking
-    0x13: 147, # Remove alarm -> Suntech: Absent Device Recovered
-    0x14: 73,  # car door alarm -> Suntech: Anti-theft
-    0xFE: 33,  # ACC On -> Suntech: Ignition On
-    0xFF: 34   # ACC Off -> Suntech: Ignition Off
-}
-
-
 def _decode_location_packet(body: bytes):
 
     try:
@@ -221,7 +203,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     pipeline.hincrby(dev_id_str, "total_packets_received", 1)
     pipeline.execute()
 
-    # Keep-Alive da Suntech
+    # Keep-Alive
     send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="VL01", type="heartbeat")
 
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):

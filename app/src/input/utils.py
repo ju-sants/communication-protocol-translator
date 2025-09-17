@@ -5,13 +5,13 @@ from app.src.connection.main_server_connection import send_to_main_server
 redis_client = get_redis()
 logger = get_logger(__name__)
 
-# IDs de Alerta Suntech que são INFERIDOS, não traduzidos diretamente
+# IDs de Alerta Suntech4G que são INFERIDOS, não traduzidos diretamente
 SUNTECH_IGNITION_ON_ALERT_ID: int = 33
 SUNTECH_IGNITION_OFF_ALERT_ID: int = 34
 SUNTECH_POWER_CONNECTED_ALERT_ID: int = 40
 SUNTECH_POWER_DISCONNECTED_ALERT_ID: int = 41
 
-# IDs de Alerta Suntech para Geocerca (baseado na direção)
+# IDs de Alerta Suntech4G para Geocerca (baseado na direção)
 SUNTECH_GEOFENCE_ENTER_ALERT_ID: int = 6
 SUNTECH_GEOFENCE_EXIT_ALERT_ID: int = 5
 

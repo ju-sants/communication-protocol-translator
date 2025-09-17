@@ -12,18 +12,6 @@ from app.config.settings import settings
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-
-NT40_TO_SUNTECH_ALERT_MAP = {
-    0x01: 42,  # SOS -> Suntech: Panic Button
-    0x02: 41,  # Power Cut Alarm -> Suntech: Backup Battery Disconnected
-    0x03: 15,  # Shock Alarm -> Suntech: Shocked
-    0x04: 33,  # ACC On -> Suntech: Ignition On
-    0x05: 34,   # ACC Off -> Suntech: Ignition Off
-    0x12: 147, # Remove alarm -> Suntech: Absent Device Recovered
-
-}
-
-
 def decode_location_packet_x12(body: bytes):
 
     try:
@@ -143,7 +131,7 @@ def handle_alarm_from_location(dev_id_str, serial,  alarm_packet_data, raw_packe
 
         if alarm_code not in (0x0, 0x00):
             universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get(alarm_code, 0)
-            logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Suntech ID {universal_alert_id} device_id={dev_id_str}")
+            logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Universal ID {universal_alert_id} device_id={dev_id_str}")
 
     
     if universal_alert_id:

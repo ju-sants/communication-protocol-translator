@@ -69,7 +69,7 @@ def build_command(command_content_str: str, serial_number: int):
     return command_packet
 
 def process_command(dev_id: str, serial: int, universal_command: str):
-    logger.info(f"Iniciando tradução de comando Suntech para NT40 device_id={dev_id}, comando={universal_command}")
+    logger.info(f"Iniciando tradução de comando Universal para NT40 device_id={dev_id}, comando={universal_command}")
 
     command_mapping = {
         "OUTPUT ON": "RELAY,1#",
@@ -92,7 +92,7 @@ def process_command(dev_id: str, serial: int, universal_command: str):
         nt40_text_command = command_mapping.get(universal_command)
 
     if not nt40_text_command:
-        logger.warning(f"Nenhum mapeamento NT40 encontrado para o comando Suntech comando={universal_command}")
+        logger.warning(f"Nenhum mapeamento NT40 encontrado para o comando Universal comando={universal_command}")
         return
 
     nt40_binary_command = build_command(nt40_text_command, serial)

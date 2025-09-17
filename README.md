@@ -23,11 +23,11 @@ A força deste projeto reside em sua arquitetura inteligente e desacoplada, que 
 
 *   **Arquitetura Modular "Plug-and-Play"**: Adicionar suporte a um novo protocolo é tão simples quanto criar um novo módulo. A estrutura isola a lógica de cada protocolo, permitindo que o sistema evolua sem aumento de complexidade. O orquestrador em [`main.py`](main.py) carrega dinamicamente cada protocolo, iniciando listeners dedicados em threads separadas.
 
-*   **Tradução Bidirecional (N x N)**: O sistema traduz múltiplos protocolos de entrada para múltiplos protocolos de saída. Cada `mapper` de entrada converte o dialeto do dispositivo para um **dicionário Python padronizado**. A camada de `output` (ex: [`app/src/output/suntech/builder.py`](app/src/output/suntech/builder.py)) utiliza esse dicionário para construir pacotes nos formatos de saída desejados, garantindo um desacoplamento total.
+*   **Tradução Bidirecional (N x N)**: O sistema traduz múltiplos protocolos de entrada para múltiplos protocolos de saída. Cada `mapper` de entrada converte o dialeto do dispositivo para um **dicionário Python padronizado**. A camada de `output` (ex: [`app/src/output/suntech4g/builder.py`](app/src/output/suntech4g/builder.py)) utiliza esse dicionário para construir pacotes nos formatos de saída desejados, garantindo um desacoplamento total.
 
 *   **Inteligência Agregada com Gestão de Estado**: O gateway utiliza o Redis ([`app/services/redis_service.py`](app/services/redis_service.py)) para armazenar o estado de cada dispositivo. Ao receber um novo pacote, ele compara o estado atual com o anterior e pode **gerar novos eventos de alerta** (ex: "Alerta de Ignição Ligada") que não existiam no protocolo original, agregando valor e inteligência aos dados.
 
-*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente robusto. Comandos recebidos pela plataforma são traduzidos por um `mapper` de saída (ex: [`app/src/output/suntech/mapper.py`](app/src/output/suntech/mapper.py)) para um formato universal. O sistema então identifica o protocolo de origem do dispositivo e invoca o `builder` correspondente (ex: [`app/src/input/j16x/builder.py`](app/src/input/j16x/builder.py)) para enviar o comando no formato nativo do rastreador.
+*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente robusto. Comandos recebidos pela plataforma são traduzidos por um `mapper` de saída (ex: [`app/src/output/suntech4g/mapper.py`](app/src/output/suntech4g/mapper.py)) para um formato universal. O sistema então identifica o protocolo de origem do dispositivo e invoca o `builder` correspondente (ex: [`app/src/input/j16x/builder.py`](app/src/input/j16x/builder.py)) para enviar o comando no formato nativo do rastreador.
 
 ## Arquitetura do Sistema
 
@@ -54,7 +54,7 @@ graph TD
         E
     end
 
-    subgraph "Módulo de Protocolo de Saída (Ex: Suntech, GT06)"
+    subgraph "Módulo de Protocolo de Saída (Ex: Suntech4G, GT06)"
         G
     end
 
@@ -79,7 +79,7 @@ graph TD
     F -- Pacote Binário Nativo --> G(Socket do Dispositivo);
     G -- Pacote TCP --> H[Dispositivo Rastreador];
 
-    subgraph "Módulo de Protocolo de Saída (Ex: Suntech, GT06)"
+    subgraph "Módulo de Protocolo de Saída (Ex: Suntech4G, GT06)"
         C
     end
 
@@ -105,7 +105,7 @@ Para cada rastreador conectado ou que já se conectou, um hash é mantido no Red
 | Campo                  | Tipo      | Descrição                                                                         | Exemplo             |
 | :--------------------- | :-------- | :-------------------------------------------------------------------------------- | :------------------ |
 | `protocol`             | `string`  | O protocolo que o dispositivo utiliza (ex: `j16x`, `jt808`, `vl01`, `nt40`).        | `"j16x"`            |
-| `output_protocol`      | `string`  | O protocolo de saída que o dispositivo utiliza (ex: `suntech`, `gt06`).        | `"suntech"`            |
+| `output_protocol`      | `string`  | O protocolo de saída que o dispositivo utiliza (ex: `suntech4g`, `gt06`).        | `"suntech4g"`            |
 | `imei`                 | `string`  | O IMEI do dispositivo.                                                            | `"358204012345678"` |
 | `last_serial`          | `integer` | O último número de série do pacote recebido do dispositivo.                       | `"12345"`           |
 | `last_active_timestamp`| `string`  | Timestamp UTC da última vez que o dispositivo enviou qualquer tipo de pacote (ISO 8601). | `"2023-10-27T10:35:00.123456+00:00"` |
@@ -139,7 +139,7 @@ Alguns dados cruciais são calculados ou mantidos inteiramente no servidor, agre
 
 ### Histórico de Pacotes (`history:<device_id>`)
 
-Para cada dispositivo, uma lista é mantida no Redis contendo os pacotes brutos e seus respectivos pacotes Suntech traduzidos. Esta lista é limitada a `HISTORY_LIMIT` (definido em [`app/services/history_service.py`](app/services/history_service.py)) entradas.
+Para cada dispositivo, uma lista é mantida no Redis contendo os pacotes brutos e seus respectivos pacotes Suntech4G traduzidos. Esta lista é limitada a `HISTORY_LIMIT` (definido em [`app/services/history_service.py`](app/services/history_service.py)) entradas.
 
 | Campo            | Tipo      | Descrição                                         | Exemplo                       |
 | :--------------- | :-------- | :------------------------------------------------ | :---------------------------- |
@@ -172,7 +172,7 @@ O sistema possui uma lógica especializada para lidar com rastreadores "híbrido
 
 ### Saída
 
-*   **Suntech**
+*   **Suntech4G**
 *   **GT06**
 
 
@@ -404,7 +404,7 @@ O servidor iniciará os listeners para todos os protocolos definidos em [`app/co
     Dentro de `app/src/output/`, crie um novo diretório com o nome do seu protocolo (ex: `novo_protocolo`).
 
 2.  **Implemente os Módulos Essenciais:**
-    Crie os arquivos `builder.py` e `mapper.py` dentro do novo diretório, seguindo a estrutura dos módulos `suntech` ou `gt06`.
+    Crie os arquivos `builder.py` e `mapper.py` dentro do novo diretório, seguindo a estrutura dos módulos `suntech4g` ou `gt06`.
     *   `builder.py`: Deve conter as funções para construir os diferentes tipos de pacotes de saída (login, localização, heartbeat, etc.).
     *   `mapper.py`: Deve conter a função `map_to_universal_command` para traduzir comandos recebidos da plataforma principal para o formato universal.
 
@@ -416,3 +416,4 @@ O servidor iniciará os listeners para todos os protocolos definidos em [`app/co
 *   **Python**: Linguagem principal do projeto.
 *   **Redis**: Utilizado como uma memória de curto prazo para gerenciamento de estado das sessões e dos dispositivos.
 *   **Pydantic**: Para gerenciamento de configurações e validação de dados.
+
