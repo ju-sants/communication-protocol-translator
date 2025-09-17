@@ -36,7 +36,7 @@ def map_data(raw_data: bytes):
         last_serial, last_gsm_location_str = redis_client.hmget(hybrid_gsm, "last_serial", "last_packet_data")
 
         last_serial = int(last_serial) if last_serial else 0
-        last_gsm_location = json.loads(last_gsm_location_str)
+        last_gsm_location = json.loads(last_gsm_location_str) if last_gsm_location_str else {}
 
         last_hybrid_location = {**last_gsm_location, **data}
         last_hybrid_location["voltage"] = 2.22
