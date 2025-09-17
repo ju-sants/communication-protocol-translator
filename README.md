@@ -146,6 +146,28 @@ Para cada dispositivo, uma lista é mantida no Redis contendo os pacotes brutos 
 | `raw_packet`     | `string`  | O pacote original recebido do rastreador (hex).   | `"78780d01..."`               |
 | `translated_packet` | `string`  | O pacote traduzido para o formato de saída.        | `">STT,IMEI,..."` ou `"7878..."` |
 
+## Gerenciamento de Sessões TCP
+
+O gateway gerencia ativamente as conexões TCP para garantir a comunicação bidirecional de forma eficiente e resiliente. A lógica é dividida em dois componentes principais, localizados em `app/src/session/`.
+
+### Sessões de Entrada (Rastreador -> Gateway)
+
+-   **Componente**: [`app/src/session/input_sessions_manager.py`](app/src/session/input_sessions_manager.py:10)
+-   **Responsabilidade**: Manter um registro de todas as conexões TCP ativas vindas dos rastreadores.
+-   **Funcionamento**: Utiliza um singleton (`InputSessionsManager`) que armazena os objetos de socket em um dicionário, usando o `device_id` como chave. Esse gerenciador é vital para o fluxo de **downlink**, pois permite que o sistema encontre rapidamente a conexão exata de um dispositivo para enviar comandos recebidos da plataforma principal.
+
+### Sessões de Saída (Gateway -> Plataforma Principal)
+
+-   **Componente**: [`app/src/session/output_sessions_manager.py`](app/src/session/output_sessions_manager.py:16)
+-   **Responsabilidade**: Gerenciar as conexões de saída do gateway para a plataforma de rastreamento principal.
+-   **Funcionamento**: Também implementado como um singleton (`OutputSessionsManager`), este módulo gerencia objetos de `MainServerSession`. Cada sessão representa uma conexão persistente para um `device_id` específico com o servidor final. Ele é responsável por:
+    -   Estabelecer a conexão e autenticar o dispositivo (enviando pacotes de login).
+    -   Manter a conexão ativa e reconectar em caso de falha.
+    -   Encaminhar os pacotes de dados já traduzidos.
+    -   Manter uma thread de escuta (`_reader_loop`) para receber comandos da plataforma (downlink) e roteá-los para o `builder` do protocolo de entrada correto.
+
+Essa arquitetura de sessões desacoplada garante que o núcleo do sistema seja robusto a falhas de conexão e que o fluxo de comandos seja tratado de forma assíncrona e eficiente.
+
 ### Gerenciamento de Rastreadores Híbridos (GSM/Satélite)
 
 O sistema possui uma lógica especializada para lidar com rastreadores "híbridos", que combinam comunicação GSM/GPRS com um rastreador satelital secundário. Em vez de tratar os dois como dispositivos separados, o gateway os unifica sob uma única identidade, enriquecendo os dados de um com o outro.
@@ -160,7 +182,7 @@ O sistema possui uma lógica especializada para lidar com rastreadores "híbrido
     *   `voltage`: Alterado para `2.22` como um indicador de que a posição veio do módulo satelital.
     *   `satellites`: Alterado para `2` para sinalizar a origem satelital.
 
-4.  **Envio Unificado**: O pacote híbrido resultante é enviado para a plataforma principal através da conexão e sessão já estabelecida pelo rastreador GSM ([`main_server_connection.py`](app/src/connection/main_server_connection.py:269)), garantindo que a plataforma veja apenas um dispositivo, mas com dados enriquecidos de ambas as fontes.
+4.  **Envio Unificado**: O pacote híbrido resultante é enviado para a plataforma principal através da conexão e sessão já estabelecida pelo rastreador GSM ([`output_sessions_manager.py`](app/src/session/output_sessions_manager.py:269)), garantindo que a plataforma veja apenas um dispositivo, mas com dados enriquecidos de ambas as fontes.
 
 ## Protocolos Suportados
 
@@ -178,7 +200,7 @@ O sistema possui uma lógica especializada para lidar com rastreadores "híbrido
 
 ## Endpoints da API
 
-O servidor gateway expõe uma API RESTful para consulta de dados em tempo real e gerenciamento de sessões, facilitando a integração com outras plataformas e painéis de monitoramento.
+O servidor gateway expõe uma API RESTful para consulta de dados em tempo real e gerenciamento de sessões, facilitando a integração com outras plataformas e painéis de monitoramento. A lógica de gerenciamento de sessões de socket foi centralizada no diretório [`app/src/session/`](app/src/session/).
 
 ### `GET /trackers`
 Retorna um dicionário com todos os dados dos rastreadores salvos no Redis, incluindo o status de conexão (`is_connected`).
