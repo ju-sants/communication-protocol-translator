@@ -130,7 +130,7 @@ def handle_alarm_from_location(dev_id_str, serial,  alarm_packet_data, raw_packe
         logger.info(f"handle_alarm_from_location: alarm_code={alarm_code}")
 
         if alarm_code not in (0x0, 0x00):
-            universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get(alarm_code, 0)
+            universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("nt40").get(alarm_code, 0)
             logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Universal ID {universal_alert_id} device_id={dev_id_str}")
 
     
