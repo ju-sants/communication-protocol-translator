@@ -2,8 +2,6 @@ import struct
 from datetime import datetime, timezone, timedelta
 import json
 import copy
-import threading
-import redis
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -14,126 +12,6 @@ from .utils import haversine
 
 logger = get_logger(__name__)
 redis_client = get_redis()
-
-# Define the Redis key for the persistent queue
-REDIS_QUEUE_KEY = "vl01_persistent_packet_queue"
-
-class PacketQueue:
-    def __init__(self, redis_client: redis.Redis, queue_key: str, batch_processing: bool = True, batch_size: int = 70):
-        self.redis_client = redis_client
-        self.queue_key = queue_key
-        self.batch_size = batch_size
-        self.batch_processing = batch_processing
-        self.processing_lock = threading.Lock()
-        
-    def add_packet(self, packet_type: str, dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str, timestamp: datetime):
-        packet_data = {
-            "type": packet_type,
-            "dev_id_str": dev_id_str,
-            "serial": serial,
-            "body": body.hex(),
-            "raw_packet_hex": raw_packet_hex,
-            "timestamp": timestamp.timestamp()
-        }
-        self.redis_client.zadd(self.queue_key, {json.dumps(packet_data): packet_data["timestamp"]})
-        logger.info(f"Packet added to persistent queue. Current queue size: {self.redis_client.zcard(self.queue_key)}")
-        self._process_queue_if_ready()
-
-    def _process_queue_if_ready(self):
-        with self.processing_lock:
-            current_queue_size = self.redis_client.zcard(self.queue_key)
-            if current_queue_size >= self.batch_size:
-                logger.info(f"Attempting to process batch. Current queue size: {current_queue_size}")
-                if self.batch_processing:
-                    self._process_batch()
-                else:
-                    self._process_first()
-            else:
-                logger.info(f"Queue size {current_queue_size} is less than batch size {self.batch_size}. Not processing yet.")
-
-    def _process_first(self):
-        logger.info(f"Starting _process_first for queue {self.queue_key}")
-        packet_raw = self.redis_client.zrange(self.queue_key, 0, 0, withscores=True)
-        
-        if not packet_raw:
-            logger.info(f"No packets in queue {self.queue_key} to process.")
-            return
-
-        member_str, _ = packet_raw[0]
-        try:
-            packet = json.loads(member_str)
-            packet["body"] = bytes.fromhex(packet["body"])
-            packet["timestamp"] = datetime.fromtimestamp(packet["timestamp"], tz=timezone.utc)
-            logger.debug(f"Successfully deserialized packet for device {packet['dev_id_str']}")
-        except Exception as e:
-            logger.error(f"Error deserializing packet from Redis: {member_str}. Error: {e}")
-            self.redis_client.zrem(self.queue_key, member_str)
-            return
-
-        try:
-            if packet["type"] == "location":
-                _handle_location_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
-            elif packet["type"] == "alarm":
-                _handle_alarm_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
-            elif packet["type"] == "information":
-                _handle_information_packet(packet["dev_id_str"], packet["body"])
-        except Exception as e:
-            logger.exception(f"Error processing queued packet: {e}")
-        finally:
-            self.redis_client.zrem(self.queue_key, member_str)
-
-        logger.info(f"Finished processing one packet for queue {self.queue_key}.")
-            
-    def _process_batch(self):
-        logger.info(f"Starting _process_batch for queue {self.queue_key}")
-        packets_raw = self.redis_client.zrange(self.queue_key, 0, self.batch_size - 1, withscores=True)
-        
-        if not packets_raw:
-            logger.info(f"No packets in queue {self.queue_key} to process.")
-            return
-
-        packets_to_process = []
-        members_to_remove = []
-
-        for member_str, _ in packets_raw:
-            try:
-                packet = json.loads(member_str)
-                packet["body"] = bytes.fromhex(packet["body"])
-                packet["timestamp"] = datetime.fromtimestamp(packet["timestamp"], tz=timezone.utc)
-                packets_to_process.append(packet)
-                members_to_remove.append(member_str)
-                logger.debug(f"Successfully deserialized packet for device {packet['dev_id_str']}")
-            except Exception as e:
-                logger.error(f"Error deserializing packet from Redis: {member_str}. Error: {e}")
-                members_to_remove.append(member_str)
- 
-        if not packets_to_process:
-            logger.info(f"No valid packets to process after deserialization for queue {self.queue_key}.")
-            return
- 
-        packets_to_process.sort(key=lambda x: x["timestamp"])
-        logger.info(f"Sorted {len(packets_to_process)} packets by timestamp.")
- 
-        for packet in packets_to_process:
-            try:
-                if packet["type"] == "location":
-                    _handle_location_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
-                elif packet["type"] == "alarm":
-                    _handle_alarm_packet(packet["dev_id_str"], packet["serial"], packet["body"], packet["raw_packet_hex"])
-                elif packet["type"] == "information":
-                    _handle_information_packet(packet["dev_id_str"], packet["body"])
-            except Exception as e:
-                logger.exception(f"Error processing queued packet: {e}")
-            finally:
-                pass
- 
-        logger.info(f"Finished processing {len(packets_to_process)} packets in batch for queue {self.queue_key}.")
- 
-        if members_to_remove:
-            self.redis_client.zrem(self.queue_key, *members_to_remove)
-            logger.info(f"Removed {len(members_to_remove)} packets from queue. Remaining queue size: {self.redis_client.zcard(self.queue_key)}")
-
-packet_queue = PacketQueue(redis_client, REDIS_QUEUE_KEY)
 
 
 VL01_TO_SUNTECH_ALERT_MAP = {
@@ -211,7 +89,7 @@ def _decode_location_packet(body: bytes):
         logger.exception(f"Falha ao decodificar pacote de localização VL01 body_hex={body.hex()}")
         return None
 
-def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     packet_data = _decode_location_packet(body)
 
     if not packet_data:
@@ -273,7 +151,7 @@ def _handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
 
     send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol="VL01")
 
-def _handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
         "last_event_type": "alarm",
@@ -367,7 +245,7 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY: {e} body={body.hex()}, dev_id={dev_id}")
 
-def _handle_information_packet(dev_id: str, body: bytes):
+def handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
         "last_event_type": "information",
@@ -387,22 +265,3 @@ def _handle_information_packet(dev_id: str, body: bytes):
     else:
         pass
     pipeline.execute()
-
-def packet_queuer(dev_id_str: str, protocol_number: int, serial: int, body: bytes, raw_packet_hex: str):
-    # For location packets, try to extract timestamp from the body for accurate ordering
-    timestamp = datetime.now(timezone.utc)
-    if protocol_number == 0xA0: # Location Packet
-        packet_data = _decode_location_packet(body)
-        if packet_data and "timestamp" in packet_data:
-            timestamp = packet_data["timestamp"]
-        packet_queue.add_packet("location", dev_id_str, serial, body, raw_packet_hex, timestamp)
-    elif protocol_number == 0x95: # Alarm Packet
-        alarm_packet_data = _decode_alarm_location_packet(body[0:16])
-        if alarm_packet_data and "timestamp" in alarm_packet_data:
-            timestamp = alarm_packet_data["timestamp"]
-        packet_queue.add_packet("alarm", dev_id_str, serial, body, raw_packet_hex, timestamp)
-    elif protocol_number == 0x94:
-        timestamp = datetime.now(timezone.utc)
-        packet_queue.add_packet("information", dev_id_str, serial, body, raw_packet_hex, timestamp)
-    else:
-        logger.warning(f"Attempted to queue unknown packet type: {hex(protocol_number)}")

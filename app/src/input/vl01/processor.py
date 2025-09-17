@@ -39,9 +39,21 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, is_x79: bool = Fa
         newly_logged_in_dev_id = imei_bytes.hex()
         response_packet = builder.build_generic_response(protocol_number, serial_number)
     
-    elif protocol_number in [0xA0, 0x95, 0x94]:
+    elif protocol_number == 0xA0: # Location Packet
         if dev_id_str:
-            mapper.packet_queuer(dev_id_str, protocol_number, serial_number, content_body, packet_body.hex())
+            mapper.handle_location_packet(dev_id_str, serial_number, content_body, packet_body.hex())
+        else:
+            logger.warning(f"Pacote de localização/alarme VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
+        response_packet = builder.build_generic_response(protocol_number, serial_number)
+    elif protocol_number == 0x95: # Alarm Packet
+        if dev_id_str:
+            mapper.handle_alarm_packet(dev_id_str, serial_number, content_body, packet_body.hex())
+        else:
+            logger.warning(f"Pacote de localização/alarme VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
+        response_packet = builder.build_generic_response(protocol_number, serial_number)
+    elif protocol_number == 0x94: # Information Packet
+        if dev_id_str:
+            mapper.handle_information_packet(dev_id_str, serial_number, content_body, packet_body.hex())
         else:
             logger.warning(f"Pacote de localização/alarme VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_packet = builder.build_generic_response(protocol_number, serial_number)
