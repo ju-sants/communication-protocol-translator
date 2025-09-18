@@ -43,6 +43,10 @@ class Settings(BaseSettings):
         "satellite": {
             "port": 65434,
             "handler_path": "app.src.input.satellite.handler.handle_connection"
+        },
+        "suntech2g": {
+            "port": 65435,
+            "handler_path": "app.src.input.suntech2g.handler.handle_connection"
         }
     }
 
@@ -50,7 +54,11 @@ class Settings(BaseSettings):
     UNIVERSAL_ALERT_ID_DICTIONARY: Dict[str, Dict[int, int]] = {
         "suntech4g": {
             1: 6501, 3: 6503, 4: 6504, 5: 6505, 6: 6506, 14: 6514, 15: 6515, 33: 6533, 34: 6534,
-            41: 6541, 42: 6542, 46: 6546, 47: 6547, 73: 6573, 147: 6647
+            40: 6540, 41: 6541, 42: 6542, 46: 6546, 47: 6547, 73: 6573, 147: 6647
+        },
+        "suntech2g": {
+            1: 6501, 14: 6514, 15: 6515, 40: 6540,
+            41: 6541
         },
         "j16x": {
             0x01: 6542, 0x02: 6541, 0x19: 6514, 0x03: 6515, 0x06: 6501, 0xF0: 6546,
