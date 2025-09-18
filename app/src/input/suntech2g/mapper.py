@@ -228,3 +228,20 @@ def handle_alt_packet(fields: list) -> dict:
     except (ValueError, IndexError) as e:
         logger.error(f"Error parsing ALT packet: {e}")
         return {}
+
+def handle_reply_packet(fields: list) -> dict:
+    try:
+        reply = fields[-1]
+
+        packet_data_str = redis_client.hget(fields[2], "last_packet_data")
+        packet_data = json.loads(packet_data_str) if packet_data_str else {}
+
+        if reply == "Disable1":
+            packet_data["REPLY"] = "OUTPUT OFF"
+        elif reply == "Enable1":
+            packet_data["REPLY"] = "OUTPUT ON"
+
+        return packet_data
+    except Exception as e:
+        logger.error(f"Error parsing CMD packet: {e}")
+        return {}
