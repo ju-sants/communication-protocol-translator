@@ -10,26 +10,51 @@ from app.services.redis_service import get_redis
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-def handle_stt_packet(fields: list) -> dict:
+def handle_stt_packet(fields: list, standard: str) -> dict:
     try:
         dev_id = fields[1]
-        packet_data = {
-            "timestamp": datetime(int(fields[4][:4]), int(fields[4][4:6]), int(fields[4][6:8]),
-                                  int(fields[5][:2]), int(fields[5][3:5]), int(fields[5][6:8]), tzinfo=timezone.utc),
-            "latitude": float(fields[7]),
-            "longitude": float(fields[8]),
-            "speed_kmh": float(fields[9]),
-            "direction": float(fields[10]),
-            "satellites": int(fields[11]),
-            "gps_fixed": fields[12] == "1",
-            "odometer": int(fields[13]),
-            "voltage": float(fields[14]),
-            "acc_status": int(fields[15][0]),
-            "output_status": int(fields[15][4]),
-            "is_realtime": len(fields) > 20 and fields[20] == "1",
-        }
 
-        serial = int(fields[17]) if fields[17].isdigit() else 0
+        if standard not in ["ST300", "SA200"]:
+            logger.warning(f"Unknown standard '{standard}' for STT packet from device {dev_id}")
+            return {}, 0
+        
+        if standard == "ST300":
+            packet_data = {
+                "timestamp": datetime(int(fields[4][:4]), int(fields[4][4:6]), int(fields[4][6:8]),
+                                    int(fields[5][:2]), int(fields[5][3:5]), int(fields[5][6:8]), tzinfo=timezone.utc),
+                "latitude": float(fields[7]),
+                "longitude": float(fields[8]),
+                "speed_kmh": float(fields[9]),
+                "direction": float(fields[10]),
+                "satellites": int(fields[11]),
+                "gps_fixed": fields[12] == "1",
+                "odometer": int(fields[13]),
+                "voltage": float(fields[14]),
+                "acc_status": int(fields[15][0]),
+                "output_status": int(fields[15][4]),
+                "is_realtime": len(fields) > 20 and fields[20] == "1",
+            }
+
+            serial = int(fields[17]) if fields[17].isdigit() else 0
+        
+        elif standard == "SA200":
+            packet_data = {
+                "timestamp": datetime(int(fields[3][:4]), int(fields[3][4:6]), int(fields[3][6:8]),
+                                    int(fields[4][:2]), int(fields[4][3:5]), int(fields[4][6:8]), tzinfo=timezone.utc),
+                "latitude": float(fields[6]),
+                "longitude": float(fields[7]),
+                "speed_kmh": float(fields[8]),
+                "direction": float(fields[9]),
+                "satellites": int(fields[10]),
+                "gps_fixed": fields[11] == "1",
+                "odometer": int(fields[12]),
+                "voltage": float(fields[13]),
+                "acc_status": int(fields[14][0]),
+                "output_status": int(fields[14][4]),
+                "is_realtime": len(fields) > 19 and fields[19] == "1",
+            }
+
+            serial = int(fields[16]) if fields[16].isdigit() else 0
 
         # Lidando com mudanças no status da ignição
         alert_packet_data = handle_ignition_change(dev_id, serial, packet_data, raw_packet_hex=";".join(fields), original_protocol="suntech2g")
@@ -67,24 +92,47 @@ def handle_stt_packet(fields: list) -> dict:
         logger.error(f"Error parsing STT packet: {e}")
         return {}, 0
 
-def handle_emg_packet(fields: list) -> dict:
+def handle_emg_packet(fields: list, standard: str) -> dict:
     try:
-        packet_data = {
-            "timestamp": datetime(int(fields[4][:4]), int(fields[4][4:6]), int(fields[4][6:8]),
-                                  int(fields[5][:2]), int(fields[5][3:5]), int(fields[5][6:8]), tzinfo=timezone.utc),
-            "latitude": float(fields[7]),
-            "longitude": float(fields[8]),
-            "speed_kmh": float(fields[9]),
-            "direction": float(fields[10]),
-            "satellites": int(fields[11]),
-            "gps_fixed": fields[12] == "1",
-            "odometer": int(fields[13]),
-            "voltage": float(fields[14]),
-            "acc_status": fields[15][0],
-            "output_status": fields[15][4],
-            "emergency_type": fields[16],
-            "is_realtime": len(fields) > 19 and fields[19] == "1",
-        }
+        if standard not in ["ST300", "SA200"]:
+            logger.warning(f"Unknown standard '{standard}' for EMG packet from device {fields[1]}")
+            return {}
+        
+        if standard == "ST300":
+            packet_data = {
+                "timestamp": datetime(int(fields[4][:4]), int(fields[4][4:6]), int(fields[4][6:8]),
+                                    int(fields[5][:2]), int(fields[5][3:5]), int(fields[5][6:8]), tzinfo=timezone.utc),
+                "latitude": float(fields[7]),
+                "longitude": float(fields[8]),
+                "speed_kmh": float(fields[9]),
+                "direction": float(fields[10]),
+                "satellites": int(fields[11]),
+                "gps_fixed": fields[12] == "1",
+                "odometer": int(fields[13]),
+                "voltage": float(fields[14]),
+                "acc_status": fields[15][0],
+                "output_status": fields[15][4],
+                "emergency_type": fields[16],
+                "is_realtime": len(fields) > 19 and fields[19] == "1",
+            }
+        
+        elif standard == "SA200":
+            packet_data = {
+                "timestamp": datetime(int(fields[3][:4]), int(fields[3][4:6]), int(fields[3][6:8]),
+                                    int(fields[4][:2]), int(fields[4][3:5]), int(fields[4][6:8]), tzinfo=timezone.utc),
+                "latitude": float(fields[6]),
+                "longitude": float(fields[7]),
+                "speed_kmh": float(fields[8]),
+                "direction": float(fields[9]),
+                "satellites": int(fields[10]),
+                "gps_fixed": fields[11] == "1",
+                "odometer": int(fields[12]),
+                "voltage": float(fields[13]),
+                "acc_status": fields[14][0],
+                "output_status": fields[14][4],
+                "emergency_type": fields[15],
+                "is_realtime": len(fields) > 19 and fields[19] == "1",
+            }
 
         # Lidando com mudanças no status da ignição
         alert_packet_data = handle_ignition_change(fields[1], 0, packet_data, raw_packet_hex=";".join(fields), original_protocol="suntech2g")
@@ -119,24 +167,47 @@ def handle_emg_packet(fields: list) -> dict:
         logger.error(f"Error parsing EMG packet: {e}")
         return {}
 
-def handle_evt_packet(fields: list) -> dict:
+def handle_evt_packet(fields: list, standard: str) -> dict:
     try:
-        packet_data = {
-            "timestamp": datetime(int(fields[4][:4]), int(fields[4][4:6]), int(fields[4][6:8]),
-                                  int(fields[5][:2]), int(fields[5][3:5]), int(fields[5][6:8]), tzinfo=timezone.utc),
-            "latitude": float(fields[7]),
-            "longitude": float(fields[8]),
-            "speed_kmh": float(fields[9]),
-            "direction": float(fields[10]),
-            "satellites": int(fields[11]),
-            "gps_fixed": fields[12] == "1",
-            "odometer": int(fields[13]),
-            "voltage": float(fields[14]),
-            "acc_status": fields[15][0],
-            "output_status": fields[15][4],
-            "event_type": fields[16],
-            "is_realtime": len(fields) > 19 and fields[19] == "1",
-        }
+        if standard not in ["ST300", "SA200"]:
+            logger.warning(f"Unknown standard '{standard}' for EVT packet from device {fields[1]}")
+            return {}
+        
+        if standard == "ST300":
+            packet_data = {
+                "timestamp": datetime(int(fields[4][:4]), int(fields[4][4:6]), int(fields[4][6:8]),
+                                    int(fields[5][:2]), int(fields[5][3:5]), int(fields[5][6:8]), tzinfo=timezone.utc),
+                "latitude": float(fields[7]),
+                "longitude": float(fields[8]),
+                "speed_kmh": float(fields[9]),
+                "direction": float(fields[10]),
+                "satellites": int(fields[11]),
+                "gps_fixed": fields[12] == "1",
+                "odometer": int(fields[13]),
+                "voltage": float(fields[14]),
+                "acc_status": fields[15][0],
+                "output_status": fields[15][4],
+                "event_type": fields[16],
+                "is_realtime": len(fields) > 19 and fields[19] == "1",
+            }
+        
+        elif standard == "SA200":
+            packet_data = {
+                "timestamp": datetime(int(fields[3][:4]), int(fields[3][4:6]), int(fields[3][6:8]),
+                                    int(fields[4][:2]), int(fields[4][3:5]), int(fields[4][6:8]), tzinfo=timezone.utc),
+                "latitude": float(fields[6]),
+                "longitude": float(fields[7]),
+                "speed_kmh": float(fields[8]),
+                "direction": float(fields[9]),
+                "satellites": int(fields[10]),
+                "gps_fixed": fields[11] == "1",
+                "odometer": int(fields[12]),
+                "voltage": float(fields[13]),
+                "acc_status": fields[14][0],
+                "output_status": fields[14][4],
+                "event_type": fields[15],
+                "is_realtime": len(fields) > 19 and fields[19] == "1",
+            }
 
         # Lidando com mudanças no status da ignição
         alert_packet_data = handle_ignition_change(fields[1], 0, packet_data, raw_packet_hex=";".join(fields), original_protocol="suntech2g")
@@ -172,26 +243,52 @@ def handle_evt_packet(fields: list) -> dict:
         logger.error(f"Error parsing EVT packet: {e}")
         return {}
 
-def handle_alt_packet(fields: list) -> dict:
+def handle_alt_packet(fields: list, standard: str) -> dict:
     try:
-        packet_data = {
-            "timestamp": datetime(int(fields[4][:4]), int(fields[4][4:6]), int(fields[4][6:8]),
-                                  int(fields[5][:2]), int(fields[5][3:5]), int(fields[5][6:8]), tzinfo=timezone.utc),
-            "latitude": float(fields[7]),
-            "longitude": float(fields[8]),
-            "speed_kmh": float(fields[9]),
-            "direction": float(fields[10]),
-            "satellites": int(fields[11]),
-            "gps_fixed": fields[12] == "1",
-            "odometer": int(fields[13]),
-            "voltage": float(fields[14]),
-            "acc_status": fields[15][0],
-            "output_status": fields[15][4],
-            "is_realtime": len(fields) > 19 and fields[19] == "1",
-        }
+        if standard not in ["ST300", "SA200"]:
+            logger.warning(f"Unknown standard '{standard}' for ALT packet from device {fields[1]}")
+            return {}
+        
+        if standard == "ST300":
+            packet_data = {
+                "timestamp": datetime(int(fields[4][:4]), int(fields[4][4:6]), int(fields[4][6:8]),
+                                    int(fields[5][:2]), int(fields[5][3:5]), int(fields[5][6:8]), tzinfo=timezone.utc),
+                "latitude": float(fields[7]),
+                "longitude": float(fields[8]),
+                "speed_kmh": float(fields[9]),
+                "direction": float(fields[10]),
+                "satellites": int(fields[11]),
+                "gps_fixed": fields[12] == "1",
+                "odometer": int(fields[13]),
+                "voltage": float(fields[14]),
+                "acc_status": fields[15][0],
+                "output_status": fields[15][4],
+                "is_realtime": len(fields) > 19 and fields[19] == "1",
+            }
 
+            suntech2g_alert_id = fields[16]
+
+        elif standard == "SA200":
+            packet_data = {
+                "timestamp": datetime(int(fields[3][:4]), int(fields[3][4:6]), int(fields[3][6:8]),
+                                    int(fields[4][:2]), int(fields[4][3:5]), int(fields[4][6:8]), tzinfo=timezone.utc),
+                "latitude": float(fields[6]),
+                "longitude": float(fields[7]),
+                "speed_kmh": float(fields[8]),
+                "direction": float(fields[9]),
+                "satellites": int(fields[10]),
+                "gps_fixed": fields[11] == "1",
+                "odometer": int(fields[12]),
+                "voltage": float(fields[13]),
+                "acc_status": fields[14][0],
+                "output_status": fields[14][4],
+                "is_realtime": len(fields) > 19 and fields[19] == "1",
+            }
+
+            suntech2g_alert_id = fields[15]
+
+        
         # Mapeamento de IDs de Alerta
-        suntech2g_alert_id = fields[16]
         universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("suntech2g", {}).get(suntech2g_alert_id, 0)
         if universal_alert_id:
             packet_data["universal_alert_id"] = universal_alert_id

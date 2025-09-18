@@ -22,12 +22,22 @@ def process_command(dev_id: str, serial: str, universal_command: str):
         
         kilometers = int(meters) / 1000
 
-        suntech2g_command = f"SetODO,{kilometers:.1f}"
+        suntech2g_command = f"SetOdometer={kilometers:.1f}"
     
     else:
         suntech2g_command = command_mapping.get(universal_command)
 
-    suntech2g_complete_command = f"ST300CMD;{dev_id};02;{suntech2g_command}"
+    if dev_id <= 6:
+        prefix = "SA200"
+    else:
+        prefix = "ST300"
+
+    if dev_id <= 6:
+        fill = 6
+    else:
+        fill = 9
+
+    suntech2g_complete_command = f"{prefix}CMD;{dev_id.zfill(fill)};02;{suntech2g_command}"
 
     if not suntech2g_command:
         logger.warning(f"Nenhum mapeamento Suntech2g encontrado para o comando Universal comando={universal_command}")

@@ -15,10 +15,12 @@ def process_packet(packet_str: str):
         logger.warning("Received an empty packet.")
         return None
         
-    dev_hdr = fields[0]
-    hdr = ""
-    if "ST300" in dev_hdr or "SA200" in dev_hdr:
-        hdr = dev_hdr.replace("ST300", "").replace("SA200", "")
+    standard_hdr = fields[0]
+    standard = standard_hdr[:-3]
+    hdr = standard_hdr[-3:]
+
+    if "ST300" in standard_hdr or "SA200" in standard_hdr:
+        hdr = standard_hdr.replace("ST300", "").replace("SA200", "")
 
     dev_id = fields[2] if "Res" in packet_str else fields[1]
 
@@ -35,27 +37,27 @@ def process_packet(packet_str: str):
     serial = 0
     if hdr == "STT":
         logger.info("Location packet (STT) received.")
-        packet_data, serial = mapper.handle_stt_packet(fields)
+        packet_data, serial = mapper.handle_stt_packet(fields, standard)
         type = "location"
 
     elif hdr == "ALT":
         logger.info("Alert packet (ALT) received.")
-        packet_data = mapper.handle_alt_packet(fields)
+        packet_data = mapper.handle_alt_packet(fields, standard)
         type = "alert"
 
     elif hdr == "EMG":
         logger.info("Emergency packet (EMG) received.")
-        packet_data = mapper.handle_emg_packet(fields)
+        packet_data = mapper.handle_emg_packet(fields, standard)
         type = "location"
 
     elif hdr == "EVT":
         logger.info("Event packet (EVT) received.")
-        packet_data = mapper.handle_evt_packet(fields)
+        packet_data = mapper.handle_evt_packet(fields, standard)
         type = "alert"
 
     elif hdr == "CMD":
         logger.info("Command response packet (CMD) received.")
-        packet_data = mapper.handle_reply_packet(fields)
+        packet_data = mapper.handle_reply_packet(fields, standard)
         type = "command_reply"
 
     elif hdr == "ALV":
