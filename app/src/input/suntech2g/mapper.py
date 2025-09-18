@@ -111,8 +111,8 @@ def handle_emg_packet(fields: list, standard: str) -> dict:
                 "gps_fixed": fields[12] == "1",
                 "odometer": int(fields[13]),
                 "voltage": float(fields[14]),
-                "acc_status": fields[15][0],
-                "output_status": fields[15][4],
+                "acc_status": int(fields[15][0]),
+                "output_status": int(fields[15][4]),
                 "emergency_type": fields[16],
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
@@ -129,8 +129,8 @@ def handle_emg_packet(fields: list, standard: str) -> dict:
                 "gps_fixed": fields[11] == "1",
                 "odometer": int(fields[12]),
                 "voltage": float(fields[13]),
-                "acc_status": fields[14][0],
-                "output_status": fields[14][4],
+                "acc_status": int(fields[14][0]),
+                "output_status": int(fields[14][4]),
                 "emergency_type": fields[15],
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
@@ -186,8 +186,8 @@ def handle_evt_packet(fields: list, standard: str) -> dict:
                 "gps_fixed": fields[12] == "1",
                 "odometer": int(fields[13]),
                 "voltage": float(fields[14]),
-                "acc_status": fields[15][0],
-                "output_status": fields[15][4],
+                "acc_status": int(fields[15][0]),
+                "output_status": int(fields[15][4]),
                 "event_type": fields[16],
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
@@ -204,8 +204,8 @@ def handle_evt_packet(fields: list, standard: str) -> dict:
                 "gps_fixed": fields[11] == "1",
                 "odometer": int(fields[12]),
                 "voltage": float(fields[13]),
-                "acc_status": fields[14][0],
-                "output_status": fields[14][4],
+                "acc_status": int(fields[14][0]),
+                "output_status": int(fields[14][4]),
                 "event_type": fields[15],
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
@@ -262,12 +262,12 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
                 "gps_fixed": fields[12] == "1",
                 "odometer": int(fields[13]),
                 "voltage": float(fields[14]),
-                "acc_status": fields[15][0],
-                "output_status": fields[15][4],
+                "acc_status": int(fields[15][0]),
+                "output_status": int(fields[15][4]),
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
 
-            suntech2g_alert_id = fields[16]
+            suntech2g_alert_id = int(fields[16])
 
         elif standard == "SA200":
             packet_data = {
@@ -281,12 +281,12 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
                 "gps_fixed": fields[11] == "1",
                 "odometer": int(fields[12]),
                 "voltage": float(fields[13]),
-                "acc_status": fields[14][0],
-                "output_status": fields[14][4],
+                "acc_status": int(fields[14][0]),
+                "output_status": int(fields[14][4]),
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
 
-            suntech2g_alert_id = fields[15]
+            suntech2g_alert_id = int(fields[15])
 
         
         # Mapeamento de IDs de Alerta
