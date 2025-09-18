@@ -2,6 +2,7 @@ from datetime import datetime
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
+from ..utils import normalize_dev_id
 from app.config.settings import settings
 
 logger = get_logger(__name__)
@@ -41,14 +42,14 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     if not device_info:
         logger.warning(f"Tentando construir pacote Suntech para dispositivo desconhecido: {dev_id}")
         device_info = {}
-    
-    dev_id_normalized = ''.join(filter(str.isdigit, dev_id))[-10:]
+
+    dev_id_normalized = normalize_dev_id(dev_id)
     redis_client.hset(dev_id, "output_id", dev_id_normalized)
 
     # Campos básicos (comuns a todos)
     base_fields = [
         hdr,
-        dev_id_normalized,
+        dev_id_normalized[-10:],
         "FFF83F",
         "218",
         "1.0.12",
