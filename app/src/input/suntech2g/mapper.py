@@ -235,11 +235,14 @@ def handle_reply_packet(fields: list) -> dict:
 
         packet_data_str = redis_client.hget(fields[2], "last_packet_data")
         packet_data = json.loads(packet_data_str) if packet_data_str else {}
+        packet_data["timestamp"] = datetime.now(timezone.utc)
 
         if reply == "Disable1":
             packet_data["REPLY"] = "OUTPUT OFF"
         elif reply == "Enable1":
             packet_data["REPLY"] = "OUTPUT ON"
+        else:
+            logger.warning(f"Unknown reply command received: {reply}")
 
         return packet_data
     except Exception as e:
