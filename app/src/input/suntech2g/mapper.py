@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone
+import copy
 
 from ..utils import handle_ignition_change
 from app.config.settings import settings
@@ -110,8 +111,8 @@ def handle_emg_packet(fields: list, standard: str) -> dict:
                 "gps_fixed": fields[12] == "1",
                 "odometer": int(fields[13]),
                 "voltage": float(fields[14]),
-                "acc_status": fields[15][0],
-                "output_status": fields[15][4],
+                "acc_status": int(fields[15][0]),
+                "output_status": int(fields[15][4]),
                 "emergency_type": fields[16],
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
@@ -128,8 +129,8 @@ def handle_emg_packet(fields: list, standard: str) -> dict:
                 "gps_fixed": fields[11] == "1",
                 "odometer": int(fields[12]),
                 "voltage": float(fields[13]),
-                "acc_status": fields[14][0],
-                "output_status": fields[14][4],
+                "acc_status": int(fields[14][0]),
+                "output_status": int(fields[14][4]),
                 "emergency_type": fields[15],
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
@@ -185,8 +186,8 @@ def handle_evt_packet(fields: list, standard: str) -> dict:
                 "gps_fixed": fields[12] == "1",
                 "odometer": int(fields[13]),
                 "voltage": float(fields[14]),
-                "acc_status": fields[15][0],
-                "output_status": fields[15][4],
+                "acc_status": int(fields[15][0]),
+                "output_status": int(fields[15][4]),
                 "event_type": fields[16],
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
@@ -203,8 +204,8 @@ def handle_evt_packet(fields: list, standard: str) -> dict:
                 "gps_fixed": fields[11] == "1",
                 "odometer": int(fields[12]),
                 "voltage": float(fields[13]),
-                "acc_status": fields[14][0],
-                "output_status": fields[14][4],
+                "acc_status": int(fields[14][0]),
+                "output_status": int(fields[14][4]),
                 "event_type": fields[15],
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
@@ -261,12 +262,12 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
                 "gps_fixed": fields[12] == "1",
                 "odometer": int(fields[13]),
                 "voltage": float(fields[14]),
-                "acc_status": fields[15][0],
-                "output_status": fields[15][4],
+                "acc_status": int(fields[15][0]),
+                "output_status": int(fields[15][4]),
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
 
-            suntech2g_alert_id = fields[16]
+            suntech2g_alert_id = int(fields[16])
 
         elif standard == "SA200":
             packet_data = {
@@ -280,12 +281,12 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
                 "gps_fixed": fields[11] == "1",
                 "odometer": int(fields[12]),
                 "voltage": float(fields[13]),
-                "acc_status": fields[14][0],
-                "output_status": fields[14][4],
+                "acc_status": int(fields[14][0]),
+                "output_status": int(fields[14][4]),
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
 
-            suntech2g_alert_id = fields[15]
+            suntech2g_alert_id = int(fields[15])
 
         
         # Mapeamento de IDs de Alerta
@@ -294,7 +295,7 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
             packet_data["universal_alert_id"] = universal_alert_id
 
         # Lidando com mudanças no status da ignição
-        alert_packet_data = handle_ignition_change(fields[1], 0, packet_data, raw_packet_hex=";".join(fields), original_protocol="suntech2g")
+        alert_packet_data = handle_ignition_change(fields[1], 0, copy.deepcopy(packet_data), raw_packet_hex=";".join(fields), original_protocol="suntech2g")
         if alert_packet_data and alert_packet_data.get("universal_alert_id"):
             send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
 

@@ -57,7 +57,7 @@ def process_packet(packet_str: str):
 
     elif hdr == "CMD":
         logger.info("Command response packet (CMD) received.")
-        packet_data = mapper.handle_reply_packet(fields, standard)
+        packet_data = mapper.handle_reply_packet(fields)
         type = "command_reply"
 
     elif hdr == "ALV":
