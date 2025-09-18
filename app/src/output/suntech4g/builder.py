@@ -146,9 +146,9 @@ def build_reply_packet(dev_id: str, packet_data: dict, *args) -> str:
         ts = packet_data.get('timestamp', datetime.now())
         date_fields = [ts.strftime('%Y'), ts.strftime('%m'), ts.strftime('%d'), ts.strftime('%H:%M:%S')]
 
-        mode = "0" if device_info.get(b'last_output_status') else "1"
+        mode = "0" if device_info.get('last_output_status') else "1"
 
-        dev_id_normalized = ''.join(filter(str.isdigit, dev_id))
+        dev_id_normalized = normalize_dev_id(dev_id)
 
         packet_fields = [
             "RES",
