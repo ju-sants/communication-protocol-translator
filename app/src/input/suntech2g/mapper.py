@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone
+import copy
 
 from ..utils import handle_ignition_change
 from app.config.settings import settings
@@ -294,7 +295,7 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
             packet_data["universal_alert_id"] = universal_alert_id
 
         # Lidando com mudanças no status da ignição
-        alert_packet_data = handle_ignition_change(fields[1], 0, packet_data, raw_packet_hex=";".join(fields), original_protocol="suntech2g")
+        alert_packet_data = handle_ignition_change(fields[1], 0, copy.deepcopy(packet_data), raw_packet_hex=";".join(fields), original_protocol="suntech2g")
         if alert_packet_data and alert_packet_data.get("universal_alert_id"):
             send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
 
