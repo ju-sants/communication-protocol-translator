@@ -5,7 +5,6 @@ import copy
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from app.src.session.output_sessions_manager import send_to_main_server
 from app.src.input.utils import handle_ignition_change
 from app.config.settings import settings
 
@@ -137,10 +136,11 @@ def handle_alarm_from_location(dev_id_str, serial,  alarm_packet_data, raw_packe
     if universal_alert_id:
         alarm_packet_data["is_realtime"] = True
         alarm_packet_data["universal_alert_id"] = universal_alert_id
-
-        send_to_main_server(dev_id_str, alarm_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
+        return alarm_packet_data
     elif universal_alert_id is not None:
         logger.warning(f"Alarme NT40 não mapeado recebido device_id={dev_id_str}, alarm_code={alarm_packet_data.get('alarm')}, terminal_info={alarm_packet_data.get('terminal_info')}")
+    
+    return None
 
 
 def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int, raw_packet_hex: str):
@@ -153,13 +153,11 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
         packet_data = None
 
     if not packet_data:
-        return
+        return None, None
     
-    handle_alarm_from_location(dev_id_str, serial, packet_data, raw_packet_hex)
+    alarm_from_location_packet_data = handle_alarm_from_location(dev_id_str, serial, packet_data, raw_packet_hex)
 
     alert_packet_data = handle_ignition_change(dev_id_str, serial, packet_data, raw_packet_hex, "NT40")
-    if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-        send_to_main_server(dev_id_str, alert_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
     
     last_packet_data = copy.deepcopy(packet_data)
     
@@ -185,7 +183,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     pipeline.hincrby(dev_id_str, "total_packets_received", 1)
     pipeline.execute()
 
-    send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol="NT40")
+    return packet_data, alarm_from_location_packet_data, alert_packet_data
 
 def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     redis_data = {
@@ -229,9 +227,12 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
         logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Global ID {universal_alert_id} device_id={dev_id_str}")
         
         definitive_packet_data["is_realtime"] = True
-        send_to_main_server(dev_id_str, definitive_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
+        definitive_packet_data["universal_alert_id"] = universal_alert_id
+        return definitive_packet_data
     else:
         logger.warning(f"Alarme NT40 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
+    
+    return None
 
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
     # O pacote de Heartbeat (0x13) contém informações de status
@@ -250,7 +251,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     pipeline.hincrby(dev_id_str, "total_packets_received", 1)
     pipeline.execute()
 
-    send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="NT40", type="heartbeat")
+    return True
 
 
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
@@ -274,7 +275,9 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
                 logger.info(f"command_content_str == 'RELAYER DISABLE OK!': {command_content_str == 'RELAYER DISABLE OK!'}")
                 logger.info(f"len('RELAYER ENABLE OK!') = {len('RELAYER ENABLE OK!')}")
                 logger.info(f"len('RELAYER DISABLE OK!') = {len('RELAYER DISABLE OK!')}")
-
-            send_to_main_server(dev_id, last_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="command_reply")
+            
+            return last_packet_data
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY")
+    
+    return None
