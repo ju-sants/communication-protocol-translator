@@ -1,0 +1,70 @@
+from app.core.logger import get_logger
+from app.services.redis_service import get_redis
+from . import mapper
+from app.src.session.output_sessions_manager import send_to_main_server
+
+logger = get_logger(__name__)
+redis_client = get_redis()
+
+def process_packet(packet_str: str):
+    """
+    Processes a raw packet string from a Suntech device.
+    """
+    fields = packet_str.split(';')
+    if not fields:
+        logger.warning("Received an empty packet.")
+        return None
+
+    dev_hdr = fields[0]
+    hdr = ""
+    if "ST300" in dev_hdr or "SA200" in dev_hdr:
+        hdr = dev_hdr.replace("ST300", "").replace("SA200", "")
+
+    dev_id = fields[1] if len(fields) > 1 else None
+
+    logger.info(f"Processing Suntech packet: {packet_str} dev_id={dev_id}")
+
+    if not dev_id:
+        logger.warning(f"Could not extract dev_id from packet: {packet_str}")
+        return None
+        
+    logger.info(f"Processing packet from device: {dev_id}")
+
+    packet_data = {}
+    type = ""
+    serial = 0
+    if hdr == "STT":
+        logger.info("Location packet (STT) received.")
+        packet_data, serial = mapper.handle_stt_packet(fields)
+        type = "location"
+
+    elif hdr == "ALT":
+        logger.info("Alert packet (ALT) received.")
+        packet_data = mapper.handle_alt_packet(fields)
+        type = "alert"
+
+    elif hdr == "EMG":
+        logger.info("Emergency packet (EMG) received.")
+        packet_data = mapper.handle_emg_packet(fields)
+        type = "location"
+
+    elif hdr == "EVT":
+        logger.info("Event packet (EVT) received.")
+        packet_data = mapper.handle_evt_packet(fields)
+        type = "alert"
+
+    elif hdr == "ALV":
+        logger.info("Keep-alive packet (ALV) received.")
+        type = "heartbeat"
+    
+    if packet_data or type == "heartbeat":
+        if not serial:
+            serial = redis_client.hget(dev_id, "last_serial") or 0
+            serial = int(serial)
+
+        if type == "heartbeat":
+            send_to_main_server(dev_id, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech2g", type=type)
+        else:
+            send_to_main_server(dev_id, packet_data=packet_data, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech2g", type=type)
+
+    return dev_id
