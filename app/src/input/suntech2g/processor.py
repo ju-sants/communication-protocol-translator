@@ -14,13 +14,13 @@ def process_packet(packet_str: str):
     if not fields:
         logger.warning("Received an empty packet.")
         return None
-
+        
     dev_hdr = fields[0]
     hdr = ""
     if "ST300" in dev_hdr or "SA200" in dev_hdr:
         hdr = dev_hdr.replace("ST300", "").replace("SA200", "")
 
-    dev_id = fields[1] if len(fields) > 1 else None
+    dev_id = fields[2] if "Res" in packet_str else fields[1]
 
     logger.info(f"Processing Suntech packet: {packet_str} dev_id={dev_id}")
 
