@@ -80,7 +80,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet
     if packet_data.get("acc_status"):
         # Haversine Odometer Calculation
         # Fetch multiple values at once
-        redis_state = redis_client.hgetall(dev_id_str)
+        redis_state = redis_client.hgetall(f"tracker:{dev_id_str}")
         last_location_str = redis_state.get("last_location")
         current_odometer = float(redis_state.get("odometer", 0.0))
 
@@ -99,14 +99,19 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet
             logger.info(f"No previous location for {dev_id_str}. Odometer starting at {current_odometer/1000:.2f} km.")
 
         packet_data["gps_odometer"] = current_odometer
+
+        redis_data = {
+            "odometer": str(current_odometer),
+            "last_location": json.dumps({"latitude": packet_data["latitude"], "longitude": packet_data["longitude"]})
+        }
+
         pipeline = redis_client.pipeline()
-        pipeline.hset(dev_id_str, "odometer", str(current_odometer))
-        pipeline.hset(dev_id_str, "last_location", json.dumps({"latitude": packet_data["latitude"], "longitude": packet_data["longitude"]}))
+        pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
         pipeline.execute()
 
     else:
         # Fetch multiple values at once
-        redis_state = redis_client.hgetall(dev_id_str)
+        redis_state = redis_client.hgetall(f"tracker:{dev_id_str}")
         last_odometer = redis_state.get("odometer")
         if last_odometer:
             packet_data["gps_odometer"] = float(last_odometer)
@@ -127,8 +132,8 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet
         "last_event_type": "location",
     }
     pipeline = redis_client.pipeline()
-    pipeline.hmset(dev_id_str, redis_data)
-    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
+    pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
 
     send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol="VL01")
@@ -139,8 +144,8 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
         "last_event_type": "alarm",
     }
     pipeline = redis_client.pipeline()
-    pipeline.hmset(dev_id_str, redis_data)
-    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
+    pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
 
     if len(body) < 17:
@@ -162,7 +167,7 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
     if not alarm_datetime > limit:
         logger.info(f"Alarme da memória, descartando... dev_id={dev_id_str}")
 
-    last_packet_data_str = redis_client.hget(dev_id_str, "last_packet_data")
+    last_packet_data_str = redis_client.hget(f"tracker:{dev_id_str}", "last_packet_data")
     last_packet_data = json.loads(last_packet_data_str) if last_packet_data_str else {}
 
     definitive_packet_data = {**last_packet_data, **alarm_packet_data}
@@ -199,8 +204,8 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     redis_data["last_serial"] = serial
     
     pipeline = redis_client.pipeline()
-    pipeline.hmset(dev_id_str, redis_data)
-    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
+    pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
 
     # Keep-Alive
@@ -211,15 +216,15 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
         command_content = body[5:]
         command_content_str = command_content.decode("ascii", errors="ignore")
         if command_content_str:
-            last_packet_data_str = redis_client.hget(dev_id, "last_packet_data")
+            last_packet_data_str = redis_client.hget(f"tracker:{dev_id}", "last_packet_data")
             last_packet_data = json.loads(last_packet_data_str) if last_packet_data_str else {}
             last_packet_data["timestamp"] = datetime.now(timezone.utc)
 
             if command_content_str == "RELAY:ON":
-                redis_client.hset(dev_id, "last_output_status", 1)
+                redis_client.hset(f"tracker:{dev_id}", "last_output_status", 1)
                 last_packet_data["REPLY"] = "OUTPUT ON"
             elif command_content_str == "RELAY:OFF":
-                redis_client.hset(dev_id, "last_output_status", 0)
+                redis_client.hset(f"tracker:{dev_id}", "last_output_status", 0)
                 last_packet_data["REPLY"] = "OUTPUT OFF"
 
             send_to_main_server(dev_id, last_packet_data, serial, raw_packet_hex, original_protocol="VL01", type="command_reply")
@@ -233,8 +238,8 @@ def handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_
         "last_event_type": "information",
     }
     pipeline = redis_client.pipeline()
-    pipeline.hmset(dev_id, redis_data)
-    pipeline.hincrby(dev_id, "total_packets_received", 1)
+    pipeline.hmset(f"tracker:{dev_id}", redis_data)
+    pipeline.hincrby(f"tracker:{dev_id}", "total_packets_received", 1)
     
     type = body[0]
     if type == 0x00:
@@ -242,8 +247,12 @@ def handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_
         voltage = struct.unpack(">H", body[1:])
         if voltage:
             voltage = voltage[0] / 100
-            pipeline.hset(dev_id, 'last_voltage', voltage)
-            pipeline.hset(dev_id, "power_status", 0 if voltage > 0 else 1)
+            redis_data = {
+                "last_voltage": voltage,
+                "power_status": 0 if voltage > 0 else 1
+            }
+
+            pipeline.hmset(f"tracker:{dev_id}", 'last_voltage', voltage)
     else:
         pass
     pipeline.execute()

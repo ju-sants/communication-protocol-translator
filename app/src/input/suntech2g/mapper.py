@@ -79,12 +79,12 @@ def handle_stt_packet(fields: list, standard: str) -> dict:
         }
 
         pipe = redis_client.pipeline()
-        pipe.hincrby(dev_id, "total_packets_received", 1)
-        pipe.hmset(dev_id, redis_data)
+        pipe.hincrby(f"tracker:{dev_id}", "total_packets_received", 1)
+        pipe.hmset(f"tracker:{dev_id}", redis_data)
 
         pipe.execute()
 
-        print(redis_client.hget(dev_id, "acc_status"))
+        print(redis_client.hget(f"tracker:{dev_id}", "acc_status"))
 
         logger.info(f"STT packet mapped data: {packet_data}")
         return packet_data, serial
@@ -156,8 +156,8 @@ def handle_emg_packet(fields: list, standard: str) -> dict:
         }
 
         pipe = redis_client.pipeline()
-        pipe.hincrby(fields[1], "total_packets_received", 1)
-        pipe.hmset(fields[1], redis_data)
+        pipe.hincrby(f"tracker:{fields[1]}", "total_packets_received", 1)
+        pipe.hmset(f"tracker:{fields[1]}", redis_data)
         
         pipe.execute()
 
@@ -232,8 +232,8 @@ def handle_evt_packet(fields: list, standard: str) -> dict:
         }
 
         pipe = redis_client.pipeline()
-        pipe.hincrby(fields[1], "total_packets_received", 1)
-        pipe.hmset(fields[1], redis_data)
+        pipe.hincrby(f"tracker:{fields[1]}", "total_packets_received", 1)
+        pipe.hmset(f"tracker:{fields[1]}", redis_data)
 
         pipe.execute()
 
@@ -315,8 +315,8 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
         }
 
         pipe = redis_client.pipeline()
-        pipe.hincrby(fields[1], "total_packets_received", 1)
-        pipe.hmset(fields[1], redis_data)
+        pipe.hincrby(f"tracker:{fields[1]}", "total_packets_received", 1)
+        pipe.hmset(f"tracker:{fields[1]}", redis_data)
 
         pipe.execute()
 
@@ -331,7 +331,7 @@ def handle_reply_packet(fields: list) -> dict:
     try:
         reply = fields[-1]
 
-        packet_data_str = redis_client.hget(fields[2], "last_packet_data")
+        packet_data_str = redis_client.hget(f"tracker:{fields[2]}", "last_packet_data")
         packet_data = json.loads(packet_data_str) if packet_data_str else {}
         packet_data["timestamp"] = datetime.now(timezone.utc)
 

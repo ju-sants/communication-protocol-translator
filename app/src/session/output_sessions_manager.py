@@ -102,7 +102,7 @@ class MainServerSession:
                     self.handle_gt06_login(data)
                     continue
                 
-                device_info = redis_client.hgetall(self.dev_id)
+                device_info = redis_client.hgetall(f"tracker:{self.dev_id}")
                 protocol_type = device_info.get("protocol")
                 output_protocol = device_info.get("output_protocol")
 
@@ -276,7 +276,7 @@ def send_to_main_server(
     Executa lógica de construção de pacotes se o mesmo não for fornecido, com base no protocolo de saída do dispositivo e o tipo de pacote especificado.
     """
 
-    output_protocol, protocol, is_hybrid, last_voltage = redis_client.hmget(dev_id, "output_protocol", "protocol", "is_hybrid", "last_voltage")
+    output_protocol, protocol, is_hybrid, last_voltage = redis_client.hmget(f"tracker:{dev_id}", "output_protocol", "protocol", "is_hybrid", "last_voltage")
     
     if not output_protocol:  # VL01 apenas se comunicará como GT06
         if is_hybrid or (protocol and protocol == "vl01"):
@@ -284,7 +284,7 @@ def send_to_main_server(
         else:
             output_protocol = "suntech4g"
         
-        redis_client.hset(dev_id, "output_protocol", output_protocol)
+        redis_client.hset(f"tracker:{dev_id}", "output_protocol", output_protocol)
     
     
     output_packet_builder = output_protocol_settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get(type)

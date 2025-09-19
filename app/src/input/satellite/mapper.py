@@ -33,7 +33,7 @@ def map_data(raw_data: bytes):
             logger.info("Satellite tracker without a GSM pair, dropping.")
             return
 
-        last_serial, last_gsm_location_str = redis_client.hmget(hybrid_gsm, "last_serial", "last_packet_data")
+        last_serial, last_gsm_location_str = redis_client.hmget(f"tracker:{hybrid_gsm}", "last_serial", "last_packet_data")
 
         last_serial = int(last_serial) if last_serial else 0
         last_gsm_location = json.loads(last_gsm_location_str) if last_gsm_location_str else {}
@@ -55,7 +55,7 @@ def map_data(raw_data: bytes):
         pipe = redis_client.pipeline()
         pipe.rpush(f"payloads:{esn}", json.dumps(data))
         pipe.ltrim(f"payloads:{esn}", 0, 10000)
-        pipe.hmset(hybrid_gsm, redis_data)
+        pipe.hmset(f"tracker:{hybrid_gsm}", redis_data)
         pipe.execute()
 
         return esn

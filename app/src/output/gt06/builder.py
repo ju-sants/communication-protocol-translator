@@ -149,7 +149,7 @@ def build_login_packet(imei: str, serial_number: int) -> bytes:
     protocol_number = 0x01
 
     imei_normalized = normalize_dev_id(imei)[-15:]
-    redis_client.hset(imei, "output_id", imei_normalized)
+    redis_client.hset(f"tracker:{imei}", "output_id", imei_normalized)
 
     imei_bcd = imei_to_bcd(imei_normalized)
 
@@ -185,7 +185,7 @@ def build_heartbeat_packet(dev_id: str, *args) -> bytes:
 
     protocol_number = struct.pack(">B", 0x13)
 
-    redis_data = redis_client.hmget(dev_id, "last_output_status", "acc_status", "last_serial")
+    redis_data = redis_client.hmget(f"tracker:{dev_id}", "last_output_status", "acc_status", "last_serial")
     last_output_status = redis_data[0] if redis_data[0] else "0"
     acc_status = redis_data[1] if redis_data[1] else "0"
     serial = redis_data[2] if redis_data[2] else "0"
@@ -272,7 +272,7 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
                                 # LBS Content
     content_body = gps_content + (b"\x00" * 8)
 
-    redis_data = redis_client.hmget(dev_id, "last_output_status", "acc_status")
+    redis_data = redis_client.hmget(f"tracker:{dev_id}", "last_output_status", "acc_status")
     output_status = redis_data[0] if redis_data[0] else "0"
     acc = redis_data[1] if redis_data[1] else "0"
 

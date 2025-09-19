@@ -82,11 +82,10 @@ def get_trackers_summary():
         last_active_trackers = []
 
         for dev_id in all_tracker_keys:
-            protocol = redis_client.hget(dev_id, 'protocol')
+            protocol, last_active_timestamp = redis_client.hmget(f"tracker:{dev_id}", 'protocol', 'last_active_timestamp')
             if protocol:
                 protocol_distribution[protocol] = protocol_distribution.get(protocol, 0) + 1
             
-            last_active_timestamp = redis_client.hget(dev_id, 'last_active_timestamp')
             if last_active_timestamp:
                 last_active_trackers.append({
                     "device_id": dev_id,
@@ -128,7 +127,7 @@ def send_tracker_command(dev_id):
 
     command_str = data['command']
     
-    device_info = redis_client.hgetall(dev_id)
+    device_info = redis_client.hgetall(f"tracker:{dev_id}")
     if not device_info:
         return jsonify({"error": "Device not found in Redis"}), 404
     
@@ -149,12 +148,12 @@ def send_tracker_command(dev_id):
         if tracker_socket:
             tracker_socket.sendall(command_packet)
             # Store command sent in Redis
-            redis_client.hset(dev_id, "last_command_sent", json.dumps({
+            redis_client.hset(f"tracker:{dev_id}", "last_command_sent", json.dumps({
                 "command": command_str,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "packet_hex": command_packet.hex()
             }))
-            redis_client.hincrby(dev_id, "total_commands_sent", 1)
+            redis_client.hincrby(f"tracker:{dev_id}", "total_commands_sent", 1)
 
             return jsonify({
                 "status": "Command sent successfully",
@@ -201,7 +200,7 @@ def get_tracker_details(dev_id):
     Returns comprehensive details for a specific tracker, including Redis data and connection status.
     """
     try:
-        device_data = redis_client.hgetall(dev_id)
+        device_data = redis_client.hgetall(f"tracker:{dev_id}")
         if not device_data:
             return jsonify({"error": "Device not found in Redis"}), 404
 

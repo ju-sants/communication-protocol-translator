@@ -60,7 +60,7 @@ def handle_connection(conn: socket.socket, addr):
 
                         if dev_id_session and not input_sessions_manager.exists(dev_id_session):
                             input_sessions_manager.register_tracker_client(dev_id_session, conn)
-                            redis_client.hset(dev_id_session, "protocol", "nt40")
+                            redis_client.hset(f"tracker:{dev_id_session}", "protocol", "nt40")
                             logger.info(f"Dispositivo NT40 autenticado na sessão")
 
                         if response_packet:

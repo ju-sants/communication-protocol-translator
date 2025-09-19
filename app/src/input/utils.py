@@ -32,7 +32,7 @@ def handle_ignition_change(dev_id_str: str, serial, packet_data: dict, raw_packe
         current_acc_status = packet_data['acc_status'] # 1 se ON, 0 se OFF
         
         # Busca o estado anterior no Redis
-        previous_acc_status_str = redis_client.hget(dev_id_str, "acc_status")
+        previous_acc_status_str = redis_client.hget(f"tracker:{dev_id_str}", "acc_status")
         
         # Converte o estado anterior para inteiro se existir
         previous_acc_status = int(previous_acc_status_str) if previous_acc_status_str is not None else None
@@ -57,7 +57,7 @@ def handle_ignition_change(dev_id_str: str, serial, packet_data: dict, raw_packe
                 packet_data["universal_alert_id"] = alert_id
 
         # Atualiza o estado no Redis para a próxima verificação
-        redis_client.hset(dev_id_str, 'acc_status', current_acc_status)
+        redis_client.hset(f"tracker:{dev_id_str}", 'acc_status', current_acc_status)
 
         return packet_data
 
@@ -72,7 +72,7 @@ def handle_power_change(dev_id_str: str, serial, packet_data: dict):
         # Bit 11: 0 = normal, 1 = desconectado
         current_power_disconnected = (packet_data['DEPRECATED'] >> 11) & 1
         
-        previous_state = redis_client.hgetall(dev_id_str)
+        previous_state = redis_client.hgetall(f"tracker:{dev_id_str}")
         previous_power_disconnected_str = previous_state.get('power_status')
         previous_power_disconnected = int(previous_power_disconnected_str) if previous_power_disconnected_str is not None else None
 
@@ -96,6 +96,6 @@ def handle_power_change(dev_id_str: str, serial, packet_data: dict):
             # if power_alert_packet:
             #     send_to_main_server(dev_id_str, serial, power_alert_packet.encode('ascii'))
 
-        redis_client.hset(dev_id_str, 'power_status', current_power_disconnected)
+        redis_client.hset(f"tracker:{dev_id_str}", 'power_status', current_power_disconnected)
     except Exception:
         logger.exception(f"Erro ao processar mudança de alimentação para device_id={dev_id_str}")

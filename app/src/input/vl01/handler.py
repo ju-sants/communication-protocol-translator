@@ -67,7 +67,7 @@ def handle_connection(conn: socket.socket, addr):
 
                         if dev_id_session and not input_sessions_manager.exists(dev_id_session):
                             input_sessions_manager.register_tracker_client(dev_id_session, conn)
-                            redis_client.hset(dev_id_session, "protocol", "vl01")
+                            redis_client.hset(f"tracker:{dev_id_session}", "protocol", "vl01")
                             logger.info(f"Dispositivo VL01 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
 
                         if response_packet:
@@ -103,7 +103,7 @@ def handle_connection(conn: socket.socket, addr):
             output_sessions_manager.delete_session(dev_id_session)
 
         set_log_context(None)
-        
+
         logger.info(f"Fechando conexão e thread VL01 endereco={addr}, device_id={dev_id_session}")
         try:
             conn.shutdown(socket.SHUT_RDWR)

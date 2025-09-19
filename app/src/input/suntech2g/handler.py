@@ -40,7 +40,7 @@ def handle_connection(conn: socket.socket, addr):
                     
                 if dev_id and not input_sessions_manager.exists(dev_id):
                     input_sessions_manager.register_tracker_client(dev_id, conn)
-                    redis_client.hset(dev_id, "protocol", "suntech2g")
+                    redis_client.hset(f"tracker:{dev_id}", "protocol", "suntech2g")
 
 
     except ConnectionResetError:

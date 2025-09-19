@@ -269,8 +269,8 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
         "last_voltage": packet_data.get('voltage', 0.0),
     }
     pipeline = redis_client.pipeline()
-    pipeline.hmset(dev_id_str, redis_data)
-    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
+    pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
 
     send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, "GT06")
@@ -281,8 +281,8 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
         "last_event_type": "alarm",
     }
     pipeline = redis_client.pipeline()
-    pipeline.hmset(dev_id_str, redis_data)
-    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
+    pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
 
     if len(body) < 32:
@@ -301,7 +301,7 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
     if not alarm_datetime > limit:
         logger.info(f"Alarme da memória, descartando... dev_id={dev_id_str}")
 
-    last_packet_data_str = redis_client.hget(dev_id_str, "last_packet_data")
+    last_packet_data_str = redis_client.hget(f"tracker:{dev_id_str}", "last_packet_data")
     last_packet_data = json.loads(last_packet_data_str) if last_packet_data_str else {}
 
     definitive_packet_data = {**last_packet_data, **alarm_packet_data}
@@ -338,8 +338,8 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     redis_data["last_serial"] = serial
 
     pipeline = redis_client.pipeline()
-    pipeline.hmset(dev_id_str, redis_data)
-    pipeline.hincrby(dev_id_str, "total_packets_received", 1)
+    pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
+    pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
 
     # Keep-Alive da Suntech4G
@@ -353,7 +353,7 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
 
         if command_content_str:
             command_content_str = command_content_str.strip().upper()
-            last_packet_data_str = redis_client.hget(dev_id, "last_packet_data")
+            last_packet_data_str = redis_client.hget(f"tracker:{dev_id}", "last_packet_data")
             last_packet_data = json.loads(last_packet_data_str) if last_packet_data_str else {}
             last_packet_data["timestamp"] = datetime.now(timezone.utc)
 

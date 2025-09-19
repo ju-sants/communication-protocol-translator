@@ -59,7 +59,7 @@ def handle_connection(conn: socket.socket, addr):
 
                         if dev_id_session and not input_sessions_manager.exists(dev_id_session):
                             input_sessions_manager.register_tracker_client(dev_id_session, conn)
-                            redis_client.hset(dev_id_session, "protocol", "j16x")
+                            redis_client.hset(f"tracker:{dev_id_session}", "protocol", "j16x")
                             logger.info(f"Dispositivo GT06 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
 
                         if response_packet:
@@ -92,7 +92,7 @@ def handle_connection(conn: socket.socket, addr):
         logger.info(f"Fechando conexão e thread GT06 endereco={addr}, device_id={dev_id_session}")
 
         set_log_context(None)
-        
+
         try:
             conn.shutdown(socket.SHUT_RDWR)
             conn.close()

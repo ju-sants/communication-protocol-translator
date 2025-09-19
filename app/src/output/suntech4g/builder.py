@@ -11,7 +11,7 @@ redis_client = get_redis()
 def build_login_packet(dev_id_str: str) -> bytes:
     """Constrói um pacote de Manutenção (MNT) para 'apresentar' o dispositivo."""
 
-    device_info = redis_client.hgetall(dev_id_str)
+    device_info = redis_client.hgetall(f"tracker:{dev_id_str}")
 
     sw_ver = "Poliglot"
     if device_info and device_info.get("protocol"):
@@ -38,13 +38,13 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
         f"GlobalAlertID={universal_alert_id}, AlertID={suntech_alert_id}, GeoFenceID={geo_fence_id}, LocationData={packet_data}"
     )
 
-    device_info = redis_client.hgetall(dev_id)
+    device_info = redis_client.hgetall(f"tracker:{dev_id}")
     if not device_info:
         logger.warning(f"Tentando construir pacote Suntech para dispositivo desconhecido: {dev_id}")
         device_info = {}
 
     dev_id_normalized = normalize_dev_id(dev_id)
-    redis_client.hset(dev_id, "output_id", dev_id_normalized)
+    redis_client.hset(f"tracker:{dev_id}", "output_id", dev_id_normalized)
 
     # Campos básicos (comuns a todos)
     base_fields = [
@@ -125,7 +125,7 @@ def build_reply_packet(dev_id: str, packet_data: dict, *args) -> str:
     """
     Constrói um pacote de Resposta (RES) rico em dados, como o observado nos logs.
     """
-    device_info = redis_client.hgetall(dev_id)
+    device_info = redis_client.hgetall(f"tracker:{dev_id}")
     if not device_info:
         logger.warning(f"Tentando construir pacote RES para dispositivo desconhecido: {dev_id}")
         device_info = {}
