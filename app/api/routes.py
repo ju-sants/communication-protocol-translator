@@ -25,20 +25,29 @@ COMMAND_BUILDERS = {
 @app.route('/gateway_info', methods=['GET'])
 def get_gateway_info():
     """
-    Retorna informações básicas sobre o gateway.
+    Retorna informações técnicas sobre o gateway.
     """
     try:
-        info = {
-            "input_protocols": [dir.upper() for dir in os.listdir('app/src/input') if os.path.isdir(os.path.join('app/src/input', dir)) and not dir.startswith('__')],
-            "output_protocols": [dir.upper() for dir in os.listdir('app/src/output') if os.path.isdir(os.path.join('app/src/output', dir)) and not dir.startswith('__')],
-        }
-
-        port_protocol_mapping = {
-            protocol: settings.INPUT_PROTOCOL_HANDLERS[protocol]["port"] for protocol in settings.INPUT_PROTOCOL_HANDLERS
-        }
-
-        info["port_protocol_mapping"] = port_protocol_mapping
+        all_tracker_keys = [key for key in redis_client.keys('tracker:*') if redis_client.type(key) == 'hash']
         
+        total_packets_in_history = 0
+        history_keys = redis_client.keys('history:*')
+        if history_keys:
+            total_packets_in_history = sum(redis_client.llen(key) for key in history_keys)
+
+        info = {
+            "gateway_info": {
+                "input_protocols": [dir.upper() for dir in os.listdir('app/src/input') if os.path.isdir(os.path.join('app/src/input', dir)) and not dir.startswith('__')],
+                "output_protocols": [dir.upper() for dir in os.listdir('app/src/output') if os.path.isdir(os.path.join('app/src/output', dir)) and not dir.startswith('__')],
+                "port_protocol_mapping": {
+                    protocol: settings.INPUT_PROTOCOL_HANDLERS[protocol]["port"] for protocol in settings.INPUT_PROTOCOL_HANDLERS
+                },
+                "total_registered_trackers": len(all_tracker_keys),
+                "total_active_translator_sessions": len(input_sessions_manager.active_trackers),
+                "total_active_main_server_sessions": len(output_sessions_manager._sessions),
+                "total_packets_in_history": total_packets_in_history
+            }
+        }
         return jsonify(info)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -85,55 +94,6 @@ def get_trackers_data_efficiently():
             
         return jsonify(all_data)
 
-    except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
-
-
-@app.route('/trackers/summary', methods=['GET'])
-def get_trackers_summary():
-    """
-    Returns high-level statistics for all trackers.
-    """
-    try:
-        all_tracker_keys = [key for key in redis_client.keys('*') if redis_client.type(key) == 'hash']
-        
-        total_registered_trackers = len(all_tracker_keys)
-        total_active_translator_sessions = len(input_sessions_manager.active_trackers)
-        total_active_main_server_sessions = len(output_sessions_manager._sessions)
-
-        protocol_distribution = {}
-        last_active_trackers = []
-
-        for dev_id in all_tracker_keys:
-            protocol, last_active_timestamp = redis_client.hmget(f"tracker:{dev_id}", 'protocol', 'last_active_timestamp')
-            if protocol:
-                protocol_distribution[protocol] = protocol_distribution.get(protocol, 0) + 1
-            
-            if last_active_timestamp:
-                last_active_trackers.append({
-                    "device_id": dev_id,
-                    "last_active_timestamp": last_active_timestamp
-                })
-        
-        # Sort last active trackers by timestamp (most recent first)
-        last_active_trackers.sort(key=lambda x: x['last_active_timestamp'], reverse=True)
-        
-        # Calculate total packets in history
-        total_packets_in_history = 0
-        history_keys = [key for key in redis_client.keys('history:*')]
-        for history_key in history_keys:
-            total_packets_in_history += redis_client.llen(history_key)
-
-        summary = {
-            "total_registered_trackers": total_registered_trackers,
-            "total_active_translator_sessions": total_active_translator_sessions,
-            "total_active_main_server_sessions": total_active_main_server_sessions,
-            "protocol_distribution": protocol_distribution,
-            "total_packets_in_history": total_packets_in_history,
-            "most_recent_active_trackers": last_active_trackers[:10] # Top 10 most recent
-        }
-        return jsonify(summary)
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
