@@ -47,6 +47,7 @@ def map_data(raw_data: bytes):
 
         send_to_main_server(hybrid_gsm, last_hybrid_location, last_serial, raw_data.decode("utf-8"), "SATELLITAL")
 
+        return esn
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON: {e}")
     except Exception as e:
