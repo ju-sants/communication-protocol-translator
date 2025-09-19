@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import os
 
 from app.services.redis_service import get_redis
+from app.config.settings import settings
 from app.src.session.input_sessions_manager import input_sessions_manager
 from app.src.session.output_sessions_manager import output_sessions_manager
 from app.services.history_service import get_packet_history
@@ -30,8 +31,14 @@ def get_gateway_info():
         info = {
             "input_protocols": [dir.upper() for dir in os.listdir('app/src/input') if os.path.isdir(os.path.join('app/src/input', dir)) and not dir.startswith('__')],
             "output_protocols": [dir.upper() for dir in os.listdir('app/src/output') if os.path.isdir(os.path.join('app/src/output', dir)) and not dir.startswith('__')],
-            # Por enquanto, apenas enviaremos essas informações
         }
+
+        port_protocol_mapping = {
+            protocol: settings.INPUT_PROTOCOL_HANDLERS[protocol]["port"] for protocol in settings.INPUT_PROTOCOL_HANDLERS
+        }
+
+        info["port_protocol_mapping"] = port_protocol_mapping
+        
         return jsonify(info)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
