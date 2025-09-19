@@ -1,5 +1,5 @@
 import socket
-from app.core.logger import get_logger
+from app.core.logger import get_logger, set_log_context
 from .processor import process_packet
 from .utils import format_nt40_packet_for_display 
 
@@ -17,12 +17,15 @@ def handle_connection(conn: socket.socket, addr):
     logger.info(f"Nova conexão NT40 recebida endereco={addr}")
     buffer = b''
     dev_id_session = None
+    
+    # Define um contexto inicial para esta thread antes de ter o ID
+    set_log_context(f"addr:{addr[0]}:{addr[1]}")
 
     try:
         while True:
             data = conn.recv(1024)
             if not data:
-                logger.info(f"Conexão NT40 fechada pelo cliente endereco={addr}, device_id={dev_id_session}")
+                logger.info(f"Conexão NT40 fechada pelo cliente endereco={addr}")
                 break
             
             buffer += data
@@ -46,18 +49,19 @@ def handle_connection(conn: socket.socket, addr):
                         packet_body = raw_packet[2:-2]
                         
                         # Formatando pacote para display
-                        logger.info(f"Pacote Formatado Recebido de {addr}:\n{format_nt40_packet_for_display(packet_body)}")
+                        logger.info(f"Pacote Formatado Recebido:\n{format_nt40_packet_for_display(packet_body)}")
 
                         # Chama o processador, passando o ID da sessão
                         response_packet, newly_logged_in_dev_id = process_packet(dev_id_session, packet_body)
                         
-                        if newly_logged_in_dev_id:
+                        if newly_logged_in_dev_id and newly_logged_in_dev_id != dev_id_session:
                             dev_id_session = newly_logged_in_dev_id
+                            set_log_context(dev_id_session)
 
                         if dev_id_session and not input_sessions_manager.exists(dev_id_session):
                             input_sessions_manager.register_tracker_client(dev_id_session, conn)
                             redis_client.hset(dev_id_session, "protocol", "nt40")
-                            logger.info(f"Dispositivo NT40 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
+                            logger.info(f"Dispositivo NT40 autenticado na sessão")
 
                         if response_packet:
                             conn.sendall(response_packet)
@@ -76,21 +80,23 @@ def handle_connection(conn: socket.socket, addr):
                         buffer = b''
     
     except (ConnectionResetError, BrokenPipeError):
-        logger.warning(f"Conexão NT40 fechada abruptamente endereco={addr}, device_id={dev_id_session}")
+        logger.warning(f"Conexão NT40 fechada abruptamente endereco={addr}")
     except Exception:
-        logger.exception(f"Erro fatal na conexão NT40 endereco={addr}, device_id={dev_id_session}")
+        logger.exception(f"Erro fatal na conexão NT40 endereco={addr}")
     finally:
-        logger.debug(f"[DIAGNOSTIC] Entering finally block for NT40 handler (addr={addr}, dev_id={dev_id_session}).")
+        logger.debug(f"[DIAGNOSTIC] Entering finally block for NT40 handler (addr={addr}).")
         if dev_id_session:
-            logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}")
+            logger.info(f"Deletando Sessões em ambos os lados para esse rastreador")
             output_sessions_manager.delete_session(dev_id_session)
             input_sessions_manager.remove_tracker_client(dev_id_session)
         
-        logger.info(f"Fechando conexão e thread NT40 endereco={addr}, device_id={dev_id_session}")
+        logger.info(f"Fechando conexão e thread NT40 endereco={addr}")
+
+        set_log_context(None)
 
         try:
             conn.shutdown(socket.SHUT_RDWR)
             conn.close()
             conn = None
         except Exception as e:
-            logger.error(f"Impossível limpar conexão com rastreador dev_id={dev_id_session}")
+            logger.error(f"Impossível limpar conexão com rastreador: {e}")
