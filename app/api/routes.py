@@ -79,9 +79,10 @@ def get_trackers_data_efficiently():
         for i, key in enumerate(keys_to_fetch):
             device_data = results[i]
             
-            device_data['is_connected'] = input_sessions_manager.exists(key)
+            key_normalized = key.split("tracker:")[-1]
+            device_data['is_connected'] = input_sessions_manager.exists(key_normalized)
             device_data["output_protocol"] = device_data.get("output_protocol") or "suntech4g"
-            all_data[key] = device_data
+            all_data[key_normalized] = device_data
             
         return jsonify(all_data)
 
