@@ -1,7 +1,6 @@
 import sys
 import threading
 from loguru import logger
-import logging
 from app.config.settings import settings
 
 log_context = threading.local()

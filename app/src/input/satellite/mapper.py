@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -46,6 +46,17 @@ def map_data(raw_data: bytes):
         last_hybrid_location["device_type"] = "satellital"
 
         send_to_main_server(hybrid_gsm, last_hybrid_location, last_serial, raw_data.decode("utf-8"), "SATELLITAL")
+
+        redis_data = {
+            "last_satellite_location": json.dumps(data),
+            "last_satellite_active_timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+        pipe = redis_client.pipeline()
+        pipe.rpush(f"payloads:{esn}", json.dumps(data))
+        pipe.ltrim(f"payloads:{esn}", 0, 10000)
+        pipe.hmset(hybrid_gsm, redis_data)
+        pipe.execute()
 
         return esn
     except json.JSONDecodeError as e:
