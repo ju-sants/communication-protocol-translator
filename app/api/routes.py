@@ -43,28 +43,52 @@ def get_gateway_info():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 @app.route('/trackers', methods=['GET'])
-def get_all_trackers_data():
-    """
-    Fetches all tracker data from all keys in Redis.
-    """
+def get_trackers_data_efficiently():
     try:
-        keys = redis_client.keys('*')
-        all_data = {}
-        for key in keys:
-            if redis_client.type(key) != 'hash':
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 100))
+        offset = (page - 1) * limit
+
+        ignored_keys = {"global_data", "universal_data", "SAT_GSM_MAPPING"}
+        
+        keys_to_fetch = []
+        scanner = redis_client.scan_iter('tracker:*', count=1000) 
+        
+        processed_count = 0
+        for key in scanner:
+            if key in ignored_keys:
                 continue
             
-            if key in ("global_data", "universal_data", "SAT_GSM_MAPPING"):
-                continue
+            if processed_count >= offset:
+                keys_to_fetch.append(key)
+                if len(keys_to_fetch) == limit:
+                    break 
 
-            device_data = redis_client.hgetall(key)
+            processed_count += 1
+
+        if not keys_to_fetch:
+            return jsonify({"data": {}, "message": "Nenhum rastreador encontrado para esta página."})
+
+        pipe = redis_client.pipeline()
+        for key in keys_to_fetch:
+            pipe.hgetall(key)
+        
+        results = pipe.execute()
+
+        all_data = {}
+        for i, key in enumerate(keys_to_fetch):
+            device_data = results[i]
+            
             device_data['is_connected'] = input_sessions_manager.exists(key)
             device_data["output_protocol"] = device_data.get("output_protocol") or "suntech4g"
             all_data[key] = device_data
+            
         return jsonify(all_data)
+
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
 
 @app.route('/trackers/summary', methods=['GET'])
 def get_trackers_summary():
