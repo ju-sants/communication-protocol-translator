@@ -252,7 +252,7 @@ def handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_
                 "power_status": 0 if voltage > 0 else 1
             }
 
-            pipeline.hmset(f"tracker:{dev_id}", 'last_voltage', voltage)
+            pipeline.hmset(f"tracker:{dev_id}", redis_data)
     else:
         pass
     pipeline.execute()
