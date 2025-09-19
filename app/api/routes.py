@@ -28,13 +28,6 @@ def get_gateway_info():
     Retorna informações técnicas sobre o gateway.
     """
     try:
-        all_tracker_keys = [key for key in redis_client.keys('tracker:*') if redis_client.type(key) == 'hash']
-        
-        total_packets_in_history = 0
-        history_keys = redis_client.keys('history:*')
-        if history_keys:
-            total_packets_in_history = sum(redis_client.llen(key) for key in history_keys)
-
         info = {
             "gateway_info": {
                 "input_protocols": [dir.upper() for dir in os.listdir('app/src/input') if os.path.isdir(os.path.join('app/src/input', dir)) and not dir.startswith('__')],
@@ -42,10 +35,8 @@ def get_gateway_info():
                 "port_protocol_mapping": {
                     protocol: settings.INPUT_PROTOCOL_HANDLERS[protocol]["port"] for protocol in settings.INPUT_PROTOCOL_HANDLERS
                 },
-                "total_registered_trackers": len(all_tracker_keys),
                 "total_active_translator_sessions": len(input_sessions_manager.active_trackers),
                 "total_active_main_server_sessions": len(output_sessions_manager._sessions),
-                "total_packets_in_history": total_packets_in_history
             }
         }
         return jsonify(info)
