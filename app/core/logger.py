@@ -1,12 +1,15 @@
 import sys
 import threading
 from loguru import logger
+import logging
 from app.config.settings import settings
 
 log_context = threading.local()
 
 def context_patcher(record):
-    record["extra"]["device_id"] = getattr(log_context, 'device_id', 'N/A')
+    device_id = getattr(log_context, 'device_id', None)
+    record["extra"]["device_id"] = device_id if device_id is not None else 'N/A'
+
 
 # Remove o handler padrão para evitar logs duplicados
 logger.remove()
@@ -20,7 +23,7 @@ logger.add(
     level=settings.LOG_LEVEL.upper(),
     format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
            "<level>{level: <8}</level> | "
-           "<yellow>[{extra[device_id]: <15}]</yellow> | "
+           "<yellow>[{extra[device_id]}]</yellow> | "
            "<cyan>{name}:{function}:{line}</cyan> - <level>{message}</level>",
     colorize=True,
     backtrace=True,
@@ -31,7 +34,7 @@ def get_logger(name: str):
     """
     Retorna uma instância do logger Loguru com o nome do módulo associado.
     """
-    return logger.bind(name=name)
+    return logger.bind(name=name, device_id='Main Thread')
 
 def set_log_context(device_id: str | None):
     if device_id:
