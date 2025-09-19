@@ -66,7 +66,7 @@ def process_packet(packet_str: str):
     
     if packet_data or type == "heartbeat":
         if not serial:
-            serial = redis_client.hget(dev_id, "last_serial") or 0
+            serial = redis_client.hget(f"tracker:{dev_id}", "last_serial") or 0
             serial = int(serial)
 
         if type == "heartbeat":
