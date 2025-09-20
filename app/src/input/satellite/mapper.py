@@ -49,9 +49,11 @@ def map_data(raw_data: bytes):
 
         redis_data = {
             "last_satellite_location": json.dumps(data),
-            "last_satellite_active_timestamp": datetime.now(timezone.utc).isoformat()
+            "last_satellite_active_timestamp": datetime.now(timezone.utc).isoformat(),
         }
-
+        if data.get("acc_status") is not None:
+            redis_data["acc_status"] = data.get("acc_status")
+            
         pipe = redis_client.pipeline()
         pipe.rpush(f"payloads:{esn}", json.dumps(data))
         pipe.ltrim(f"payloads:{esn}", 0, 10000)
