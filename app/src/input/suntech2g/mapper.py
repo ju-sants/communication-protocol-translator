@@ -29,7 +29,7 @@ def handle_stt_packet(fields: list, standard: str) -> dict:
                 "direction": float(fields[10]),
                 "satellites": int(fields[11]),
                 "gps_fixed": fields[12] == "1",
-                "odometer": int(fields[13]),
+                "gps_odometer": int(fields[13]),
                 "voltage": float(fields[14]),
                 "acc_status": int(fields[15][0]),
                 "output_status": int(fields[15][4]),
@@ -48,7 +48,7 @@ def handle_stt_packet(fields: list, standard: str) -> dict:
                 "direction": float(fields[9]),
                 "satellites": int(fields[10]),
                 "gps_fixed": fields[11] == "1",
-                "odometer": int(fields[12]),
+                "gps_odometer": int(fields[12]),
                 "voltage": float(fields[13]),
                 "acc_status": int(fields[14][0]),
                 "output_status": int(fields[14][4]),
@@ -84,8 +84,6 @@ def handle_stt_packet(fields: list, standard: str) -> dict:
 
         pipe.execute()
 
-        print(redis_client.hget(f"tracker:{dev_id}", "acc_status"))
-
         logger.info(f"STT packet mapped data: {packet_data}")
         return packet_data, serial
 
@@ -109,7 +107,7 @@ def handle_emg_packet(fields: list, standard: str) -> dict:
                 "direction": float(fields[10]),
                 "satellites": int(fields[11]),
                 "gps_fixed": fields[12] == "1",
-                "odometer": int(fields[13]),
+                "gps_odometer": int(fields[13]),
                 "voltage": float(fields[14]),
                 "acc_status": int(fields[15][0]),
                 "output_status": int(fields[15][4]),
@@ -127,7 +125,7 @@ def handle_emg_packet(fields: list, standard: str) -> dict:
                 "direction": float(fields[9]),
                 "satellites": int(fields[10]),
                 "gps_fixed": fields[11] == "1",
-                "odometer": int(fields[12]),
+                "gps_odometer": int(fields[12]),
                 "voltage": float(fields[13]),
                 "acc_status": int(fields[14][0]),
                 "output_status": int(fields[14][4]),
@@ -184,7 +182,7 @@ def handle_evt_packet(fields: list, standard: str) -> dict:
                 "direction": float(fields[10]),
                 "satellites": int(fields[11]),
                 "gps_fixed": fields[12] == "1",
-                "odometer": int(fields[13]),
+                "gps_odometer": int(fields[13]),
                 "voltage": float(fields[14]),
                 "acc_status": int(fields[15][0]),
                 "output_status": int(fields[15][4]),
@@ -202,7 +200,7 @@ def handle_evt_packet(fields: list, standard: str) -> dict:
                 "direction": float(fields[9]),
                 "satellites": int(fields[10]),
                 "gps_fixed": fields[11] == "1",
-                "odometer": int(fields[12]),
+                "gps_odometer": int(fields[12]),
                 "voltage": float(fields[13]),
                 "acc_status": int(fields[14][0]),
                 "output_status": int(fields[14][4]),
@@ -260,7 +258,7 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
                 "direction": float(fields[10]),
                 "satellites": int(fields[11]),
                 "gps_fixed": fields[12] == "1",
-                "odometer": int(fields[13]),
+                "gps_odometer": int(fields[13]),
                 "voltage": float(fields[14]),
                 "acc_status": int(fields[15][0]),
                 "output_status": int(fields[15][4]),
@@ -279,7 +277,7 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
                 "direction": float(fields[9]),
                 "satellites": int(fields[10]),
                 "gps_fixed": fields[11] == "1",
-                "odometer": int(fields[12]),
+                "gps_odometer": int(fields[12]),
                 "voltage": float(fields[13]),
                 "acc_status": int(fields[14][0]),
                 "output_status": int(fields[14][4]),
