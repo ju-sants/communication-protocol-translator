@@ -54,7 +54,7 @@ def map_data(raw_data: bytes):
         if data.get("acc_status") is not None:
             redis_data["acc_status"] = data.get("acc_status")
 
-        actual_month = datetime.date().month
+        actual_month = datetime.now().month
 
         pipe = redis_client.pipeline()
         pipe.rpush(f"payloads:{esn}", json.dumps(data))
