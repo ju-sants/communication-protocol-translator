@@ -27,12 +27,12 @@ def process_command(dev_id: str, serial: str, universal_command: str):
     else:
         suntech2g_command = command_mapping.get(universal_command)
 
-    if dev_id <= 6:
+    if len(dev_id) <= 6:
         prefix = "SA200"
     else:
         prefix = "ST300"
 
-    if dev_id <= 6:
+    if len(dev_id) <= 6:
         fill = 6
     else:
         fill = 9
