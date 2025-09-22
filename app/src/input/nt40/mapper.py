@@ -6,7 +6,7 @@ import copy
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.src.session.output_sessions_manager import send_to_main_server
-from app.src.input.utils import handle_ignition_change
+from ..utils import handle_ignition_change
 from app.config.settings import settings
 
 logger = get_logger(__name__)
@@ -157,9 +157,19 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     
     handle_alarm_from_location(dev_id_str, serial, packet_data, raw_packet_hex)
 
-    alert_packet_data = handle_ignition_change(dev_id_str, serial, packet_data, raw_packet_hex, "NT40")
-    if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-        send_to_main_server(dev_id_str, alert_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
+    # Lidando com o estado da ignição, muito preciso para veículos híbridos.
+    last_altered_acc_str = redis_client.hget(f"tracker:{dev_id_str}", "last_altered_acc")
+    if last_altered_acc_str:
+        last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+
+    if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+        # Lidando com mudanças no status da ignição
+        alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
+        if alert_packet_data and alert_packet_data.get("universal_alert_id"):
+            send_to_main_server(dev_id_str, alert_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
+
+        redis_data["acc_status"] = packet_data.get("acc_status")
+        redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
     
     last_packet_data = copy.deepcopy(packet_data)
     

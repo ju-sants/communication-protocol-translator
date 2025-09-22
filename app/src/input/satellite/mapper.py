@@ -27,13 +27,13 @@ def map_data(raw_data: bytes):
         
         logger.info(f"Parsed JSON data: {data}")
 
-        hybrid_gsm = redis_client.hget("SAT_GSM_MAPPING", esn)
+        hybrid_gsm_dev_id = redis_client.hget("SAT_GSM_MAPPING", esn)
 
-        if not hybrid_gsm:
+        if not hybrid_gsm_dev_id:
             logger.info("Satellite tracker without a GSM pair, dropping.")
             return
 
-        last_serial, last_gsm_location_str = redis_client.hmget(f"tracker:{hybrid_gsm}", "last_serial", "last_packet_data")
+        last_serial, last_gsm_location_str = redis_client.hmget(f"tracker:{hybrid_gsm_dev_id}", "last_serial", "last_packet_data")
 
         last_serial = int(last_serial) if last_serial else 0
         last_gsm_location = json.loads(last_gsm_location_str) if last_gsm_location_str else {}
@@ -45,7 +45,7 @@ def map_data(raw_data: bytes):
         last_gsm_location["is_realtime"] = False
         last_hybrid_location["device_type"] = "satellital"
 
-        send_to_main_server(hybrid_gsm, last_hybrid_location, last_serial, raw_data.decode("utf-8"), "SATELLITAL")
+        send_to_main_server(hybrid_gsm_dev_id, last_hybrid_location, last_serial, raw_data.decode("utf-8"), "SATELLITAL")
 
         redis_data = {
             "last_satellite_location": json.dumps(data),
@@ -59,7 +59,7 @@ def map_data(raw_data: bytes):
         pipe = redis_client.pipeline()
         pipe.rpush(f"payloads:{esn}", json.dumps(data))
         pipe.ltrim(f"payloads:{esn}", 0, 10000)
-        pipe.hmset(f"tracker:{hybrid_gsm}", redis_data)
+        pipe.hmset(f"tracker:{hybrid_gsm_dev_id}", redis_data)
         pipe.hincrby(f"monthly_counts:{esn}", actual_month, 1)
         pipe.execute()
 

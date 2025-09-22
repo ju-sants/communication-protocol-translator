@@ -6,6 +6,7 @@ import copy
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.src.session.output_sessions_manager import send_to_main_server
+from ..utils import handle_ignition_change
 from app.config.settings import settings
 
 logger = get_logger(__name__)
@@ -251,7 +252,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
 
     if not packet_data:
         return
-    
+        
     last_packet_data = copy.deepcopy(packet_data)
     
     last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
@@ -264,10 +265,28 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
         "last_serial": serial,
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
         "last_event_type": "location",
-        "acc_status": packet_data.get('acc_status', 0),
         "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
         "last_voltage": packet_data.get('voltage', 0.0),
     }
+
+    if redis_client.hget("is_hybrid"):
+        # Lidando com o estado da ignição, muito preciso para veículos híbridos.
+        last_altered_acc_str = redis_client.hget(f"tracker:{dev_id_str}", "last_altered_acc")
+        if last_altered_acc_str:
+            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+            # Lidando com mudanças no status da ignição
+            alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
+            if alert_packet_data and alert_packet_data.get("universal_alert_id"):
+                send_to_main_server(dev_id_str, packet_data=alert_packet_data, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="j16x", type="alert")
+
+            redis_data["acc_status"] = packet_data.get("acc_status")
+            redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
+
+    else:
+        redis_data["acc_status"] = packet_data.get("acc_status")
+
     pipeline = redis_client.pipeline()
     pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
     pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
