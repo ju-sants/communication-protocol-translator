@@ -155,26 +155,6 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     if not packet_data:
         return
     
-    handle_alarm_from_location(dev_id_str, serial, packet_data, raw_packet_hex)
-
-    # Lidando com o estado da ignição, muito preciso para veículos híbridos.
-    last_altered_acc_str = redis_client.hget(f"tracker:{dev_id_str}", "last_altered_acc")
-    if last_altered_acc_str:
-        last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
-
-    if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
-        # Lidando com mudanças no status da ignição
-        alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
-        if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-            send_to_main_server(dev_id_str, alert_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
-
-        redis_data["acc_status"] = packet_data.get("acc_status")
-        redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
-    
-    last_packet_data = copy.deepcopy(packet_data)
-    
-    last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
-
     # Salvando para uso em caso de alarmes
     redis_data = {
         "imei": dev_id_str,
@@ -183,12 +163,34 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
         "last_serial": serial,
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
         "last_event_type": "location",
-        "acc_status": packet_data.get('acc_status', 0),
         "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
         "last_voltage": packet_data.get('voltage', 0.0),
     }
     if packet_data.get("output_status") is not None:
         redis_data["last_output_status"] = packet_data.get("output_status")
+
+    if redis_client.hget(f"tracker:{dev_id_str}", "is_hybrid"):
+        # Lidando com o estado da ignição, muito preciso para veículos híbridos.
+        last_altered_acc_str = redis_client.hget(f"tracker:{dev_id_str}", "last_altered_acc")
+        if last_altered_acc_str:
+            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+            # Lidando com mudanças no status da ignição
+            alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
+            if alert_packet_data and alert_packet_data.get("universal_alert_id"):
+                send_to_main_server(dev_id_str, alert_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
+
+            redis_data["acc_status"] = packet_data.get("acc_status")
+            redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
+    else:
+        handle_alarm_from_location(dev_id_str, serial, packet_data, raw_packet_hex)
+        redis_data["acc_status"] = packet_data.get("acc_status")
+
+    last_packet_data = copy.deepcopy(packet_data)
+    
+    last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
+
     
     pipeline = redis_client.pipeline()
     pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
