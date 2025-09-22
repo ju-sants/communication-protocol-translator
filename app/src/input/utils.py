@@ -24,7 +24,7 @@ def crc_itu(data_bytes: bytes) -> int:
     crc_value = calculator.checksum(data_bytes)
     return crc_value
 
-def handle_ignition_change(dev_id_str: str, serial, packet_data: dict, raw_packet_hex: str, original_protocol: str):
+def handle_ignition_change(dev_id_str: str, packet_data: dict):
     """
     Verifica se houve mudança no status da ignição e envia o alerta correspondente.
     """
