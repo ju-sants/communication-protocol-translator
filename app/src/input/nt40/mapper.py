@@ -155,6 +155,9 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     if not packet_data:
         return
     
+    last_packet_data = copy.deepcopy(packet_data)
+    last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
+
     # Salvando para uso em caso de alarmes
     redis_data = {
         "imei": dev_id_str,
@@ -186,12 +189,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     else:
         handle_alarm_from_location(dev_id_str, serial, packet_data, raw_packet_hex)
         redis_data["acc_status"] = packet_data.get("acc_status")
-
-    last_packet_data = copy.deepcopy(packet_data)
-    
-    last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
-
-    
+  
     pipeline = redis_client.pipeline()
     pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
     pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
