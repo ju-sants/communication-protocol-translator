@@ -22,7 +22,10 @@ def process_packet(packet_str: str):
     if "ST300" in standard_hdr or "SA200" in standard_hdr:
         hdr = standard_hdr.replace("ST300", "").replace("SA200", "")
 
-    dev_id = fields[2] if "Res" in packet_str else fields[1]
+    
+    dev_id = fields[2] if "Res" in packet_str and len(fields) >= 3 else fields[1] if len(fields) >= 2 else None
+    if not dev_id or not dev_id.isdigit:
+        logger.warning(f"Dev id {dev_id} encontrado no pacote {packet_str} não é um ID válido.")
 
     logger.info(f"Processing Suntech packet: {packet_str} dev_id={dev_id}")
 
