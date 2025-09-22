@@ -132,7 +132,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet
         "last_event_type": "location",
     }
 
-    if redis_client.hget("is_hybrid"):
+    if redis_client.hget(f"tracker:{dev_id_str}", "is_hybrid"):
         # Lidando com o estado da ignição, muito preciso para veículos híbridos.
         last_altered_acc_str = redis_client.hget(f"tracker:{dev_id_str}", "last_altered_acc")
         if last_altered_acc_str:
