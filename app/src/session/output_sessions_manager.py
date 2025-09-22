@@ -182,11 +182,15 @@ class MainServerSession:
                     logger.info(f"Resposta do server principal recebida, continuando a entrega de pacotes. dev_id={self.dev_id}")
 
                 # Enviando pacote de info de voltagem antes de qualquer pacote de localização em tempo real
-                if self._is_realtime and self.output_protocol == "gt06" and packet_data and packet_data.get("packet_type") == "location":
-                    if packet_data.get("device_type") == "satellital":
+                if self.output_protocol == "gt06" and packet_data and packet_data.get("packet_type") == "location":
+                    if packet_data.get("device_type") == "satellital": # Prioridade 1: é um satelital? mande a voltagem específica.
                         voltage = 2.22
-                    else:
-                        voltage = packet_data.get("last_voltage") or "0.0"
+                    elif packet_data.get("voltage"): # Prioridade 2: é GSM e possui voltagem no pacote
+                        voltage = packet_data.get("voltage")
+                    elif not self._is_realtime and current_output_protocol.lower() in ("vl01"): # Prioridade 3: Estamos enviando pacotes de memória de protocolos que não enviam voltagem nos pacotes, envia voltagem específica.
+                        voltage = 1.11
+                    else: # Prioridade 4: estamos em tempo real, o protocolo em questão não envia dados de voltagem no pacote, mas o conseguimos de outra forma, e se não o conseguirmos, enviamos 1.11.
+                        voltage = packet_data.get("last_voltage") or "1.11" 
                         voltage = float(voltage)
 
                     voltage_packet = build_gt06_voltage_info_packet({"voltage": voltage}, int(self.serial))
@@ -276,7 +280,7 @@ def send_to_main_server(
     Executa lógica de construção de pacotes se o mesmo não for fornecido, com base no protocolo de saída do dispositivo e o tipo de pacote especificado.
     """
 
-    output_protocol, protocol, is_hybrid, last_voltage = redis_client.hmget(f"tracker:{dev_id}", "output_protocol", "protocol", "is_hybrid", "last_voltage")
+    output_protocol, protocol, is_hybrid = redis_client.hmget(f"tracker:{dev_id}", "output_protocol", "protocol", "is_hybrid")
     
     if not output_protocol:  # VL01 apenas se comunicará como GT06
         if is_hybrid or (protocol and protocol == "vl01"):
@@ -299,7 +303,10 @@ def send_to_main_server(
 
         if packet_data is not None:
             packet_data["packet_type"] = type
-            packet_data["last_voltage"] = last_voltage if last_voltage else 0.0
+
+            if not packet_data.get("voltage"):
+                last_voltage = redis_client.hget(f"tracker:{dev_id}", "last_voltage")
+                packet_data["last_voltage"] = last_voltage if last_voltage else "1.11"
 
         logger.info(f"Pacote de {type.upper()} {output_protocol.upper()} traduzido de pacote {str(original_protocol).upper()}:\n{str_output_packet}")
 
