@@ -231,6 +231,12 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
     O pacote de alarme é um pacote de localização com informações de status adicionais.
     """
 
+    # Condição para híbridos
+    universal_alert_id = packet_data.get("universal_alert_id")
+    if redis_client.hget(f"tracker:{dev_id}", "hybrid_id") and universal_alert_id in (6533, 6533):
+        logger.info(f"Alerta de ignição para híbridos é gerenciada pelo servidor tradutor. dev_id={dev_id}")
+        return b""
+    
     protocol_number = 0x16
 
     timestamp: datetime = packet_data.get("timestamp", datetime.now(timezone.utc))
@@ -289,7 +295,6 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
     gsm_strength_bytes = struct.pack(">B", gsm_strength)
 
     
-    universal_alert_id = packet_data.get("universal_alert_id")
     alarm_id = settings.REVERSE_UNIVERSAL_ALERT_ID_DICTIONARY.get("vl01").get(universal_alert_id)
 
     if not alarm_id:

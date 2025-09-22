@@ -1,9 +1,11 @@
 import json
 from datetime import datetime, timezone
+import copy
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.src.session.output_sessions_manager import send_to_main_server
+from ..utils import handle_ignition_change
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -51,8 +53,20 @@ def map_data(raw_data: bytes):
             "last_satellite_location": json.dumps(data),
             "last_satellite_active_timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        if data.get("acc_status") is not None:
-            redis_data["acc_status"] = data.get("acc_status")
+
+        # Lidando com o estado da ignição, muito preciso para veículos híbridos.
+        last_altered_acc_str = redis_client.hget(f"tracker:{hybrid_gsm_dev_id}", "last_altered_acc")
+        if last_altered_acc_str:
+            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+
+        if not last_altered_acc_str or (last_hybrid_location.get("timestamp") and last_altered_acc_dt > last_hybrid_location.get("timestamp")):
+            # Lidando com mudanças no status da ignição
+            alert_packet_data = handle_ignition_change(hybrid_gsm_dev_id, copy.deepcopy(last_hybrid_location))
+            if alert_packet_data and alert_packet_data.get("universal_alert_id"):
+                send_to_main_server(hybrid_gsm_dev_id, packet_data=alert_packet_data, serial=last_serial, raw_packet_hex=raw_data.decode("utf-8"), original_protocol="SATELLITAL", type="alert")
+
+            redis_data["acc_status"] = last_hybrid_location.get("acc_status")
+            redis_data["last_altered_acc"] = last_hybrid_location.get("timestamp").isoformat()
 
         actual_month = datetime.now().month
 

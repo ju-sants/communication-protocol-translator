@@ -57,11 +57,6 @@ def handle_stt_packet(fields: list, standard: str) -> dict:
 
             serial = int(fields[16]) if fields[16].isdigit() else 0
 
-        # Lidando com mudanças no status da ignição
-        alert_packet_data = handle_ignition_change(dev_id, serial, packet_data, raw_packet_hex=";".join(fields), original_protocol="suntech2g")
-        if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-            send_to_main_server(dev_id, packet_data=alert_packet_data, serial=serial, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
-
         # Normalizando dados para armazenamento em Redis
         timestamp_str = packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
         packet_data_redis = packet_data.copy()
@@ -70,13 +65,25 @@ def handle_stt_packet(fields: list, standard: str) -> dict:
         redis_data = {
             "last_output_status": packet_data["output_status"],
             "last_voltage": packet_data["voltage"],
-            "last_serial": serial,
             "last_packet_data": json.dumps(packet_data_redis),
             "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
-            "last_event_type": "location",
-            "acc_status": packet_data.get('acc_status', 0),
+            "last_event_type": "emergency",
             "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
         }
+
+        # Lidando com o estado da ignição, muito preciso para veículos híbridos.
+        last_altered_acc_str = redis_client.hget(f"tracker:{fields[1]}", "last_altered_acc")
+        if last_altered_acc_str:
+            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+            # Lidando com mudanças no status da ignição
+            alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
+            if alert_packet_data and alert_packet_data.get("universal_alert_id"):
+                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
+
+            redis_data["acc_status"] = packet_data.get("acc_status")
+            redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
 
         pipe = redis_client.pipeline()
         pipe.hincrby(f"tracker:{dev_id}", "total_packets_received", 1)
@@ -133,11 +140,6 @@ def handle_emg_packet(fields: list, standard: str) -> dict:
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
 
-        # Lidando com mudanças no status da ignição
-        alert_packet_data = handle_ignition_change(fields[1], 0, packet_data, raw_packet_hex=";".join(fields), original_protocol="suntech2g")
-        if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-            send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
-
         # Normalizando dados para armazenamento em Redis
         timestamp_str = packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
         packet_data_redis = packet_data.copy()
@@ -149,9 +151,22 @@ def handle_emg_packet(fields: list, standard: str) -> dict:
             "last_packet_data": json.dumps(packet_data_redis),
             "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
             "last_event_type": "emergency",
-            "acc_status": packet_data.get('acc_status', 0),
             "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
         }
+
+        # Lidando com o estado da ignição, muito preciso para veículos híbridos.
+        last_altered_acc_str = redis_client.hget(f"tracker:{fields[1]}", "last_altered_acc")
+        if last_altered_acc_str:
+            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+            # Lidando com mudanças no status da ignição
+            alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
+            if alert_packet_data and alert_packet_data.get("universal_alert_id"):
+                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
+
+            redis_data["acc_status"] = packet_data.get("acc_status")
+            redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
 
         pipe = redis_client.pipeline()
         pipe.hincrby(f"tracker:{fields[1]}", "total_packets_received", 1)
@@ -208,12 +223,6 @@ def handle_evt_packet(fields: list, standard: str) -> dict:
                 "is_realtime": len(fields) > 19 and fields[19] == "1",
             }
 
-        # Lidando com mudanças no status da ignição
-        alert_packet_data = handle_ignition_change(fields[1], 0, packet_data, raw_packet_hex=";".join(fields), original_protocol="suntech2g")
-        if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-            send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
-
-
         # Normalizando dados para armazenamento em Redis
         timestamp_str = packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
         packet_data_redis = packet_data.copy()
@@ -224,10 +233,23 @@ def handle_evt_packet(fields: list, standard: str) -> dict:
             "last_voltage": packet_data["voltage"],
             "last_packet_data": json.dumps(packet_data_redis),
             "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
-            "last_event_type": "event",
-            "acc_status": packet_data.get('acc_status', 0),
+            "last_event_type": "emergency",
             "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
         }
+
+        # Lidando com o estado da ignição, muito preciso para veículos híbridos.
+        last_altered_acc_str = redis_client.hget(f"tracker:{fields[1]}", "last_altered_acc")
+        if last_altered_acc_str:
+            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+            # Lidando com mudanças no status da ignição
+            alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
+            if alert_packet_data and alert_packet_data.get("universal_alert_id"):
+                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
+
+            redis_data["acc_status"] = packet_data.get("acc_status")
+            redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
 
         pipe = redis_client.pipeline()
         pipe.hincrby(f"tracker:{fields[1]}", "total_packets_received", 1)
@@ -292,11 +314,6 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
         if universal_alert_id:
             packet_data["universal_alert_id"] = universal_alert_id
 
-        # Lidando com mudanças no status da ignição
-        alert_packet_data = handle_ignition_change(fields[1], 0, copy.deepcopy(packet_data), raw_packet_hex=";".join(fields), original_protocol="suntech2g")
-        if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-            send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
-
         # Normalizando dados para armazenamento em Redis
         timestamp_str = packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
         packet_data_redis = packet_data.copy()
@@ -307,10 +324,23 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
             "last_voltage": packet_data["voltage"],
             "last_packet_data": json.dumps(packet_data_redis),
             "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
-            "last_event_type": "alert",
-            "acc_status": packet_data.get('acc_status', 0),
+            "last_event_type": "emergency",
             "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
         }
+
+        # Lidando com o estado da ignição, muito preciso para veículos híbridos.
+        last_altered_acc_str = redis_client.hget(f"tracker:{fields[1]}", "last_altered_acc")
+        if last_altered_acc_str:
+            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+            # Lidando com mudanças no status da ignição
+            alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
+            if alert_packet_data and alert_packet_data.get("universal_alert_id"):
+                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
+
+            redis_data["acc_status"] = packet_data.get("acc_status")
+            redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
 
         pipe = redis_client.pipeline()
         pipe.hincrby(f"tracker:{fields[1]}", "total_packets_received", 1)
