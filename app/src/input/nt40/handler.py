@@ -49,7 +49,7 @@ def handle_connection(conn: socket.socket, addr):
                         logger.info(f"Pacote Formatado Recebido de {addr}:\n{format_nt40_packet_for_display(packet_body)}")
 
                         # Chama o processador, passando o ID da sessão
-                        response_packet, newly_logged_in_dev_id = process_packet(dev_id_session, packet_body)
+                        newly_logged_in_dev_id = process_packet(dev_id_session, packet_body, conn)
                         
                         if newly_logged_in_dev_id:
                             dev_id_session = newly_logged_in_dev_id
@@ -58,9 +58,6 @@ def handle_connection(conn: socket.socket, addr):
                             input_sessions_manager.register_tracker_client(dev_id_session, conn)
                             redis_client.hset(dev_id_session, "protocol", "nt40")
                             logger.info(f"Dispositivo NT40 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
-
-                        if response_packet:
-                            conn.sendall(response_packet)
 
                     else:
                         break

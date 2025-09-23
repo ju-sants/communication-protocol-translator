@@ -1,7 +1,7 @@
 import socket
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from . import mapper
+from . import processor
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -39,7 +39,7 @@ def handle_connection(conn: socket.socket, addr):
             if data:
                 logger.info(f"Satellite data received: {data}")
                 try:
-                    mapper.map_data(data)
+                    processor.process_packet(data)
                 except Exception as e:
                     logger.error(f"Error processing data: {e}")
                 buffer = b''

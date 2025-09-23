@@ -109,7 +109,7 @@ def decode_location_packet_x22(body: bytes):
         logger.exception(f"Falha ao decodificar pacote de localização NT40 body_hex={body.hex()}")
         return None
 
-def handle_alarm_from_location(dev_id_str, serial,  alarm_packet_data, raw_packet_hex):
+def handle_alarm_from_location(dev_id_str,  alarm_packet_data):
     universal_alert_id = None
     power_cut_alarm = None
     sos_alarm = None
@@ -143,7 +143,7 @@ def handle_alarm_from_location(dev_id_str, serial,  alarm_packet_data, raw_packe
     return None
 
 
-def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int, raw_packet_hex: str):
+def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int):
     if protocol_number == 0x12:
         packet_data = decode_location_packet_x12(body)
     elif protocol_number == 0x22:
@@ -155,9 +155,9 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     if not packet_data:
         return None, None
     
-    alarm_from_location_packet_data = handle_alarm_from_location(dev_id_str, serial, packet_data, raw_packet_hex)
+    alarm_from_location_packet_data = handle_alarm_from_location(dev_id_str, packet_data)
 
-    alert_packet_data = handle_ignition_change(dev_id_str, serial, packet_data, raw_packet_hex, "NT40")
+    ign_alert_packet_data = handle_ignition_change(dev_id_str, packet_data)
     
     last_packet_data = copy.deepcopy(packet_data)
     
@@ -183,9 +183,9 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     pipeline.hincrby(dev_id_str, "total_packets_received", 1)
     pipeline.execute()
 
-    return packet_data, alarm_from_location_packet_data, alert_packet_data
+    return packet_data, alarm_from_location_packet_data, ign_alert_packet_data
 
-def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_alarm_packet(dev_id_str: str, body: bytes):
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
         "last_event_type": "alarm",
@@ -234,7 +234,7 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
     
     return None
 
-def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     # O pacote de Heartbeat (0x13) contém informações de status
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
@@ -254,7 +254,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     return True
 
 
-def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_reply_command_packet(dev_id: str, body: bytes):
     try:
         command_content = body[5:]
         command_content_str = command_content.decode("ascii", errors="ignore")

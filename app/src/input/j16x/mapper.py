@@ -5,7 +5,6 @@ import copy
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from app.src.session.output_sessions_manager import send_to_main_server
 from app.config.settings import settings
 
 logger = get_logger(__name__)
@@ -238,7 +237,7 @@ def decode_location_packet_4g(body: bytes):
         return None
 
 
-def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int, raw_packet_hex: str):
+def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int):
     if protocol_number == 0x22:
         packet_data = decode_location_packet_v3(body)
     elif protocol_number == 0x32:
@@ -273,9 +272,8 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     pipeline.hincrby(dev_id_str, "total_packets_received", 1)
     pipeline.execute()
 
-    send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, "GT06")
-
-def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+    return last_packet_data
+def handle_alarm_packet(dev_id_str: str, body: bytes):
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
         "last_event_type": "alarm",
@@ -320,12 +318,12 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
         definitive_packet_data["is_realtime"] = True
         definitive_packet_data["universal_alert_id"] = universal_alert_id
 
-        send_to_main_server(dev_id_str, definitive_packet_data, serial, raw_packet_hex, "GT06", type="alert")
-
+        return definitive_packet_data
+    
     else:
         logger.warning(f"Alarme GT06 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
-def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     # O pacote de Heartbeat (0x13) contém informações de status
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
@@ -342,10 +340,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     pipeline.hincrby(dev_id_str, "total_packets_received", 1)
     pipeline.execute()
 
-    # Keep-Alive da Suntech4G
-    send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="GT06", type="heartbeat")
-
-def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_reply_command_packet(dev_id: str, body: bytes):
     try:
         command_length = body[0] - 4
         command_content = body[5:5 + command_length]
@@ -357,14 +352,16 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
             last_packet_data = json.loads(last_packet_data_str) if last_packet_data_str else {}
             last_packet_data["timestamp"] = datetime.now(timezone.utc)
 
-            if command_content_str == "RELAY 1 OK":
-                last_packet_data["REPLY"] = "OUTPUT ON"
-            elif command_content_str == "RELAY 0 OK":
-                last_packet_data["REPLY"] = "OUTPUT OFF"
+            if command_content_str in ("RELAY 1 OK", "RELAY 0 OK"):
+                if command_content_str == "RELAY 1 OK":
+                    last_packet_data["REPLY"] = "OUTPUT ON"
+                elif command_content_str == "RELAY 0 OK":
+                    last_packet_data["REPLY"] = "OUTPUT OFF"
+                
+                return last_packet_data
             else:
-                print(command_content_str)
+                logger.warning(f"Resposta a comando não mapeada para enviar reply ao server principal, dev_id={dev_id}")
 
-            send_to_main_server(dev_id, packet_data=last_packet_data, serial=serial, raw_packet_hex=raw_packet_hex, type="command_reply", original_protocol="J16X")
     except Exception:
         import traceback
         logger.error(f"Erro ao decodificar comando de REPLY: {traceback.format_exc()}, body={body.hex()}, dev_id={dev_id}")

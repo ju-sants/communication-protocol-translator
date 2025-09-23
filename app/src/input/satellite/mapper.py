@@ -9,7 +9,7 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 
-def map_data(raw_data: bytes):
+def handle_satelite_data(raw_data: bytes):
     """
     Maps satellite data to a structured python dict and sends it to the main server.
     """
@@ -45,8 +45,8 @@ def map_data(raw_data: bytes):
         last_gsm_location["is_realtime"] = False
         last_hybrid_location["device_type"] = "satellital"
 
-        send_to_main_server(hybrid_gsm, last_hybrid_location, last_serial, raw_data.decode("utf-8"), "SATELLITAL")
-
+        return hybrid_gsm, last_hybrid_location, last_serial 
+    
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON: {e}")
     except Exception as e:

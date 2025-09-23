@@ -57,7 +57,7 @@ def handle_connection(conn: socket.socket, addr):
                         logger.info(f"Pacote Formatado Recebido de {addr}:\n{format_vl01_packet_for_display(packet_body, is_x79)}")
 
                         # Chama o processador, passando o ID da sessão
-                        response_packet, newly_logged_in_dev_id = process_packet(dev_id_session, packet_body, is_x79)
+                        newly_logged_in_dev_id = process_packet(dev_id_session, packet_body, conn, is_x79)
                         
                         if newly_logged_in_dev_id:
                             dev_id_session = newly_logged_in_dev_id
@@ -66,9 +66,6 @@ def handle_connection(conn: socket.socket, addr):
                             input_sessions_manager.register_tracker_client(dev_id_session, conn)
                             redis_client.hset(dev_id_session, "protocol", "vl01")
                             logger.info(f"Dispositivo VL01 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
-
-                        if response_packet:
-                            conn.sendall(response_packet)
 
                     else:
                         break
