@@ -6,7 +6,7 @@ import copy
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.config.settings import settings
-from .utils import _decode_alarm_location_packet, haversine
+from .utils import haversine
 from ..utils import handle_ignition_change
 
 logger = get_logger(__name__)
@@ -70,6 +70,28 @@ def _decode_location_packet(body: bytes):
         logger.exception(f"Falha ao decodificar pacote de localização VL01 body_hex={body.hex()}")
         return None
 
+def _decode_alarm_location_packet(body: bytes):
+    data = {}
+
+    year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
+    data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second).replace(tzinfo=timezone.utc)
+
+    lat_raw, lon_raw = struct.unpack(">II", body[6:14])
+    lat = lat_raw / 1800000.0
+    lon = lon_raw / 1800000.0
+
+    course_status = struct.unpack(">H", body[14:])[0]
+
+    # Hemisférios (Bit 11 para Latitude Sul, Bit 12 para Longitude Oeste)
+    is_latitude_north = (course_status >> 10) & 1
+    is_longitude_west = (course_status >> 11) & 1
+    
+    data['latitude'] = -abs(lat) if not is_latitude_north else abs(lat)
+    data['longitude'] = -abs(lon) if is_longitude_west else abs(lon)
+        
+    data["direction"] = course_status & 0x03FF
+     
+    return data
 def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
     packet_data = _decode_location_packet(body)
 
