@@ -1,7 +1,6 @@
 import socket
 from app.core.logger import get_logger, set_log_context
 from .processor import process_packet
-from .utils import format_j16x_packet_for_display 
 
 from app.src.session.input_sessions_manager import input_sessions_manager
 from app.services.redis_service import get_redis

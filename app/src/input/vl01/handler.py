@@ -3,7 +3,6 @@ import struct
 
 from app.core.logger import get_logger, set_log_context
 from .processor import process_packet
-from .utils import format_vl01_packet_for_display 
 from app.src.session.input_sessions_manager import input_sessions_manager
 from app.services.redis_service import get_redis
 from app.src.session.output_sessions_manager import output_sessions_manager
