@@ -8,7 +8,6 @@ from app.services.redis_service import get_redis
 from app.config.settings import settings
 from .utils import _decode_alarm_location_packet, haversine
 from ..utils import handle_ignition_change
-from app.src.session.output_sessions_manager import send_to_main_server
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -71,7 +70,7 @@ def _decode_location_packet(body: bytes):
         logger.exception(f"Falha ao decodificar pacote de localização VL01 body_hex={body.hex()}")
         return None
 
-def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
     packet_data = _decode_location_packet(body)
 
     if not packet_data:
@@ -132,6 +131,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet
         "last_event_type": "location",
     }
 
+    ign_alert_packet_data = None
     if redis_client.hget(f"tracker:{dev_id_str}", "is_hybrid"):
         # Lidando com o estado da ignição, muito preciso para veículos híbridos.
         last_altered_acc_str = redis_client.hget(f"tracker:{dev_id_str}", "last_altered_acc")
@@ -140,9 +140,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet
 
         if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
             # Lidando com mudanças no status da ignição
-            alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
-            if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-                send_to_main_server(dev_id_str, packet_data=alert_packet_data, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="vl01", type="alert")
+            ign_alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
 
             redis_data["acc_status"] = packet_data.get("acc_status")
             redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
@@ -155,9 +153,8 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, raw_packet
     pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
 
-    send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol="VL01")
-
-def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+    return packet_data, ign_alert_packet_data
+def handle_alarm_packet(dev_id_str: str, body: bytes):
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
         "last_event_type": "alarm",
@@ -201,11 +198,15 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
     if universal_alert_id:
         logger.info(f"Alarme VL01 (0x{alarm_code:02X}) traduzido para Global ID {universal_alert_id} device_id={dev_id_str}")
 
-        send_to_main_server(dev_id_str, definitive_packet_data, serial, raw_packet_hex, original_protocol="VL01", type="alert")
+        definitive_packet_data["universal_alert_id"] = universal_alert_id
+        definitive_packet_data["is_realtime"] = True
+
+        return definitive_packet_data
+    
     else:
         logger.warning(f"Alarme VL01 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
-def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     logger.info(f"Pacote de heartbeat recebido de {dev_id_str}, body={body.hex()}")
     # O pacote de Heartbeat (0x13) contém informações de status
     redis_data = {
@@ -226,10 +227,6 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
     pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
-
-    # Keep-Alive
-    send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="VL01", type="heartbeat")
-
 def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
     try:
         command_content = body[5:]
@@ -239,14 +236,18 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
             last_packet_data = json.loads(last_packet_data_str) if last_packet_data_str else {}
             last_packet_data["timestamp"] = datetime.now(timezone.utc)
 
-            if command_content_str == "RELAY:ON":
-                redis_client.hset(f"tracker:{dev_id}", "last_output_status", 1)
-                last_packet_data["REPLY"] = "OUTPUT ON"
-            elif command_content_str == "RELAY:OFF":
-                redis_client.hset(f"tracker:{dev_id}", "last_output_status", 0)
-                last_packet_data["REPLY"] = "OUTPUT OFF"
-
-            send_to_main_server(dev_id, last_packet_data, serial, raw_packet_hex, original_protocol="VL01", type="command_reply")
+            if command_content_str in ("RELAY:ON", "RELAY:OFF"):
+                if command_content_str == "RELAY:ON":
+                    redis_client.hset(dev_id, "last_output_status", 1)
+                    last_packet_data["REPLY"] = "OUTPUT ON"
+                elif command_content_str == "RELAY:OFF":
+                    redis_client.hset(dev_id, "last_output_status", 0)
+                    last_packet_data["REPLY"] = "OUTPUT OFF"
+                
+                return last_packet_data
+            
+            else:
+                logger.warning(f"Resposta a comando não mapeada para enviar reply ao server principal, dev_id={dev_id}")
 
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY: {e} body={body.hex()}, dev_id={dev_id}")
@@ -274,4 +275,5 @@ def handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_
             pipeline.hmset(f"tracker:{dev_id}", redis_data)
     else:
         pass
+
     pipeline.execute()

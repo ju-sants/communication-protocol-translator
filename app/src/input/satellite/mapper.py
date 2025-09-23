@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 
-def map_data(raw_data: bytes):
+def handle_satelite_data(raw_data: bytes):
     """
     Maps satellite data to a structured python dict and sends it to the main server.
     """
@@ -47,13 +47,13 @@ def map_data(raw_data: bytes):
         last_gsm_location["is_realtime"] = False
         last_hybrid_location["device_type"] = "satellital"
 
-        send_to_main_server(hybrid_gsm_dev_id, last_hybrid_location, last_serial, raw_data.decode("utf-8"), "SATELLITAL")
-
         redis_data = {
             "last_satellite_location": json.dumps(data),
             "last_satellite_active_timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
+
+        ign_alert_packet_data = None
         # Lidando com o estado da ignição, muito preciso para veículos híbridos.
         last_altered_acc_str = redis_client.hget(f"tracker:{hybrid_gsm_dev_id}", "last_altered_acc")
         if last_altered_acc_str:
@@ -61,9 +61,7 @@ def map_data(raw_data: bytes):
 
         if not last_altered_acc_str or (last_hybrid_location.get("timestamp") and last_altered_acc_dt > last_hybrid_location.get("timestamp")):
             # Lidando com mudanças no status da ignição
-            alert_packet_data = handle_ignition_change(hybrid_gsm_dev_id, copy.deepcopy(last_hybrid_location))
-            if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-                send_to_main_server(hybrid_gsm_dev_id, packet_data=alert_packet_data, serial=last_serial, raw_packet_hex=raw_data.decode("utf-8"), original_protocol="SATELLITAL", type="alert")
+            ign_alert_packet_data = handle_ignition_change(hybrid_gsm_dev_id, copy.deepcopy(last_hybrid_location))
 
             redis_data["acc_status"] = last_hybrid_location.get("acc_status")
             redis_data["last_altered_acc"] = last_hybrid_location.get("timestamp").isoformat()
@@ -77,7 +75,8 @@ def map_data(raw_data: bytes):
         pipe.hincrby(f"monthly_counts:{esn}", actual_month, 1)
         pipe.execute()
 
-        return esn
+        return hybrid_gsm_dev_id, last_hybrid_location, ign_alert_packet_data, last_serial 
+    
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON: {e}")
     except Exception as e:

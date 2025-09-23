@@ -51,7 +51,7 @@ def handle_connection(conn: socket.socket, addr):
                         logger.info(f"Pacote Formatado Recebido de {addr}:\n{format_j16x_packet_for_display(packet_body)}")
 
                         # Chama o processador, passando o ID da sessão
-                        response_packet, newly_logged_in_dev_id = process_packet(dev_id_session, packet_body)
+                        newly_logged_in_dev_id = process_packet(dev_id_session, packet_body, conn)
                         
                         if newly_logged_in_dev_id and newly_logged_in_dev_id != dev_id_session:
                             dev_id_session = newly_logged_in_dev_id
@@ -61,9 +61,6 @@ def handle_connection(conn: socket.socket, addr):
                             input_sessions_manager.register_tracker_client(dev_id_session, conn)
                             redis_client.hset(f"tracker:{dev_id_session}", "protocol", "j16x")
                             logger.info(f"Dispositivo GT06 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
-
-                        if response_packet:
-                            conn.sendall(response_packet)
 
                     else:
                         break

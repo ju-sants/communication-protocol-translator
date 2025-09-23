@@ -1,7 +1,9 @@
 import struct
+import socket
 
 from . import builder, mapper
 from .. import utils
+from app.src.session.output_sessions_manager import send_to_main_server
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 
@@ -9,7 +11,7 @@ from app.services.redis_service import get_redis
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | None, str | None]:
+def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.socket) -> tuple[bytes | None, str | None]:
     """
     Processa o corpo de um pacote GT06, valida, disseca e delega a ação.
     Recebe o dev_id da sessão (se já conhecido).
@@ -33,43 +35,59 @@ def process_packet(dev_id_str: str | None, packet_body: bytes) -> tuple[bytes | 
     serial_number = struct.unpack('>H', packet_body[-4:-2])[0]
     content_body = packet_body[2:-4]
     
-    response_packet = None
+    response_to_device = None
     newly_logged_in_dev_id = None
 
     if protocol_number == 0x01: # Pacote de Login
         imei_bytes = content_body
         newly_logged_in_dev_id = imei_bytes.hex()
-        response_packet = builder.build_generic_response(protocol_number, serial_number)
+        response_to_device = builder.build_generic_response(protocol_number, serial_number)
     
     elif protocol_number in [0x22, 0xA0, 0x32]: # Pacotes de Localização
         if dev_id_str:
-            mapper.handle_location_packet(dev_id_str, serial_number, content_body, protocol_number, packet_body.hex())
+            location_packet_data, ign_alert_packet_data = mapper.handle_location_packet(dev_id_str, serial_number, content_body, protocol_number)
+            if location_packet_data:
+                send_to_main_server(dev_id_str, location_packet_data, serial_number, packet_body.hex(), "J16X")
+            if ign_alert_packet_data:
+                send_to_main_server(dev_id_str, ign_alert_packet_data, serial_number, packet_body.hex(), "J16X", "alert")
+                
         else:
             logger.warning(f"Pacote de localização GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
-        response_packet = None
+        response_to_device = None
 
     elif protocol_number == 0x13: # Pacote de Heartbeat/Status
         if dev_id_str:
-            mapper.handle_heartbeat_packet(dev_id_str, serial_number, content_body, packet_body.hex())
+            mapper.handle_heartbeat_packet(dev_id_str, serial_number, content_body)
+            send_to_main_server(dev_id_str, serial=serial_number, raw_packet_hex=packet_body.hex(), original_protocol="J16X", type="heartbeat")
+
         else:
             logger.warning(f"Pacote de heartbeat GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
-        response_packet = builder.build_generic_response(protocol_number, serial_number)
+        response_to_device = builder.build_generic_response(protocol_number, serial_number)
 
     elif protocol_number == 0x16: # Pacote de Alarme
         if dev_id_str:
-            mapper.handle_alarm_packet(dev_id_str, serial_number, content_body, packet_body.hex())
+            alarm_packet_data = mapper.handle_alarm_packet(dev_id_str, content_body)
+            if alarm_packet_data:
+                send_to_main_server(dev_id_str, alarm_packet_data, serial_number, packet_body.hex(), "J16X", type="alert")
+
         else:
             logger.warning(f"Pacote de alarme GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
-        response_packet = builder.build_generic_response(protocol_number, serial_number)
+        response_to_device = builder.build_generic_response(protocol_number, serial_number)
     
     elif protocol_number == 0x15:
         if dev_id_str:
-            mapper.handle_reply_command_packet(dev_id_str, serial_number, content_body, packet_body.hex())
+            reply_command_packet_data = mapper.handle_reply_command_packet(dev_id_str, content_body)
+            if reply_command_packet_data:
+                send_to_main_server(dev_id_str, reply_command_packet_data, serial_number, packet_body.hex(), type="command_reply", original_protocol="J16X")
+
         else:
             logger.warning(f"Pacote de reply command GT06 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
 
     else:
         logger.warning(f"Protocolo GT06 não mapeado: {hex(protocol_number)} device_id={dev_id_str}")
-        response_packet = builder.build_generic_response(protocol_number, serial_number)
+        response_to_device = builder.build_generic_response(protocol_number, serial_number)
 
-    return (response_packet, newly_logged_in_dev_id)
+    if response_to_device:
+        conn.sendall(response_to_device)
+
+    return newly_logged_in_dev_id

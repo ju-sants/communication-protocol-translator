@@ -5,8 +5,7 @@ import copy
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from app.src.session.output_sessions_manager import send_to_main_server
-from ..utils import handle_ignition_change
+from app.src.input.utils import handle_ignition_change
 from app.config.settings import settings
 
 logger = get_logger(__name__)
@@ -110,7 +109,7 @@ def decode_location_packet_x22(body: bytes):
         logger.exception(f"Falha ao decodificar pacote de localização NT40 body_hex={body.hex()}")
         return None
 
-def handle_alarm_from_location(dev_id_str, serial,  alarm_packet_data, raw_packet_hex):
+def handle_alarm_from_location(dev_id_str,  alarm_packet_data):
     universal_alert_id = None
     power_cut_alarm = None
     sos_alarm = None
@@ -137,13 +136,14 @@ def handle_alarm_from_location(dev_id_str, serial,  alarm_packet_data, raw_packe
     if universal_alert_id:
         alarm_packet_data["is_realtime"] = True
         alarm_packet_data["universal_alert_id"] = universal_alert_id
-
-        send_to_main_server(dev_id_str, alarm_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
+        return alarm_packet_data
     elif universal_alert_id is not None:
         logger.warning(f"Alarme NT40 não mapeado recebido device_id={dev_id_str}, alarm_code={alarm_packet_data.get('alarm')}, terminal_info={alarm_packet_data.get('terminal_info')}")
+    
+    return None
 
 
-def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int, raw_packet_hex: str):
+def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int):
     if protocol_number == 0x12:
         packet_data = decode_location_packet_x12(body)
     elif protocol_number == 0x22:
@@ -153,12 +153,12 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
         packet_data = None
 
     if not packet_data:
-        return
+        return None, None
     
     last_packet_data = copy.deepcopy(packet_data)
     last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
 
-    # Salvando para uso em caso de alarmes
+    # Salvando dados no redis
     redis_data = {
         "imei": dev_id_str,
         "last_packet_data": json.dumps(last_packet_data),
@@ -172,6 +172,9 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     if packet_data.get("output_status") is not None:
         redis_data["last_output_status"] = packet_data.get("output_status")
 
+    # Construção de pacotes de alarme
+    alarm_from_location_packet_data = None
+    ign_alert_packet_data = None
     if redis_client.hget(f"tracker:{dev_id_str}", "is_hybrid"):
         # Lidando com o estado da ignição, muito preciso para veículos híbridos.
         last_altered_acc_str = redis_client.hget(f"tracker:{dev_id_str}", "last_altered_acc")
@@ -180,14 +183,14 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
 
         if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
             # Lidando com mudanças no status da ignição
-            alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
-            if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-                send_to_main_server(dev_id_str, alert_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
+            ign_alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
 
             redis_data["acc_status"] = packet_data.get("acc_status")
             redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
     else:
-        handle_alarm_from_location(dev_id_str, serial, packet_data, raw_packet_hex)
+        ign_alert_packet_data = handle_ignition_change(dev_id_str, packet_data)
+        alarm_from_location_packet_data = handle_alarm_from_location(dev_id_str, packet_data)
+
         redis_data["acc_status"] = packet_data.get("acc_status")
   
     pipeline = redis_client.pipeline()
@@ -195,9 +198,9 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
 
-    send_to_main_server(dev_id_str, packet_data, serial, raw_packet_hex, original_protocol="NT40")
+    return packet_data, alarm_from_location_packet_data, ign_alert_packet_data
 
-def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_alarm_packet(dev_id_str: str, body: bytes):
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
         "last_event_type": "alarm",
@@ -239,11 +242,14 @@ def handle_alarm_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_he
         logger.info(f"Alarme NT40 (0x{alarm_code:02X}) traduzido para Global ID {universal_alert_id} device_id={dev_id_str}")
         
         definitive_packet_data["is_realtime"] = True
-        send_to_main_server(dev_id_str, definitive_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="alert")
+        definitive_packet_data["universal_alert_id"] = universal_alert_id
+        return definitive_packet_data
     else:
         logger.warning(f"Alarme NT40 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
+    
+    return None
 
-def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     # O pacote de Heartbeat (0x13) contém informações de status
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
@@ -260,10 +266,10 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes, raw_packe
     pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
 
-    send_to_main_server(dev_id_str, serial=serial, raw_packet_hex=raw_packet_hex, original_protocol="NT40", type="heartbeat")
+    return True
 
 
-def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_reply_command_packet(dev_id: str, body: bytes):
     try:
         command_content = body[5:]
         command_content_str = command_content.decode("ascii", errors="ignore")
@@ -284,7 +290,9 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
                 logger.info(f"command_content_str == 'RELAYER DISABLE OK!': {command_content_str == 'RELAYER DISABLE OK!'}")
                 logger.info(f"len('RELAYER ENABLE OK!') = {len('RELAYER ENABLE OK!')}")
                 logger.info(f"len('RELAYER DISABLE OK!') = {len('RELAYER DISABLE OK!')}")
-
-            send_to_main_server(dev_id, last_packet_data, serial, raw_packet_hex, original_protocol="NT40", type="command_reply")
+            
+            return last_packet_data
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY")
+    
+    return None
