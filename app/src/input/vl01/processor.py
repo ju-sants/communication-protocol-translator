@@ -47,7 +47,9 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         if dev_id_str:
             location_packet_data, ign_alert_packet_data = mapper.handle_location_packet(dev_id_str, serial_number, content_body, packet_body.hex())
             if location_packet_data:
+                utils.log_mapped_packet(location_packet_data, "VL01")
                 send_to_main_server(dev_id_str, location_packet_data, serial_number, packet_body.hex(), "VL01")
+
             if ign_alert_packet_data:
                 send_to_main_server(dev_id_str, ign_alert_packet_data, serial_number, packet_body.hex(), "VL01", "alert")
 
@@ -61,6 +63,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         if dev_id_str:
             alarm_packet_data = mapper.handle_alarm_packet(dev_id_str, serial_number, content_body, packet_body.hex())
             if alarm_packet_data:
+                utils.log_mapped_packet(alarm_packet_data, "VL01")
                 send_to_main_server(dev_id_str, alarm_packet_data, serial_number, packet_body.hex(), original_protocol="VL01", type="alert")
 
         else:
@@ -73,7 +76,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         if dev_id_str:
             mapper.handle_information_packet(dev_id_str, serial_number, content_body, packet_body.hex())
         else:
-            logger.warning(f"Pacote de localização/alarme VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
+            logger.warning(f"Pacote de information VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
 
         response_to_device = builder.build_generic_response(protocol_number, serial_number)
 
@@ -92,6 +95,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         if dev_id_str:
             reply_command_packet_data = mapper.handle_reply_command_packet(dev_id_str, serial_number, content_body, packet_body.hex())
             if reply_command_packet_data:
+                utils.log_mapped_packet(reply_command_packet_data, "VL01")
                 send_to_main_server(dev_id_str, reply_command_packet_data, serial_number, packet_body.hex(), original_protocol="VL01", type="command_reply")
 
         else:

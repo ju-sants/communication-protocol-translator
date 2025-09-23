@@ -15,7 +15,6 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
     """
     Processa o corpo de um pacote GT06, valida, disseca e delega a ação.
     Recebe o dev_id da sessão (se já conhecido).
-    Retorna uma tupla: (pacote_de_resposta, dev_id_extraido_do_login)
     """
     # Validação Mínima de Tamanho
     if len(packet_body) < 6:
@@ -47,7 +46,9 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         if dev_id_str:
             location_packet_data, ign_alert_packet_data = mapper.handle_location_packet(dev_id_str, serial_number, content_body, protocol_number)
             if location_packet_data:
+                utils.log_mapped_packet(location_packet_data, "J16X")
                 send_to_main_server(dev_id_str, location_packet_data, serial_number, packet_body.hex(), "J16X")
+
             if ign_alert_packet_data:
                 send_to_main_server(dev_id_str, ign_alert_packet_data, serial_number, packet_body.hex(), "J16X", "alert")
                 
@@ -68,6 +69,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         if dev_id_str:
             alarm_packet_data = mapper.handle_alarm_packet(dev_id_str, content_body)
             if alarm_packet_data:
+                utils.log_mapped_packet(alarm_packet_data, "NT40")
                 send_to_main_server(dev_id_str, alarm_packet_data, serial_number, packet_body.hex(), "J16X", type="alert")
 
         else:
@@ -78,6 +80,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         if dev_id_str:
             reply_command_packet_data = mapper.handle_reply_command_packet(dev_id_str, content_body)
             if reply_command_packet_data:
+                utils.log_mapped_packet(reply_command_packet_data, "NT40")
                 send_to_main_server(dev_id_str, reply_command_packet_data, serial_number, packet_body.hex(), type="command_reply", original_protocol="J16X")
 
         else:

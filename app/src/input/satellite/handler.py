@@ -39,7 +39,6 @@ def handle_connection(conn: socket.socket, addr):
             data = buffer[start_index + len(START_BIT):stop_index]
 
             if data:
-                logger.info(f"Satellite data received: {data}")
                 try:
                     processor.process_packet(data)
                 except Exception as e:

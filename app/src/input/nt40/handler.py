@@ -1,7 +1,6 @@
 import socket
 from app.core.logger import get_logger, set_log_context
 from .processor import process_packet
-from .utils import format_nt40_packet_for_display 
 
 from app.src.session.input_sessions_manager import input_sessions_manager
 from app.services.redis_service import get_redis
@@ -48,9 +47,6 @@ def handle_connection(conn: socket.socket, addr):
                         # Corpo do pacote que vai para o processador: [Length(1) + Proto(1) + Conteúdo + Serial(2) + CRC(2)]
                         packet_body = raw_packet[2:-2]
                         
-                        # Formatando pacote para display
-                        logger.info(f"Pacote Formatado Recebido:\n{format_nt40_packet_for_display(packet_body)}")
-
                         # Chama o processador, passando o ID da sessão
                         newly_logged_in_dev_id = process_packet(dev_id_session, packet_body, conn)
                         

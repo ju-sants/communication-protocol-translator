@@ -1,6 +1,7 @@
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from . import mapper
+from .. import utils
 from app.src.session.output_sessions_manager import send_to_main_server
 
 logger = get_logger(__name__)
@@ -68,6 +69,8 @@ def process_packet(packet_str: str):
         type = "heartbeat"
     
     if packet_data or type == "heartbeat":
+        utils.log_mapped_packet(packet_data, "SUNTECH2G")
+        
         if not serial:
             serial = redis_client.hget(f"tracker:{dev_id}", "last_serial") or 0
             serial = int(serial)
