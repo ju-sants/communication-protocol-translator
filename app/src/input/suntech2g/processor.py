@@ -69,7 +69,8 @@ def process_packet(packet_str: str):
         type = "heartbeat"
     
     if packet_data or type == "heartbeat":
-        utils.log_mapped_packet(packet_data, "SUNTECH2G")
+        if packet_data:
+            utils.log_mapped_packet(packet_data, "SUNTECH2G")
         
         if not serial:
             serial = redis_client.hget(f"tracker:{dev_id}", "last_serial") or 0
