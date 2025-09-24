@@ -20,12 +20,12 @@ def handle_satelite_data(raw_data: bytes):
 
         if data.get("message_type") == "heartbeat":
             logger.info(f"HeartBeat Message Received")
-            return
+            return None, None, None, None
         
         esn = data.get("ESN")
         if not esn:
             logger.info(f"Message received without ESN, dropping.")
-            return
+            return None, None, None, None
         
         logger.info(f"Parsed JSON data: {data}")
 
@@ -33,7 +33,7 @@ def handle_satelite_data(raw_data: bytes):
 
         if not hybrid_gsm_dev_id:
             logger.info("Satellite tracker without a GSM pair, dropping.")
-            return
+            return None, None, None, None
 
         last_serial, last_gsm_location_str = redis_client.hmget(f"tracker:{hybrid_gsm_dev_id}", "last_serial", "last_packet_data")
 
@@ -79,5 +79,7 @@ def handle_satelite_data(raw_data: bytes):
     
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON: {e}")
+        return None, None, None, None
     except Exception as e:
         logger.error(f"Error mapping data: {e}")
+        return None, None, None, None
