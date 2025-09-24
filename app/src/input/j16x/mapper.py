@@ -291,7 +291,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
     pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
 
-    return last_packet_data, ign_alert_packet_data
+    return packet_data, ign_alert_packet_data
 def handle_alarm_packet(dev_id_str: str, body: bytes):
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
