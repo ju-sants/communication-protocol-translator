@@ -76,7 +76,7 @@ def handle_stt_packet(fields: list, standard: str) -> dict:
         if last_altered_acc_str:
             last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
 
-        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt < packet_data.get("timestamp")):
             # Lidando com mudanças no status da ignição
             alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
             if alert_packet_data and alert_packet_data.get("universal_alert_id"):
@@ -158,7 +158,7 @@ def handle_emg_packet(fields: list, standard: str) -> dict:
         if last_altered_acc_str:
             last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
 
-        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt < packet_data.get("timestamp")):
             # Lidando com mudanças no status da ignição
             alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
             if alert_packet_data and alert_packet_data.get("universal_alert_id"):
@@ -240,7 +240,7 @@ def handle_evt_packet(fields: list, standard: str) -> dict:
         if last_altered_acc_str:
             last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
 
-        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt < packet_data.get("timestamp")):
             # Lidando com mudanças no status da ignição
             alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
             if alert_packet_data and alert_packet_data.get("universal_alert_id"):
@@ -330,7 +330,7 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
         if last_altered_acc_str:
             last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
 
-        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt < packet_data.get("timestamp")):
             # Lidando com mudanças no status da ignição
             alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
             if alert_packet_data and alert_packet_data.get("universal_alert_id"):

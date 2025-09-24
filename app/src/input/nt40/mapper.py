@@ -181,7 +181,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
         if last_altered_acc_str:
             last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
 
-        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt < packet_data.get("timestamp")):
             # Lidando com mudanças no status da ignição
             ign_alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
 

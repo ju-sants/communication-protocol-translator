@@ -54,18 +54,23 @@ def handle_stt_packet(fields: list) -> dict:
         }
 
         # Lidando com o estado da ignição, muito preciso para veículos híbridos.
-        last_altered_acc_str = redis_client.hget(f"tracker:{fields[1]}", "last_altered_acc")
-        if last_altered_acc_str:
-            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+        is_hybrid, last_altered_acc_str = redis_client.hmget(f"tracker:{fields[1]}", "is_hybrid", "last_altered_acc")
 
-        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
-            # Lidando com mudanças no status da ignição
-            alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
-            if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
+        if is_hybrid:
+            if last_altered_acc_str:
+                last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
 
+            if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt < packet_data.get("timestamp")):
+                # Lidando com mudanças no status da ignição
+                alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
+                if alert_packet_data and alert_packet_data.get("universal_alert_id"):
+                    send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
+
+                redis_data["acc_status"] = packet_data.get("acc_status")
+                redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
+        
+        else:
             redis_data["acc_status"] = packet_data.get("acc_status")
-            redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
 
         pipe = redis_client.pipeline()
         pipe.hincrby(f"tracker:{dev_id}", "total_packets_received", 1)
@@ -134,7 +139,7 @@ def handle_alt_packet(fields: list) -> dict:
         if last_altered_acc_str:
             last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
 
-        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt > packet_data.get("timestamp")):
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt < packet_data.get("timestamp")):
             # Lidando com mudanças no status da ignição
             alert_packet_data = handle_ignition_change(dev_id, copy.deepcopy(packet_data))
             if alert_packet_data and alert_packet_data.get("universal_alert_id"):
