@@ -47,6 +47,11 @@ class Settings(BaseSettings):
         "suntech2g": {
             "port": 65435,
             "handler_path": "app.src.input.suntech2g.handler.handle_connection"
+        },
+        "suntech4g": {
+            "port": 65436,
+            "handler_path": "app.src.input.suntech4g.handler.handle_connection"
+
         }
     }
 
