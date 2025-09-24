@@ -1,7 +1,7 @@
 import socket
 import struct
 
-from app.core.logger import get_logger, set_log_context
+from app.core.logger import get_logger
 from .processor import process_packet
 from app.src.session.input_sessions_manager import input_sessions_manager
 from app.services.redis_service import get_redis
@@ -18,8 +18,6 @@ def handle_connection(conn: socket.socket, addr):
     logger.info(f"Nova conexão VL01 recebida endereco={addr}")
     buffer = b''
     dev_id_session = None
-
-    set_log_context(f"addr:{addr[0]}:{addr[1]}")
 
     try:
         while True:
@@ -59,7 +57,6 @@ def handle_connection(conn: socket.socket, addr):
                         
                         if newly_logged_in_dev_id and newly_logged_in_dev_id != dev_id_session:
                             dev_id_session = newly_logged_in_dev_id
-                            set_log_context(dev_id_session)
 
                         if dev_id_session and not input_sessions_manager.exists(dev_id_session):
                             input_sessions_manager.register_tracker_client(dev_id_session, conn)
@@ -94,8 +91,6 @@ def handle_connection(conn: socket.socket, addr):
             logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}")
             input_sessions_manager.remove_tracker_client(dev_id_session)
             output_sessions_manager.delete_session(dev_id_session)
-
-        set_log_context(None)
 
         logger.info(f"Fechando conexão e thread VL01 endereco={addr}, device_id={dev_id_session}")
         try:

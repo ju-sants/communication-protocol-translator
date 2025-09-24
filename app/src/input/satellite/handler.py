@@ -1,5 +1,5 @@
 import socket
-from app.core.logger import get_logger, set_log_context
+from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from . import processor
 
@@ -16,8 +16,6 @@ def handle_connection(conn: socket.socket, addr):
     logger.info(f"New Satellite connection received address={addr}")
     buffer = b''
     esn_id = None
-
-    set_log_context(f"sat addr:{addr[0]}:{addr[1]}")
 
     try:
         while True:
@@ -47,8 +45,6 @@ def handle_connection(conn: socket.socket, addr):
             else:
                 logger.debug("No complete data packet yet.")
 
-            set_log_context(esn_id)
-
     except (ConnectionResetError, BrokenPipeError):
         logger.warning(f"Satellite connection closed abruptly address={addr}, esn_id={esn_id}")
     except Exception:
@@ -56,8 +52,6 @@ def handle_connection(conn: socket.socket, addr):
     finally:
         logger.info(f"Closing connection and Satellite thread address={addr}, esn_id={esn_id}")
 
-        set_log_context(None)
-        
         try:
             conn.shutdown(socket.SHUT_RDWR)
             conn.close()

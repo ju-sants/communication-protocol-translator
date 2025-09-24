@@ -1,5 +1,5 @@
 import socket
-from app.core.logger import get_logger, set_log_context
+from app.core.logger import get_logger
 from .processor import process_packet
 
 from app.src.session.input_sessions_manager import input_sessions_manager
@@ -17,9 +17,6 @@ def handle_connection(conn: socket.socket, addr):
     buffer = b''
     dev_id_session = None
     
-    # Define um contexto inicial para esta thread antes de ter o ID
-    set_log_context(f"addr:{addr[0]}:{addr[1]}")
-
     try:
         while True:
             data = conn.recv(1024)
@@ -52,7 +49,6 @@ def handle_connection(conn: socket.socket, addr):
                         
                         if newly_logged_in_dev_id and newly_logged_in_dev_id != dev_id_session:
                             dev_id_session = newly_logged_in_dev_id
-                            set_log_context(dev_id_session)
 
                         if dev_id_session and not input_sessions_manager.exists(dev_id_session):
                             input_sessions_manager.register_tracker_client(dev_id_session, conn)
@@ -84,8 +80,6 @@ def handle_connection(conn: socket.socket, addr):
             input_sessions_manager.remove_tracker_client(dev_id_session)
         
         logger.info(f"Fechando conexão e thread NT40 endereco={addr}")
-
-        set_log_context(None)
 
         try:
             conn.shutdown(socket.SHUT_RDWR)

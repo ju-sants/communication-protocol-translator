@@ -1,5 +1,5 @@
 import socket
-from app.core.logger import get_logger, set_log_context
+from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from .processor import process_packet
 from app.src.session.input_sessions_manager import input_sessions_manager
@@ -12,8 +12,6 @@ def handle_connection(conn: socket.socket, addr):
     logger.info(f"New connection from {addr}")
     buffer = b''
     dev_id = None
-
-    set_log_context(f"addr:{addr[0]}:{addr[1]}")
 
     try:
         while True:
@@ -35,7 +33,6 @@ def handle_connection(conn: socket.socket, addr):
                 new_dev_id = process_packet(packet_str)
                 if new_dev_id and new_dev_id != dev_id:
                     dev_id = new_dev_id
-                    set_log_context(dev_id)
                     
                 if dev_id and not input_sessions_manager.exists(dev_id):
                     input_sessions_manager.register_tracker_client(dev_id, conn)
@@ -53,8 +50,6 @@ def handle_connection(conn: socket.socket, addr):
             logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id}")
             input_sessions_manager.remove_tracker_client(dev_id)
             output_sessions_manager.delete_session(dev_id)
-
-        set_log_context(None)
 
         try:
             conn.shutdown(socket.SHUT_RDWR)
