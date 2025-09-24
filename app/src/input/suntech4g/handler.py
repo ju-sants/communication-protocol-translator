@@ -34,9 +34,9 @@ def handle_connection(conn: socket.socket, addr):
                 if new_dev_id and new_dev_id != dev_id:
                     dev_id = new_dev_id
                     
-                    if input_sessions_manager.exists(dev_id):
+                    if not input_sessions_manager.exists(dev_id):
                         input_sessions_manager.register_tracker_client(dev_id, conn)
-                        redis_client.hset(f"tracker:{dev_id}", "protocol", "suntech2g")
+                        redis_client.hset(f"tracker:{dev_id}", "protocol", "suntech4g")
 
 
     except ConnectionResetError:
