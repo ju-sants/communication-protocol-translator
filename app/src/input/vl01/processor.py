@@ -45,7 +45,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
 
     elif protocol_number == 0xA0: # Location Packet
         if dev_id_str:
-            location_packet_data, ign_alert_packet_data = mapper.handle_location_packet(dev_id_str, serial_number, content_body, packet_body.hex())
+            location_packet_data, ign_alert_packet_data = mapper.handle_location_packet(dev_id_str, serial_number, content_body)
             if location_packet_data:
                 send_to_main_server(dev_id_str, location_packet_data, serial_number, packet_body.hex(), "VL01")
             if ign_alert_packet_data:
@@ -59,7 +59,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
 
     elif protocol_number == 0x95: # Alarm Packet
         if dev_id_str:
-            alarm_packet_data = mapper.handle_alarm_packet(dev_id_str, serial_number, content_body, packet_body.hex())
+            alarm_packet_data = mapper.handle_alarm_packet(dev_id_str, serial_number, content_body)
             if alarm_packet_data:
                 send_to_main_server(dev_id_str, alarm_packet_data, serial_number, packet_body.hex(), original_protocol="VL01", type="alert")
 
@@ -71,7 +71,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
 
     elif protocol_number == 0x94: # Information Packet
         if dev_id_str:
-            mapper.handle_information_packet(dev_id_str, serial_number, content_body, packet_body.hex())
+            mapper.handle_information_packet(dev_id_str, content_body)
         else:
             logger.warning(f"Pacote de localização/alarme VL01 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
 
@@ -90,7 +90,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
     
     elif protocol_number == 0x21:
         if dev_id_str:
-            reply_command_packet_data = mapper.handle_reply_command_packet(dev_id_str, serial_number, content_body, packet_body.hex())
+            reply_command_packet_data = mapper.handle_reply_command_packet(dev_id_str, serial_number, content_body)
             if reply_command_packet_data:
                 send_to_main_server(dev_id_str, reply_command_packet_data, serial_number, packet_body.hex(), original_protocol="VL01", type="command_reply")
 

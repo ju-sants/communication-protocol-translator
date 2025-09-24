@@ -227,7 +227,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
     pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
-def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_reply_command_packet(dev_id: str, body: bytes):
     try:
         command_content = body[5:]
         command_content_str = command_content.decode("ascii", errors="ignore")
@@ -252,7 +252,7 @@ def handle_reply_command_packet(dev_id: str, serial: int, body: bytes, raw_packe
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY: {e} body={body.hex()}, dev_id={dev_id}")
 
-def handle_information_packet(dev_id: str, serial: int, body: bytes, raw_packet_hex: str):
+def handle_information_packet(dev_id: str, body: bytes):
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
         "last_event_type": "information",
