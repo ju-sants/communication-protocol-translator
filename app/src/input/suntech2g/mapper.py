@@ -91,7 +91,6 @@ def handle_stt_packet(fields: list, standard: str) -> dict:
 
         pipe.execute()
 
-        logger.info(f"STT packet mapped data: {packet_data}")
         return packet_data, serial
 
     except (ValueError, IndexError) as e:
@@ -174,7 +173,6 @@ def handle_emg_packet(fields: list, standard: str) -> dict:
         
         pipe.execute()
 
-        logger.info(f"EMG packet mapped data: {packet_data}")
         return packet_data
 
     except (ValueError, IndexError) as e:
@@ -257,7 +255,6 @@ def handle_evt_packet(fields: list, standard: str) -> dict:
 
         pipe.execute()
 
-        logger.info(f"EVT packet mapped data: {packet_data}")
         return packet_data
 
     except (ValueError, IndexError) as e:
@@ -347,8 +344,6 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
         pipe.hmset(f"tracker:{fields[1]}", redis_data)
 
         pipe.execute()
-
-        logger.info(f"ALT packet mapped data: {packet_data}")
 
         return packet_data
     except (ValueError, IndexError) as e:

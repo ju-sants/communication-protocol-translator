@@ -47,11 +47,14 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         if dev_id_str:
             packet_data, alarm_from_location_packet_data, ign_alert_packet_data = mapper.handle_location_packet(dev_id_str, serial_number, content_body, protocol_number)
             if packet_data:
+                utils.log_mapped_packet(packet_data, "NT40")
                 send_to_main_server(dev_id_str, packet_data, serial_number, packet_body.hex(), original_protocol="NT40")
+
             if alarm_from_location_packet_data and alarm_from_location_packet_data.get("universal_alert_id"):
                 send_to_main_server(dev_id_str, alarm_from_location_packet_data, serial_number, packet_body.hex(), original_protocol="NT40", type="alert")
             if ign_alert_packet_data and ign_alert_packet_data.get("universal_alert_id"):
                 send_to_main_server(dev_id_str, ign_alert_packet_data, serial_number, packet_body.hex(), original_protocol="NT40", type="alert")
+
         else:
             logger.warning(f"Pacote de localização NT40 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_to_device = None
@@ -60,6 +63,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         if dev_id_str:
             mapper.handle_heartbeat_packet(dev_id_str, serial_number, content_body)
             send_to_main_server(dev_id_str, serial=serial_number, raw_packet_hex=packet_body.hex(), original_protocol="NT40", type="heartbeat")
+
         else:
             logger.warning(f"Pacote de heartbeat NT40 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_to_device = builder.build_generic_response(protocol_number, serial_number)
@@ -68,7 +72,9 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         if dev_id_str:
             alarm_packet = mapper.handle_alarm_packet(dev_id_str, content_body)
             if alarm_packet:
+                utils.log_mapped_packet(alarm_packet, "NT40")
                 send_to_main_server(dev_id_str, alarm_packet, serial_number, packet_body.hex(), original_protocol="NT40", type="alert")
+
         else:
             logger.warning(f"Pacote de alarme NT40 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_to_device = builder.build_generic_response(protocol_number, serial_number)
@@ -77,7 +83,9 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         if dev_id_str:
             reply_packet = mapper.handle_reply_command_packet(dev_id_str, content_body)
             if reply_packet:
+                utils.log_mapped_packet(reply_packet, "NT40")
                 send_to_main_server(dev_id_str, reply_packet, serial_number, packet_body.hex(), original_protocol="NT40", type="command_reply")
+                
         else:
             logger.warning(f"Pacote de reply command NT40 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
 

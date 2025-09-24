@@ -31,7 +31,6 @@ def handle_connection(conn: socket.socket, addr):
                 buffer = buffer[packet_end_index:].lstrip(b'\r\n')
                 
                 packet_str = raw_packet.decode('ascii', errors='ignore')
-                logger.debug(f"Packet string (before processing): '{packet_str}'")
 
                 new_dev_id = process_packet(packet_str)
                 if new_dev_id and new_dev_id != dev_id:
