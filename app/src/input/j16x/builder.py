@@ -8,7 +8,7 @@ logger = get_logger(__name__)
 
 def build_generic_response(protocol_number: str, serial_number: int):
     """
-    Constrói uma resposta genérica (ACK) para o dispositivo GT06.
+    Constrói uma resposta genérica (ACK) para o dispositivo J16X.
     """
 
     # Conteúdo
@@ -33,7 +33,7 @@ def build_generic_response(protocol_number: str, serial_number: int):
 
 def build_command(command_content_str: str, serial_number: int):
     """
-    Cria comandos no padrão GT06 para envio ao dispositivo
+    Cria comandos no padrão J16X para envio ao dispositivo
     """
 
     protocol_number = 0x80
@@ -64,12 +64,12 @@ def build_command(command_content_str: str, serial_number: int):
         b'\x0d\x0a'
         )
     
-    logger.info(f"Construído comando GT06: {command_packet.hex()}")
+    logger.info(f"Construído comando J16X: {command_packet.hex()}")
 
     return command_packet
 
 def process_command(dev_id: str, serial: int, universal_command: str):
-    logger.info(f"Iniciando tradução de comando Universal para GT06 device_id={dev_id}, comando={universal_command}")
+    logger.info(f"Iniciando tradução de comando Universal para J16X device_id={dev_id}, comando={universal_command}")
 
     command_mapping = {
         "OUTPUT ON": "RELAY,1#",
@@ -92,7 +92,7 @@ def process_command(dev_id: str, serial: int, universal_command: str):
         j16x_text_command = command_mapping.get(universal_command)
 
     if not j16x_text_command:
-        logger.warning(f"Nenhum mapeamento GT06 encontrado para o comando Universal comando={universal_command}")
+        logger.warning(f"Nenhum mapeamento J16X encontrado para o comando Universal comando={universal_command}")
         return
 
     j16x_binary_command = build_command(j16x_text_command, serial)
@@ -101,8 +101,8 @@ def process_command(dev_id: str, serial: int, universal_command: str):
     if tracker_socket:
         try:
             tracker_socket.sendall(j16x_binary_command)
-            logger.info(f"Comando GT06 enviado com sucesso device_id={dev_id}, comando_hex={j16x_binary_command.hex()}")
+            logger.info(f"Comando J16X enviado com sucesso device_id={dev_id}, comando_hex={j16x_binary_command.hex()}")
         except Exception:
-            logger.exception(f"Falha ao enviar comando para o rastreador GT06 device_id={dev_id}")
+            logger.exception(f"Falha ao enviar comando para o rastreador J16X device_id={dev_id}")
     else:
-        logger.warning(f"Rastreador GT06 não está conectado. Impossível enviar comando. device_id={dev_id}")
+        logger.warning(f"Rastreador J16X não está conectado. Impossível enviar comando. device_id={dev_id}")
