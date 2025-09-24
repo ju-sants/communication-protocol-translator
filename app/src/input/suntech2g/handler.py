@@ -1,7 +1,7 @@
 import socket
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from .processor import process_packet
+from . import processor
 from app.src.session.input_sessions_manager import input_sessions_manager
 from app.src.session.output_sessions_manager import output_sessions_manager
 
@@ -30,13 +30,13 @@ def handle_connection(conn: socket.socket, addr):
                 
                 packet_str = raw_packet.decode('ascii', errors='ignore')
 
-                new_dev_id = process_packet(packet_str)
+                new_dev_id = processor.process_packet(packet_str)
                 if new_dev_id and new_dev_id != dev_id:
                     dev_id = new_dev_id
                     
-                if dev_id and not input_sessions_manager.exists(dev_id):
-                    input_sessions_manager.register_tracker_client(dev_id, conn)
-                    redis_client.hset(f"tracker:{dev_id}", "protocol", "suntech2g")
+                    if input_sessions_manager.exists(dev_id):
+                        input_sessions_manager.register_tracker_client(dev_id, conn)
+                        redis_client.hset(f"tracker:{dev_id}", "protocol", "suntech2g")
 
 
     except ConnectionResetError:
