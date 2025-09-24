@@ -1,12 +1,10 @@
 from app.core.logger import get_logger
+from app.src.session.input_sessions_manager import input_sessions_manager
 
 logger = get_logger(__name__)
 
-def build_command(dev_id: str, command: str) -> bytes:
-    """
-    Builds a command string to be sent to a Suntech device.
-    """
-    logger.info(f"Building command for dev_id={dev_id}, command={command}")
+def process_command(dev_id: str, serial: str, universal_command: str):
+    logger.info(f"Iniciando tradução de comando Universal para NT40 device_id={dev_id}, comando={universal_command}")
 
     command_mapping = {
         "OUTPUT ON": f"CMD;{dev_id};04;01",
@@ -14,20 +12,28 @@ def build_command(dev_id: str, command: str) -> bytes:
         "PING": f"CMD;{dev_id};03;01",
     }
 
-    command_str = command_mapping.get(command)
+    suntech4g_command = None
+    if universal_command.startswith("HODOMETRO"):
+        meters = universal_command.split(":")[-1]
+        if not meters.isdigit():
+            logger.info(f"Comando com metragem incorreta: {universal_command}")
+            return
+        
+        suntech4g_command = f"CMD;{dev_id};05;03;{meters}"
     
-    if command and command.startswith("HODOMETRO"):
-        try:
-            hodometro_value = command.split(":")[1]
-            command_str = f"CMD;{dev_id};05;03;{hodometro_value}"
-        except IndexError:
-            logger.error("HODOMETRO command is not correctly formatted")
-            return None
-
-
-    if command_str:
-        logger.info(f"Built command: {command_str}")
-        return command_str.encode('ascii') + b'\r'
     else:
-        logger.warning(f"Unknown command: {command}")
-        return None
+        suntech4g_command = command_mapping.get(universal_command)
+
+    if not suntech4g_command:
+        logger.warning(f"Nenhum mapeamento Suntech4g encontrado para o comando Universal comando={universal_command}")
+        return
+
+    tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
+    if tracker_socket:
+        try:
+            tracker_socket.sendall(suntech4g_command.encode('ascii') + b"\r")
+            logger.info(f"Comando Suntech4g enviado com sucesso device_id={dev_id}, comando='{suntech4g_command}'")
+        except Exception as e:
+            logger.error(f"Erro ao enviar comando Suntech4g device_id={dev_id}, comando='{suntech4g_command}': {e}")
+    else:
+        logger.warning(f"Nenhum socket encontrado para o dispositivo Suntech4g device_id={dev_id}. Comando não enviado.")
