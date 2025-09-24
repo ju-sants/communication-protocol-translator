@@ -37,26 +37,13 @@ def process_packet(packet_str: str):
         logger.info("Location packet (STT) received.")
         packet_data, serial = mapper.handle_stt_packet(fields)
         type = "location"
-    else:
-        print(packet_str)
-        return
     
     if hdr == "ALT":
         logger.info("Alert packet (ALT) received.")
         packet_data = mapper.handle_alt_packet(fields)
         type = "alert"
 
-    elif hdr == "EMG":
-        logger.info("Emergency packet (EMG) received.")
-        packet_data = mapper.handle_emg_packet(fields)
-        type = "location"
-
-    elif hdr == "EVT":
-        logger.info("Event packet (EVT) received.")
-        packet_data = mapper.handle_evt_packet(fields)
-        type = "alert"
-
-    elif hdr == "CMD":
+    elif hdr == "RES":
         logger.info("Command response packet (CMD) received.")
         packet_data = mapper.handle_reply_packet(fields)
         type = "command_reply"
