@@ -107,7 +107,7 @@ def handle_alt_packet(fields: list) -> dict:
                 "gps_odometer": int(fields[23])
             }
 
-            suntech4g_alert_id = fields[16]
+            suntech4g_alert_id = int(fields[16])
 
 
         # Mapeamento de IDs de Alerta
