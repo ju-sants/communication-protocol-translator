@@ -20,9 +20,7 @@ def process_command(dev_id: str, serial: str, universal_command: str):
             logger.info(f"Comando com metragem incorreta: {universal_command}")
             return
         
-        kilometers = int(meters) / 1000
-
-        suntech2g_command = f"SetOdometer={kilometers:.1f}"
+        suntech2g_command = f"SetOdometer={meters}"
     
     else:
         suntech2g_command = command_mapping.get(universal_command)
