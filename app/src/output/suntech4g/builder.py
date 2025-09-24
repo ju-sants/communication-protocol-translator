@@ -34,7 +34,7 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     voltage_stored = packet_data.get("voltage_stored")
 
     # Condição para híbridos
-    if redis_client.hget(f"tracker:{dev_id}", "hybrid_id") and universal_alert_id in (6533, 6533):
+    if redis_client.hget(f"tracker:{dev_id}", "hybrid_id") and universal_alert_id in (6533, 6534):
         logger.info(f"Alerta de ignição para híbridos é gerenciada pelo servidor tradutor. dev_id={dev_id}")
         return b""
 
