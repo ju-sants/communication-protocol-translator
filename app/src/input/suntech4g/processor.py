@@ -54,15 +54,15 @@ def process_packet(packet_str: str):
     
     if packet_data or type == "heartbeat":
         if packet_data:
-            utils.log_mapped_packet(packet_data, "SUNTECH2G")
+            utils.log_mapped_packet(packet_data, "SUNTECH4G")
         
         if not serial:
             serial = redis_client.hget(f"tracker:{dev_id}", "last_serial") or 0
             serial = int(serial)
 
         if type == "heartbeat":
-            send_to_main_server(dev_id, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech2g", type=type)
+            send_to_main_server(dev_id, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech4g", type=type)
         else:
-            send_to_main_server(dev_id, packet_data=packet_data, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech2g", type=type)
+            send_to_main_server(dev_id, packet_data=packet_data, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech4g", type=type)
 
     return dev_id
