@@ -35,14 +35,20 @@ def process_packet(packet_str: str):
     serial = 0
     if hdr == "STT":
         logger.info("Location packet (STT) received.")
-        packet_data, serial = mapper.handle_stt_packet(fields)
+        packet_data, ign_alert_packet_data, serial = mapper.handle_stt_packet(fields)
         type = "location"
+
+        if ign_alert_packet_data:
+            send_to_main_server(dev_id, ign_alert_packet_data, serial, packet_str, "SUNTECH4G", "alert")
     
     if hdr == "ALT":
         logger.info("Alert packet (ALT) received.")
-        packet_data = mapper.handle_alt_packet(fields)
+        packet_data, ign_alert_packet_data = mapper.handle_alt_packet(fields)
         type = "alert"
 
+        if ign_alert_packet_data:
+            send_to_main_server(dev_id, ign_alert_packet_data, serial, packet_str, "SUNTECH4G", "alert")
+            
     elif hdr == "RES":
         logger.info("Command response packet (CMD) received.")
         packet_data = mapper.handle_reply_packet(fields)
