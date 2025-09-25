@@ -225,7 +225,7 @@ def build_heartbeat_packet(dev_id: str, *args) -> bytes:
     return full_packet
 
 
-def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args) -> bytes:
+def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args, managed_alert: bool = False) -> bytes:
     """
     Constrói um pacote de alarme GT06 a partir dos dados em packet_data.
     O pacote de alarme é um pacote de localização com informações de status adicionais.
@@ -233,9 +233,10 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
 
     # Condição para híbridos
     universal_alert_id = packet_data.get("universal_alert_id")
-    if redis_client.hget(f"tracker:{dev_id}", "hybrid_id") and universal_alert_id in (6533, 6534):
-        logger.info(f"Alerta de ignição para híbridos é gerenciada pelo servidor tradutor. dev_id={dev_id}")
-        return b""
+    if not managed_alert:
+        if redis_client.hget(f"tracker:{dev_id}", "hybrid_id") and universal_alert_id in (6533, 6534):
+            logger.info(f"Alerta de ignição para híbridos é gerenciada pelo servidor tradutor. dev_id={dev_id}")
+            return b""
     
     protocol_number = 0x16
 

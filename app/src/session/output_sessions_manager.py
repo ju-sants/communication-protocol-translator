@@ -274,7 +274,8 @@ output_sessions_manager = OutputSessionsManager()
 def send_to_main_server(
         dev_id: str, packet_data: dict = None, serial: str = None, 
         raw_packet_hex: str = None, original_protocol: str = None, 
-        type: str = "location"
+        type: str = "location",
+        managed_alert: bool = False
     ):
     """
     Executa lógica de construção de pacotes se o mesmo não for fornecido, com base no protocolo de saída do dispositivo e o tipo de pacote especificado.
@@ -292,7 +293,11 @@ def send_to_main_server(
     
     
     output_packet_builder = output_protocol_settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get(type)
-    output_packet = output_packet_builder(dev_id, packet_data, serial, type)
+
+    if not managed_alert:
+        output_packet = output_packet_builder(dev_id, packet_data, serial, type)
+    else:
+        output_packet = output_packet_builder(dev_id, packet_data, serial, type, managed_alert=managed_alert)
 
     # Lógica de envios
     if output_packet:

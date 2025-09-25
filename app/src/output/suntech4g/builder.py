@@ -23,7 +23,7 @@ def build_login_packet(dev_id_str: str) -> bytes:
     logger.info(f"Construído pacote de apresentação MNT, pacote={packet_str}")
     return packet_str.encode('ascii')
 
-def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, type: str) -> bytes:
+def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, type: str, managed_alert: bool = False) -> bytes:
     """Função central para construir pacotes Suntech STT e ALT, agora com suporte a ID de geocerca."""
     
     hdr = "STT" if type == "location" else "ALT" if type == "alert" else ""
@@ -34,9 +34,10 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     voltage_stored = packet_data.get("voltage_stored")
 
     # Condição para híbridos
-    if redis_client.hget(f"tracker:{dev_id}", "hybrid_id") and universal_alert_id in (6533, 6534):
-        logger.info(f"Alerta de ignição para híbridos é gerenciada pelo servidor tradutor. dev_id={dev_id}")
-        return b""
+    if not managed_alert:
+        if redis_client.hget(f"tracker:{dev_id}", "hybrid_id") and universal_alert_id in (6533, 6534):
+            logger.info(f"Alerta de ignição para híbridos é gerenciada pelo servidor tradutor. dev_id={dev_id}")
+            return b""
 
     logger.debug(
         f"Construindo pacote Suntech: HDR={hdr}, DevID={dev_id}, Realtime={is_realtime}, "
