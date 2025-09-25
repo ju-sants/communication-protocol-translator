@@ -59,7 +59,7 @@ def handle_satelite_data(raw_data: bytes):
         if last_altered_acc_str:
             last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
 
-        if not last_altered_acc_str or (last_hybrid_location.get("timestamp") and last_altered_acc_dt > last_hybrid_location.get("timestamp")):
+        if not last_altered_acc_str or (last_hybrid_location.get("timestamp") and last_altered_acc_dt < last_hybrid_location.get("timestamp")):
             # Lidando com mudanças no status da ignição
             ign_alert_packet_data = handle_ignition_change(hybrid_gsm_dev_id, copy.deepcopy(last_hybrid_location))
 
