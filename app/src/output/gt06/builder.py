@@ -299,7 +299,7 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
     alarm_id = settings.REVERSE_UNIVERSAL_ALERT_ID_DICTIONARY.get("vl01").get(universal_alert_id)
 
     if not alarm_id:
-        logger.info(f"Impossível continuar, alarme id não encontrado para dev_id={dev_id}")
+        logger.info(f"Impossível continuar, alarme id não encontrado para dev_id={dev_id}, universal_alert_id={universal_alert_id}")
         return
      
     language = 0x02
