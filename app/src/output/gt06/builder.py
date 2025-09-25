@@ -277,7 +277,7 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
 
     # Montando início do pacote
                                 # LBS Content
-    content_body = gps_content + (b"\x00" * 8)
+    content_body = gps_content + (b"\x00" * 9)
 
     redis_data = redis_client.hmget(f"tracker:{dev_id}", "last_output_status", "acc_status")
     output_status = redis_data[0] if redis_data[0] else "0"
