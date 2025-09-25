@@ -4,7 +4,6 @@ import copy
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from app.src.session.output_sessions_manager import send_to_main_server
 from ..utils import handle_ignition_change
 
 logger = get_logger(__name__)
