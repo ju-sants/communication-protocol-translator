@@ -50,7 +50,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
                 send_to_main_server(dev_id_str, location_packet_data, serial_number, packet_body.hex(), "J16X")
 
             if ign_alert_packet_data:
-                send_to_main_server(dev_id_str, ign_alert_packet_data, serial_number, packet_body.hex(), "J16X", "alert")
+                send_to_main_server(dev_id_str, ign_alert_packet_data, serial_number, packet_body.hex(), "J16X", "alert", True)
                 
         else:
             logger.warning(f"Pacote de localização J16X recebido antes do login. Ignorando. pacote={packet_body.hex()}")

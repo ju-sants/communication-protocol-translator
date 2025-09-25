@@ -39,7 +39,7 @@ def process_packet(packet_str: str):
         type = "location"
 
         if ign_alert_packet_data:
-            send_to_main_server(dev_id, ign_alert_packet_data, serial, packet_str, "SUNTECH4G", "alert")
+            send_to_main_server(dev_id, ign_alert_packet_data, serial, packet_str, "SUNTECH4G", "alert", True)
     
     if hdr == "ALT":
         logger.info("Alert packet (ALT) received.")
@@ -47,7 +47,7 @@ def process_packet(packet_str: str):
         type = "alert"
 
         if ign_alert_packet_data:
-            send_to_main_server(dev_id, ign_alert_packet_data, serial, packet_str, "SUNTECH4G", "alert")
+            send_to_main_server(dev_id, ign_alert_packet_data, serial, packet_str, "SUNTECH4G", "alert", True)
             
     elif hdr == "RES":
         logger.info("Command response packet (CMD) received.")

@@ -53,7 +53,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
             if alarm_from_location_packet_data and alarm_from_location_packet_data.get("universal_alert_id"):
                 send_to_main_server(dev_id_str, alarm_from_location_packet_data, serial_number, packet_body.hex(), original_protocol="NT40", type="alert")
             if ign_alert_packet_data and ign_alert_packet_data.get("universal_alert_id"):
-                send_to_main_server(dev_id_str, ign_alert_packet_data, serial_number, packet_body.hex(), original_protocol="NT40", type="alert")
+                send_to_main_server(dev_id_str, ign_alert_packet_data, serial_number, packet_body.hex(), original_protocol="NT40", type="alert", managed_alert=True)
 
         else:
             logger.warning(f"Pacote de localização NT40 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
