@@ -43,7 +43,7 @@ def handle_satelite_data(raw_data: bytes):
         last_hybrid_location["voltage"] = 2.22
         last_hybrid_location["satellites"] = 2
         last_hybrid_location["timestamp"] = datetime.fromisoformat(data.get("timestamp"))
-        last_gsm_location["is_realtime"] = False
+        last_hybrid_location["is_realtime"] = False
         last_hybrid_location["device_type"] = "satellital"
 
         redis_data = {
