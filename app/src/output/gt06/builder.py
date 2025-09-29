@@ -286,9 +286,6 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
     gps_tracking = 1
     charge = 1
 
-    terminal_info_byte = (int(output_status) << 7) | (gps_tracking << 6) | (charge << 2) | (int(acc) << 1) | 1
-    terminal_info_bytes = struct.pack(">B", terminal_info_byte)
-
     voltage_level = 6
     voltage_level_bytes = struct.pack(">B", voltage_level)
 
@@ -301,7 +298,10 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
     if not alarm_id:
         logger.info(f"Impossível continuar, alarme id não encontrado para dev_id={dev_id}, universal_alert_id={universal_alert_id}")
         return
-     
+    
+    terminal_info_byte = (int(output_status) << 7) | (gps_tracking << 6) | (0b10 << 3) if alarm_id == 0x02 else 0 | (charge << 2) | (int(acc) << 1) | 1
+    terminal_info_bytes = struct.pack(">B", terminal_info_byte)
+
     language = 0x02
     alarm_language_bytes = struct.pack(">BB", alarm_id, language)
     
