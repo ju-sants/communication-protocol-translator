@@ -80,7 +80,7 @@ def handle_stt_packet(fields: list, standard: str) -> dict:
             # Lidando com mudanças no status da ignição
             alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
             if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
+                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert", managed_alert=True)
 
             redis_data["acc_status"] = packet_data.get("acc_status")
             redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
@@ -162,7 +162,7 @@ def handle_emg_packet(fields: list, standard: str) -> dict:
             # Lidando com mudanças no status da ignição
             alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
             if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
+                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert", managed_alert=True)
 
             redis_data["acc_status"] = packet_data.get("acc_status")
             redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
@@ -244,7 +244,7 @@ def handle_evt_packet(fields: list, standard: str) -> dict:
             # Lidando com mudanças no status da ignição
             alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
             if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
+                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert", managed_alert=True)
 
             redis_data["acc_status"] = packet_data.get("acc_status")
             redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
@@ -334,7 +334,7 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
             # Lidando com mudanças no status da ignição
             alert_packet_data = handle_ignition_change(fields[1], copy.deepcopy(packet_data))
             if alert_packet_data and alert_packet_data.get("universal_alert_id"):
-                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert")
+                send_to_main_server(fields[1], packet_data=alert_packet_data, serial=0, raw_packet_hex=";".join(fields), original_protocol="suntech2g", type="alert", managed_alert=True)
 
             redis_data["acc_status"] = packet_data.get("acc_status")
             redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
