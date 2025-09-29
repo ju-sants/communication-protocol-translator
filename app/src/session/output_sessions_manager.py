@@ -319,3 +319,10 @@ def send_to_main_server(
         
         session = output_sessions_manager.get_session(dev_id, serial, output_protocol)
         session.send(output_packet, output_protocol, packet_data)
+
+        # Heartbeats para GT06
+        if output_protocol == 'gt06':
+            heartbeat_packet_builder = output_protocol_settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get('heartbeat')
+            heartbeat_packet = heartbeat_packet_builder(dev_id, packet_data, serial)
+
+            session.send(heartbeat_packet, output_protocol, None)
