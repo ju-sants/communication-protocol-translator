@@ -48,9 +48,10 @@ def handle_connection(conn: socket.socket, addr):
         logger.error(f"Error in connection with {addr}: {e}", tracker_id="SERVIDOR")
     finally:
         if dev_id:
-            logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id}", tracker_id="SERVIDOR")
-            input_sessions_manager.remove_tracker_client(dev_id)
-            output_sessions_manager.delete_session(dev_id)
+            with logger.contextualize(tracker_id=dev_id):
+                logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id}", tracker_id="SERVIDOR")
+                input_sessions_manager.remove_tracker_client(dev_id)
+                output_sessions_manager.delete_session(dev_id)
 
         try:
             conn.shutdown(socket.SHUT_RDWR)

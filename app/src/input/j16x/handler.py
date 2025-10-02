@@ -76,9 +76,10 @@ def handle_connection(conn: socket.socket, addr):
     finally:
         logger.debug(f"[DIAGNOSTIC] Entering finally block for J16X handler (addr={addr}, dev_id={dev_id_session}", tracker_id="SERVIDOR")
         if dev_id_session:
-            logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}", tracker_id="SERVIDOR")
-            output_sessions_manager.delete_session(dev_id_session)
-            input_sessions_manager.remove_tracker_client(dev_id_session)
+            with logger.contextualize(tracker_id=dev_id_session):
+                logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}", tracker_id="SERVIDOR")
+                output_sessions_manager.delete_session(dev_id_session)
+                input_sessions_manager.remove_tracker_client(dev_id_session)
         
         logger.info(f"Fechando conexão e thread J16X endereco={addr}, device_id={dev_id_session}", tracker_id="SERVIDOR")
 

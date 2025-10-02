@@ -76,9 +76,10 @@ def handle_connection(conn: socket.socket, addr):
     finally:
         logger.debug(f"[DIAGNOSTIC] Entering finally block for NT40 handler (addr={addr}).", tracker_id="SERVIDOR")
         if dev_id_session:
-            logger.info(f"Deletando Sessões em ambos os lados para esse rastreador", tracker_id="SERVIDOR")
-            output_sessions_manager.delete_session(dev_id_session)
-            input_sessions_manager.remove_tracker_client(dev_id_session)
+            with logger.contextualize(tracker_id=dev_id_session):
+                logger.info(f"Deletando Sessões em ambos os lados para esse rastreador", tracker_id="SERVIDOR")
+                output_sessions_manager.delete_session(dev_id_session)
+                input_sessions_manager.remove_tracker_client(dev_id_session)
         
         logger.info(f"Fechando conexão e thread NT40 endereco={addr}", tracker_id="SERVIDOR")
 
