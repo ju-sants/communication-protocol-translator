@@ -86,69 +86,70 @@ class MainServerSession:
 
     def _reader_loop(self):
         while self._is_connected:
-            try:
-                if not self.sock:
-                    logger.warning(f"Socket is None, exiting reader loop for device_id={self.dev_id}")
-                    break
+            with logger.contextualize(tracker_id=self.dev_id):
+                try:
+                    if not self.sock:
+                        logger.warning(f"Socket is None, exiting reader loop for device_id={self.dev_id}")
+                        break
 
-                data = self.sock.recv(1024)
-                if not data:
-                    logger.warning(f"Conexão fechada pelo servidor principal (recv vazio) device_id={self.dev_id}")
+                    data = self.sock.recv(1024)
+                    if not data:
+                        logger.warning(f"Conexão fechada pelo servidor principal (recv vazio) device_id={self.dev_id}")
+                        self.disconnect()
+                        break
+                    
+                    # Lida com resposta do servidor para pacotes de login
+                    if self._is_gt06_login_step:
+                        self.handle_gt06_login(data)
+                        continue
+                    
+                    device_info = redis_client.hgetall(f"tracker:{self.dev_id}")
+                    protocol_type = device_info.get("protocol")
+                    output_protocol = device_info.get("output_protocol")
+
+                    if not protocol_type:
+                        logger.error(f"Protocolo não encontrado no Redis para o device_id={self.dev_id}. Impossível traduzir comando. dev_id={self.dev_id}")
+                        continue
+
+                    mapper_func = output_protocol_settings.OUTPUT_PROTOCOL_COMMAND_MAPPERS.get(output_protocol)
+                    if not mapper_func:
+                        logger.error(f"Mapeador de comandos universais para o protocolo de saida '{str(output_protocol).upper()}' não encontrado. dev_id={self.dev_id}")
+                        return
+                    
+                    universal_command = mapper_func(self.dev_id, data)
+                    if not universal_command:
+                        logger.error(f"Comando universal não encontrado, output_protocol={self.output_protocol}, dev_id={self.dev_id}")
+                        return
+                    
+                    target_module = importlib.import_module(f"app.src.input.{protocol_type}.builder")
+                    processor_func = getattr(target_module, "process_command")
+
+                    if not processor_func:
+                        logger.error(f"Processador de comando para o protocolo '{str(protocol_type).upper()}' com o protocolo de saida '{str(output_protocol).upper()}' não encontrado.")
+                        continue
+
+                    logger.info(f"Roteando comando para o processador do protocolo: '{str(protocol_type).upper()}' com protocolo de saida '{str(output_protocol).upper()}'")
+                    processor_func(self.dev_id, self.serial, universal_command)
+
+
+                except socket.timeout:
+                    continue
+                
+                except (ConnectionResetError, BrokenPipeError):
+                    logger.warning(f"Conexão com servidor principal resetada (reader) device_id={self.dev_id}")
                     self.disconnect()
                     break
-                
-                # Lida com resposta do servidor para pacotes de login
-                if self._is_gt06_login_step:
-                    self.handle_gt06_login(data)
-                    continue
-                
-                device_info = redis_client.hgetall(f"tracker:{self.dev_id}")
-                protocol_type = device_info.get("protocol")
-                output_protocol = device_info.get("output_protocol")
-
-                if not protocol_type:
-                    logger.error(f"Protocolo não encontrado no Redis para o device_id={self.dev_id}. Impossível traduzir comando. dev_id={self.dev_id}")
-                    continue
-
-                mapper_func = output_protocol_settings.OUTPUT_PROTOCOL_COMMAND_MAPPERS.get(output_protocol)
-                if not mapper_func:
-                    logger.error(f"Mapeador de comandos universais para o protocolo de saida '{str(output_protocol).upper()}' não encontrado. dev_id={self.dev_id}")
-                    return
-                
-                universal_command = mapper_func(self.dev_id, data)
-                if not universal_command:
-                    logger.error(f"Comando universal não encontrado, output_protocol={self.output_protocol}, dev_id={self.dev_id}")
-                    return
-                
-                target_module = importlib.import_module(f"app.src.input.{protocol_type}.builder")
-                processor_func = getattr(target_module, "process_command")
-
-                if not processor_func:
-                    logger.error(f"Processador de comando para o protocolo '{str(protocol_type).upper()}' com o protocolo de saida '{str(output_protocol).upper()}' não encontrado.")
-                    continue
-
-                logger.info(f"Roteando comando para o processador do protocolo: '{str(protocol_type).upper()}' com protocolo de saida '{str(output_protocol).upper()}'")
-                processor_func(self.dev_id, self.serial, universal_command)
-
-
-            except socket.timeout:
-                continue
-            
-            except (ConnectionResetError, BrokenPipeError):
-                logger.warning(f"Conexão com servidor principal resetada (reader) device_id={self.dev_id}")
-                self.disconnect()
-                break
-            except OSError as e:
-                if e.errno == 9:
-                    logger.warning(f"Caught 'Bad file descriptor' for device_id={self.dev_id}. Socket was likely closed.")
-                else:
-                    logger.exception(f"Caught OSError in reader thread for device_id={self.dev_id}: {e}")
-                self.disconnect()
-                break
-            except Exception as e:
-                logger.exception(f"Unexpected error in reader thread for device_id={self.dev_id}: {e}")
-                self.disconnect()
-                break
+                except OSError as e:
+                    if e.errno == 9:
+                        logger.warning(f"Caught 'Bad file descriptor' for device_id={self.dev_id}. Socket was likely closed.")
+                    else:
+                        logger.exception(f"Caught OSError in reader thread for device_id={self.dev_id}: {e}")
+                    self.disconnect()
+                    break
+                except Exception as e:
+                    logger.exception(f"Unexpected error in reader thread for device_id={self.dev_id}: {e}")
+                    self.disconnect()
+                    break
     
     def send(self, packet: bytes, current_output_protocol: str = None, packet_data: dict = None):
         with self.lock:
