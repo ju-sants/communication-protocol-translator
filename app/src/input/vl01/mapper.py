@@ -92,6 +92,7 @@ def _decode_alarm_location_packet(body: bytes):
     data["direction"] = course_status & 0x03FF
      
     return data
+
 def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
     packet_data = _decode_location_packet(body)
 
@@ -249,6 +250,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
     pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
     pipeline.execute()
+
 def handle_reply_command_packet(dev_id: str, body: bytes):
     try:
         command_content = body[5:]

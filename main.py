@@ -15,14 +15,14 @@ def start_listener(port: int, handler_func):
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind(('', port))
         server_socket.listen(10000)
-        logger.info(f"✅ Protocol listener iniciado com sucesso na porta {port}")
+        logger.info(f"✅ Protocol listener iniciado com sucesso na porta {port}", tracker_id="SERVIDOR")
 
         while True:
             conn, addr = server_socket.accept()
             thread = threading.Thread(target=handler_func, args=(conn, addr), daemon=True)
             thread.start()
     except Exception as e:
-        logger.critical(f"❌ Falha ao iniciar listener na porta {port} error={e}")
+        logger.critical(f"❌ Falha ao iniciar listener na porta {port} error={e}", tracker_id="SERVIDOR")
 
 def run_flask_app():
     from app.api import create_app
@@ -30,18 +30,18 @@ def run_flask_app():
     app.run(host='::', port=5000)
 
 def main():
-    logger.info("Iniciando Servidor Tradutor...")
+    logger.info("Iniciando Servidor Tradutor...", tracker_id="SERVIDOR")
 
     # Iniciar API Flask em uma thread separada
     flask_thread = threading.Thread(target=run_flask_app, daemon=True)
     flask_thread.start()
-    logger.info("✅ Servidor Flask iniciado em http://0.0.0.0:5000")
+    logger.info("✅ Servidor Flask iniciado em http://0.0.0.0:5000", tracker_id="SERVIDOR")
     
     for protocol_name, config in settings.INPUT_PROTOCOL_HANDLERS.items():
         try:
             port = config['port']
             module_path, func_name = config['handler_path'].rsplit('.', 1)
-            logger.info(f"Config: port={port}, handler_path={config['handler_path']}, module_path={module_path}, func_name={func_name}")
+            logger.info(f"Config: port={port}, handler_path={config['handler_path']}, module_path={module_path}, func_name={func_name}", tracker_id="SERVIDOR")
             
             # Importa dinamicamente a função de handler
             module = importlib.import_module(module_path)
@@ -53,22 +53,22 @@ def main():
                 daemon=True
             )
             listener_thread.start()
-            logger.info(f"Thread para protocolo '{protocol_name}' iniciada.")
+            logger.info(f"Thread para protocolo '{protocol_name}' iniciada.", tracker_id="SERVIDOR")
             
         except (ImportError, AttributeError) as e:
             import traceback
 
-            logger.error(f"Não foi possível carregar o handler para o protocolo '{protocol_name}' error={e}")
-            logger.error(f"Traceback: \n{traceback.format_exc()}")
+            logger.error(f"Não foi possível carregar o handler para o protocolo '{protocol_name}' error={e}", tracker_id="SERVIDOR")
+            logger.error(f"Traceback: \n{traceback.format_exc()}", tracker_id="SERVIDOR")
         except KeyError as e:
-            logger.error(f"Configuração inválida para o protocolo '{protocol_name}' missing_key={str(e)}")
+            logger.error(f"Configuração inválida para o protocolo '{protocol_name}' missing_key={str(e)}", tracker_id="SERVIDOR")
 
     # Mantém a thread principal viva
     try:
         while True:
             threading.Event().wait(60) # Espera para não consumir CPU
     except KeyboardInterrupt:
-        logger.info("Servidor sendo desligado...")
+        logger.info("Servidor sendo desligado...", tracker_id="SERVIDOR")
 
 if __name__ == "__main__":
     main()

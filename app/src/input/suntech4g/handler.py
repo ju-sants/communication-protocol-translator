@@ -9,45 +9,46 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 def handle_connection(conn: socket.socket, addr):
-    logger.info(f"New connection from {addr}")
+    logger.info(f"New connection from {addr}", tracker_id="SERVIDOR")
     buffer = b''
     dev_id = None
 
     try:
         while True:
-            data = conn.recv(1024)
-            if not data:
-                logger.info(f"Connection with {addr} closed by client.")
-                break
+            with logger.contextualize(tracker_id=dev_id):
+                data = conn.recv(1024)
+                if not data:
+                    logger.info(f"Connection with {addr} closed by client.")
+                    break
 
-            logger.debug(f"Raw data received: {data}")
-            buffer += data
+                logger.debug(f"Raw data received: {data}")
+                buffer += data
 
-            while b'\r' in buffer:
-                packet_end_index = buffer.find(b'\r')
-                raw_packet = buffer[:packet_end_index]
-                buffer = buffer[packet_end_index:].lstrip(b'\r\n')
-                
-                packet_str = raw_packet.decode('ascii', errors='ignore')
-
-                new_dev_id = processor.process_packet(packet_str)
-                if new_dev_id and new_dev_id != dev_id:
-                    dev_id = new_dev_id
+                while b'\r' in buffer:
+                    packet_end_index = buffer.find(b'\r')
+                    raw_packet = buffer[:packet_end_index]
+                    buffer = buffer[packet_end_index:].lstrip(b'\r\n')
                     
-                    if not input_sessions_manager.exists(dev_id):
-                        input_sessions_manager.register_tracker_client(dev_id, conn)
-                        redis_client.hset(f"tracker:{dev_id}", "protocol", "suntech4g")
+                    packet_str = raw_packet.decode('ascii', errors='ignore')
+
+                    new_dev_id = processor.process_packet(packet_str)
+                    if new_dev_id and new_dev_id != dev_id:
+                        dev_id = new_dev_id
+                        
+                        if not input_sessions_manager.exists(dev_id):
+                            input_sessions_manager.register_tracker_client(dev_id, conn)
+                            redis_client.hset(f"tracker:{dev_id}", "protocol", "suntech4g")
 
 
     except ConnectionResetError:
-        logger.warning(f"Connection with {addr} was reset.")
+        logger.warning(f"Connection with {addr} was reset.", tracker_id="SERVIDOR")
     except Exception as e:
         import traceback
         traceback.print_exc()
-        logger.error(f"Error in connection with {addr}: {e}")
+        logger.error(f"Error in connection with {addr}: {e}", tracker_id="SERVIDOR")
     finally:
         if dev_id:
-            logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id}")
+            logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id}", tracker_id="SERVIDOR")
             input_sessions_manager.remove_tracker_client(dev_id)
             output_sessions_manager.delete_session(dev_id)
 
@@ -56,4 +57,4 @@ def handle_connection(conn: socket.socket, addr):
             conn.close()
             conn = None
         except Exception as e:
-            logger.error(f"Impossible to shutdown connection with {addr}: {e}")
+            logger.error(f"Impossible to shutdown connection with {addr}: {e}", tracker_id="SERVIDOR")
