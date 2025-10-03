@@ -121,6 +121,8 @@ class MainServerSession:
                         logger.error(f"Comando universal não encontrado, output_protocol={self.output_protocol}, dev_id={self.dev_id}")
                         return
                     
+                    redis_client.hset(f"tracker:{self.dev_id}", "last_command", universal_command)
+                    
                     target_module = importlib.import_module(f"app.src.input.{protocol_type}.builder")
                     processor_func = getattr(target_module, "process_command")
 
