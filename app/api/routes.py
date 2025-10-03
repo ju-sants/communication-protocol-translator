@@ -42,6 +42,7 @@ def get_gateway_info():
         return jsonify(info)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
 @app.route('/trackers', methods=['GET'])
 def get_trackers_data_efficiently():
     try:
