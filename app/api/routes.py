@@ -46,24 +46,16 @@ def get_gateway_info():
 @app.route('/trackers', methods=['GET'])
 def get_trackers_data_efficiently():
     try:
-        page = int(request.args.get('page', 1))
-        limit = int(request.args.get('limit', 100))
-        offset = (page - 1) * limit
-
         ignored_keys = {"global_data", "universal_data", "SAT_GSM_MAPPING"}
         
         keys_to_fetch = []
-        scanner = redis_client.scan_iter('tracker:*', count=1000) 
-        
+        keys = list(redis_client.scan_iter('tracker:*', count=1000) )
         processed_count = 0
-        for key in scanner:
+        for key in keys:
             if key in ignored_keys:
                 continue
             
-            if processed_count >= offset:
-                keys_to_fetch.append(key)
-                if len(keys_to_fetch) == limit:
-                    break 
+            keys_to_fetch.append(key)
 
             processed_count += 1
 
