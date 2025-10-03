@@ -30,6 +30,7 @@ def handle_connection(conn: socket.socket, addr):
                     buffer = buffer[packet_end_index:].lstrip(b'\r\n')
                     
                     packet_str = raw_packet.decode('ascii', errors='ignore')
+                    logger.info(f"Recebido pacote SUNTECH4G: {packet_str}")
 
                     new_dev_id = processor.process_packet(packet_str)
                     if new_dev_id and new_dev_id != dev_id:
