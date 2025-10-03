@@ -97,7 +97,7 @@ def build_location_packet(dev_id, packet_data: dict, serial_number: int, *args) 
 
     elif protocol_number == 0xA0:
         content_body += struct.pack(">H", mcc)
-        if (mcc > 15) == 1:
+        if (mcc >> 15) == 1:
             content_body += struct.pack(">H", mnc)
         else:
             content_body += struct.pack(">B", mnc)
