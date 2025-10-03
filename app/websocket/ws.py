@@ -45,6 +45,7 @@ class LogStreamer(WebSocket):
             return
 
         cmd = [
+            "sudo",
             "journalctl", 
             "-f", 
             "-u", "gateway-rastreadores.service",
