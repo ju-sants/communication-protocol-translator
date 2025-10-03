@@ -17,12 +17,13 @@ def log_mapped_packet(mapped_data: dict, protocol_name: str):
     header = f"--- Pacote {protocol_name.upper()} Mapeado ---"
     footer = "-" * len(header)
     
-    log_parts = [header]
-    for key, value in mapped_data.items():
-        log_parts.append(f"  - {key}: {value}")
-    log_parts.append(footer)
+    logger.info(header)
     
-    logger.info("\n" + "\n".join(log_parts))
+    for key, value in mapped_data.items():
+        logger.info(f"  - {key}: {value}")
+
+    logger.info(footer)
+    
 
 def crc_itu(data_bytes: bytes) -> int:
     config = Configuration(
