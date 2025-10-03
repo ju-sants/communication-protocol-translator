@@ -24,10 +24,10 @@ class Settings(BaseSettings):
 
     # --- Módulos de Protocolo a serem Carregados ---
     INPUT_PROTOCOL_HANDLERS: Dict[str, Dict[str, Any]] = {
-        # "jt808": {
-        #     "port": 65430,
-        #     "handler_path": "app.src.input.jt808.handler.handle_connection"
-        # },
+        "j16-j16w": {
+            "port": 65430,
+            "handler_path": "app.src.input.j16-j16w.handler.handle_connection"
+        },
         "j16x": {
             "port": 65431,
             "handler_path": "app.src.input.j16x.handler.handle_connection"
@@ -51,7 +51,6 @@ class Settings(BaseSettings):
         "suntech4g": {
             "port": 65436,
             "handler_path": "app.src.input.suntech4g.handler.handle_connection"
-
         }
     }
 
