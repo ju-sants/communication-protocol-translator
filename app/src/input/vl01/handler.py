@@ -89,9 +89,10 @@ def handle_connection(conn: socket.socket, addr):
         logger.exception(f"Erro fatal na conexão VL01 endereco={addr}, device_id={dev_id_session}", tracker_id="SERVIDOR")
     finally:
         if dev_id_session:
-            logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}", tracker_id="SERVIDOR")
-            input_sessions_manager.remove_tracker_client(dev_id_session)
-            output_sessions_manager.delete_session(dev_id_session)
+            with logger.contextualize(tracker_id=dev_id_session):
+                logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}", tracker_id="SERVIDOR")
+                input_sessions_manager.remove_tracker_client(dev_id_session)
+                output_sessions_manager.delete_session(dev_id_session)
 
         logger.info(f"Fechando conexão e thread VL01 endereco={addr}, device_id={dev_id_session}", tracker_id="SERVIDOR")
         try:
