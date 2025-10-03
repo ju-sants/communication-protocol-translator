@@ -1,6 +1,7 @@
 import threading
 import socket
 import importlib
+from simple_websocket_server import WebSocketServer
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -29,6 +30,11 @@ def run_flask_app():
     app = create_app()
     app.run(host='::', port=5000)
 
+def run_ws_server():
+    from app.websocket import ws
+    server = WebSocketServer("0.0.0.0", 8575, ws.LogStreamer)
+    server.serve_forever()
+
 def main():
     logger.info("Iniciando Servidor Tradutor...", tracker_id="SERVIDOR")
 
@@ -36,6 +42,12 @@ def main():
     flask_thread = threading.Thread(target=run_flask_app, daemon=True)
     flask_thread.start()
     logger.info("✅ Servidor Flask iniciado em http://0.0.0.0:5000", tracker_id="SERVIDOR")
+    
+    # Iniciar servidor WebSocket para servir logs
+    ws_thread = threading.Thread(target=run_ws_server, daemon=True)
+    ws_thread.start()
+    logger.info("✅ Servidor WebSocket iniciado em ws://0.0.0.0:8575", tracker_id="SERVIDOR")
+
     
     for protocol_name, config in settings.INPUT_PROTOCOL_HANDLERS.items():
         try:
