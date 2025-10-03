@@ -167,8 +167,11 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
         "last_event_type": "location",
         "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
-        "last_voltage": packet_data.get('voltage', 0.0),
     }
+
+    if packet_data.get('voltage'):
+        redis_data["last_voltage"] = packet_data["voltage"]
+        
     if packet_data.get("output_status") is not None:
         redis_data["last_output_status"] = packet_data.get("output_status")
 
