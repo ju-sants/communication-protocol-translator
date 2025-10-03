@@ -11,6 +11,8 @@ Este projeto é um **gateway de tradução universal** para o setor de telemétr
 - [Dados Persistidos no Redis](#dados-persistidos-no-redis)
 - [Gerenciamento de Sessões TCP](#gerenciamento-de-sessões-tcp)
 - [Gerenciamento de Rastreadores Híbridos (GSM/Satélite)](#gerenciamento-de-rastreadores-híbridos-gsm-satélite)
+- [Rastreabilidade de Logs Aprimorada](#rastreabilidade-de-logs-aprimorada)
+- [Streaming de Logs em Tempo Real (WebSocket)](#streaming-de-logs-em-tempo-real-websocket)
 - [Protocolos Suportados](#protocolos-suportados)
 - [Endpoints da API](#endpoints-da-api)
 - [Como Começar](#como-começar)
@@ -31,6 +33,10 @@ A força deste projeto reside em sua arquitetura inteligente e desacoplada, que 
 *   **Inteligência Agregada com Gestão de Estado**: O gateway utiliza o Redis ([`app/services/redis_service.py`](app/services/redis_service.py)) para armazenar o estado de cada dispositivo. Ao receber um novo pacote, ele compara o estado atual com o anterior e pode **gerar novos eventos de alerta** (ex: "Alerta de Ignição Ligada") que não existiam no protocolo original, agregando valor e inteligência aos dados.
 
 *   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente robusto. Comandos recebidos pela plataforma são traduzidos por um `mapper` de saída (ex: [`app/src/output/suntech4g/mapper.py`](app/src/output/suntech4g/mapper.py)) para um formato universal. O sistema então identifica o protocolo de origem do dispositivo e invoca o `builder` correspondente (ex: [`app/src/input/j16x/builder.py`](app/src/input/j16x/builder.py)) para enviar o comando no formato nativo do rastreador.
+
+*   **Logs Contextualizados e Rastreáveis**: O sistema de log foi aprimorado para incluir um `tracker_id` em cada registro. Utilizando `logger.contextualize`, cada thread de comunicação de um rastreador é "marcada" com sua identidade, garantindo que todas as operações subsequentes, de qualquer função ou módulo, sejam registradas com o ID correto. Isso simplifica drasticamente a depuração e o monitoramento de dispositivos específicos em um ambiente de alta concorrência.
+
+*   **Streaming de Logs em Tempo Real via WebSocket**: Para facilitar a depuração e o monitoramento ao vivo, foi implementado um servidor WebSocket ([`app/websocket/ws.py`](app/websocket/ws.py)). Clientes podem se conectar a este servidor para receber um fluxo contínuo de logs filtrados por um `tracker_id` específico, permitindo uma análise detalhada do comportamento de um dispositivo em tempo real.
 
 ## Arquitetura do Sistema
 
@@ -186,6 +192,35 @@ O sistema possui uma lógica especializada para lidar com rastreadores "híbrido
     *   `satellites`: Alterado para `2` para sinalizar a origem satelital.
 
 4.  **Envio Unificado**: O pacote híbrido resultante é enviado para a plataforma principal através da conexão e sessão já estabelecida pelo rastreador GSM ([`output_sessions_manager.py`](app/src/session/output_sessions_manager.py:269)), garantindo que a plataforma veja apenas um dispositivo, mas com dados enriquecidos de ambas as fontes.
+
+## Rastreabilidade de Logs Aprimorada
+
+O sistema utiliza um mecanismo de log contextual para garantir que cada operação possa ser rastreada até um dispositivo específico. Isso é alcançado através da injeção de um `tracker_id` (geralmente o IMEI do dispositivo) no contexto do logger.
+
+### Como Funciona:
+
+A função `logger.contextualize(tracker_id=dev_id)` é usada no início de cada thread de conexão de um rastreador (ex: em [`app/src/input/nt40/handler.py`](app/src/input/nt40/handler.py:22)). Uma vez que o contexto é definido, qualquer chamada subsequente ao logger (`logger.info`, `logger.error`, etc.), não importa de qual módulo ou função, incluirá automaticamente o `tracker_id` no registro de log.
+
+**Exemplo de linha de log:**
+```
+INFO     | __main__: ✅ Protocol listener iniciado com sucesso na porta 7028 extra={'tracker_id': 'SERVIDOR'}
+INFO     | app.src.input.nt40.handler: Nova conexão NT40 recebida endereco=('127.0.0.1', 49774) extra={'tracker_id': '358204012345678'}
+```
+
+Isso torna a análise de logs e a depuração de problemas de um dispositivo específico extremamente eficiente.
+
+## Streaming de Logs em Tempo Real (WebSocket)
+
+Para complementar a rastreabilidade dos logs, o sistema inclui um servidor WebSocket que transmite logs em tempo real para clientes conectados. Isso é ideal para depuração ao vivo e monitoramento do comportamento de um rastreador.
+
+### Como Usar:
+
+1.  **Conecte-se ao Servidor WebSocket**: O servidor é iniciado por padrão em `ws://<seu-host>:8575`.
+2.  **Envie a Mensagem de Inscrição**: Após a conexão, envie uma mensagem no formato `"<tracker_id>|<numero_de_linhas>"`.
+   *   `<tracker_id>`: O ID do dispositivo que você deseja monitorar.
+   *   `<numero_de_linhas>`: O número de linhas de log históricas a serem exibidas no início do streaming (ex: `100`).
+
+O servidor ([`app/websocket/ws.py`](app/websocket/ws.py:1)) então começará a transmitir todas as novas linhas de log que correspondem ao `tracker_id` fornecido.
 
 ## Protocolos Suportados
 
