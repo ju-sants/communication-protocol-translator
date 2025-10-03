@@ -57,18 +57,16 @@ class LogStreamer(WebSocket):
         n_lines = self.n_lines if self.n_lines else 100
         cmd += ["-n", str(n_lines)]
 
-        # Filtra as linhas pelo tracker id
-        cmd += ["|", "grep", str(self.tracker_id)]
-        
         try:
             self.log_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
             for line in iter(self.log_process.stdout.readline, ''):
-                try:
-                    self.send_message(line.strip())
-                except Exception as e:
-                    logger.info(f"Erro ao enviar para o cliente {self.address}: {e}", tracker_id="SERVIDOR - WEBSOCKET SERVER")
-                    break
+                if self.tracker_id in line:
+                    try:
+                        self.send_message(line.strip())
+                    except Exception as e:
+                        logger.info(f"Erro ao enviar para o cliente {self.address}: {e}", tracker_id="SERVIDOR - WEBSOCKET SERVER")
+                        break
             
             self.log_process.stdout.close()
             return_code = self.log_process.wait()
