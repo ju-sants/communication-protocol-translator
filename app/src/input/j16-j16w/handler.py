@@ -12,9 +12,9 @@ redis_client = get_redis()
 
 def handle_connection(conn: socket.socket, addr):
     """
-    Lida com uma única conexão de cliente J16X, gerenciando o estado da sessão.
+    Lida com uma única conexão de cliente J16W-J16, gerenciando o estado da sessão.
     """
-    logger.info(f"Nova conexão J16X recebida endereco={addr}", tracker_id="SERVIDOR")
+    logger.info(f"Nova conexão J16W-J16 recebida endereco={addr}", tracker_id="SERVIDOR")
     buffer = b''
     dev_id_session = None
 
@@ -23,7 +23,7 @@ def handle_connection(conn: socket.socket, addr):
             with logger.contextualize(tracker_id=dev_id_session):
                 data = conn.recv(1024)
                 if not data:
-                    logger.info(f"Conexão J16X fechada pelo cliente endereco={addr}, device_id={dev_id_session}")
+                    logger.info(f"Conexão J16W-J16 fechada pelo cliente endereco={addr}, device_id={dev_id_session}")
                     break
                 
                 buffer += data
@@ -47,12 +47,12 @@ def handle_connection(conn: socket.socket, addr):
 
                             # Validação dos bits de parada
                             if not raw_packet.endswith(b'\x0d\x0a'):
-                                logger.warning(f"Pacote J16X com stop bits inválidos, descartando. pacote={raw_packet.hex()}")
+                                logger.warning(f"Pacote J16W-J16 com stop bits inválidos, descartando. pacote={raw_packet.hex()}")
                                 continue
                             
                             # Corpo do pacote que vai para o processador: [Length(1) + Proto(1) + Conteúdo + Serial(2) + CRC(2)]
                             packet_body = raw_packet[2:-2]
-                            logger.info(f"Recebido pacote J16X: {packet_body.hex()}")
+                            logger.info(f"Recebido pacote J16W-J16: {packet_body.hex()}")
 
                             # Chama o processador, passando o ID da sessão
                             newly_logged_in_dev_id = process_packet(dev_id_session, packet_body, conn, is_x79)
@@ -62,8 +62,8 @@ def handle_connection(conn: socket.socket, addr):
 
                             if dev_id_session and not input_sessions_manager.exists(dev_id_session):
                                 input_sessions_manager.register_tracker_client(dev_id_session, conn)
-                                redis_client.hset(f"tracker:{dev_id_session}", "protocol", "j16x")
-                                logger.info(f"Dispositivo J16X autenticado na sessão device_id={dev_id_session}, endereco={addr}")
+                                redis_client.hset(f"tracker:{dev_id_session}", "protocol", "j16w-j16")
+                                logger.info(f"Dispositivo J16W-J16 autenticado na sessão device_id={dev_id_session}, endereco={addr}")
 
                         else:
                             break
@@ -85,18 +85,18 @@ def handle_connection(conn: socket.socket, addr):
                             buffer = b''
     
     except (ConnectionResetError, BrokenPipeError):
-        logger.warning(f"Conexão J16X fechada abruptamente endereco={addr}, device_id={dev_id_session}", tracker_id="SERVIDOR")
+        logger.warning(f"Conexão J16W-J16 fechada abruptamente endereco={addr}, device_id={dev_id_session}", tracker_id="SERVIDOR")
     except Exception:
-        logger.exception(f"Erro fatal na conexão J16X endereco={addr}, device_id={dev_id_session}", tracker_id="SERVIDOR")
+        logger.exception(f"Erro fatal na conexão J16W-J16 endereco={addr}, device_id={dev_id_session}", tracker_id="SERVIDOR")
     finally:
-        logger.debug(f"[DIAGNOSTIC] Entering finally block for J16X handler (addr={addr}, dev_id={dev_id_session}", tracker_id="SERVIDOR")
+        logger.debug(f"[DIAGNOSTIC] Entering finally block for J16W-J16 handler (addr={addr}, dev_id={dev_id_session}", tracker_id="SERVIDOR")
         if dev_id_session:
             with logger.contextualize(tracker_id=dev_id_session):
                 logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}", tracker_id="SERVIDOR")
                 output_sessions_manager.delete_session(dev_id_session)
                 input_sessions_manager.remove_tracker_client(dev_id_session)
         
-        logger.info(f"Fechando conexão e thread J16X endereco={addr}, device_id={dev_id_session}", tracker_id="SERVIDOR")
+        logger.info(f"Fechando conexão e thread J16W-J16 endereco={addr}, device_id={dev_id_session}", tracker_id="SERVIDOR")
 
         try:
             conn.shutdown(socket.SHUT_RDWR)
