@@ -65,7 +65,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
             logger.warning(f"Pacote de heartbeat J16W recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_to_device = builder.build_generic_response(protocol_number, serial_number)
 
-    elif protocol_number == 0x16: # Pacote de Alarme
+    elif protocol_number == 0x26: # Pacote de Alarme
         if dev_id_str:
             alarm_packet_data = mapper.handle_alarm_packet(dev_id_str, content_body)
             if alarm_packet_data:
