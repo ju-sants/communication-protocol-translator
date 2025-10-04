@@ -77,7 +77,7 @@ def decode_location_packet_v3(body: bytes):
         return data
 
     except Exception as e:
-        logger.exception(f"Falha ao decodificar pacote de localização J16W-J16 body_hex={body.hex()}")
+        logger.exception(f"Falha ao decodificar pacote de localização J16W body_hex={body.hex()}")
         return None
 
 def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int):
@@ -167,11 +167,11 @@ def handle_alarm_packet(dev_id_str: str, body: bytes):
     
     alarm_code = body[30]
 
-    universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("j16x").get(alarm_code)
+    universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("j16x-j16").get(alarm_code)
 
     
     if universal_alert_id:
-        logger.info(f"Alarme J16W-J16 (0x{alarm_code:02X}) traduzido para Universal ID {universal_alert_id} device_id={dev_id_str}")
+        logger.info(f"Alarme J16W (0x{alarm_code:02X}) traduzido para Universal ID {universal_alert_id} device_id={dev_id_str}")
 
         definitive_packet_data["is_realtime"] = True
         definitive_packet_data["universal_alert_id"] = universal_alert_id
@@ -179,7 +179,7 @@ def handle_alarm_packet(dev_id_str: str, body: bytes):
         return definitive_packet_data
     
     else:
-        logger.warning(f"Alarme J16W-J16 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
+        logger.warning(f"Alarme J16W não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     # O pacote de Heartbeat (0x13) contém informações de status
