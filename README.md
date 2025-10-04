@@ -32,7 +32,7 @@ A força deste projeto reside em sua arquitetura inteligente e desacoplada, que 
 
 *   **Inteligência Agregada com Gestão de Estado**: O gateway utiliza o Redis ([`app/services/redis_service.py`](app/services/redis_service.py)) para armazenar o estado de cada dispositivo. Ao receber um novo pacote, ele compara o estado atual com o anterior e pode **gerar novos eventos de alerta** (ex: "Alerta de Ignição Ligada") que não existiam no protocolo original, agregando valor e inteligência aos dados.
 
-*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente robusto. Comandos recebidos pela plataforma são traduzidos por um `mapper` de saída (ex: [`app/src/output/suntech4g/mapper.py`](app/src/output/suntech4g/mapper.py)) para um formato universal. O sistema então identifica o protocolo de origem do dispositivo e invoca o `builder` correspondente (ex: [`app/src/input/j16x-j16/builder.py`](app/src/input/j16x-j16/builder.py)) para enviar o comando no formato nativo do rastreador.
+*   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente robusto. Comandos recebidos pela plataforma são traduzidos por um `mapper` de saída (ex: [`app/src/output/suntech4g/mapper.py`](app/src/output/suntech4g/mapper.py)) para um formato universal. O sistema então identifica o protocolo de origem do dispositivo e invoca o `builder` correspondente (ex: [`app/src/input/j16x_j16/builder.py`](app/src/input/j16x_j16/builder.py)) para enviar o comando no formato nativo do rastreador.
 
 *   **Logs Contextualizados e Rastreáveis**: O sistema de log foi aprimorado para incluir um `tracker_id` em cada registro. Utilizando `logger.contextualize`, cada thread de comunicação de um rastreador é "marcada" com sua identidade, garantindo que todas as operações subsequentes, de qualquer função ou módulo, sejam registradas com o ID correto. Isso simplifica drasticamente a depuração e o monitoramento de dispositivos específicos em um ambiente de alta concorrência.
 
@@ -57,7 +57,7 @@ graph TD
     G -- Pacote de Saída Formatado --> H(Main Server Connection);
     H -- Pacote TCP --> I[Plataforma Principal];
 
-    subgraph "Módulo de Protocolo de Entrada (Ex: j16x-j16, vl01)"
+    subgraph "Módulo de Protocolo de Entrada (Ex: j16x_j16, vl01)"
         C
         D
         E
@@ -83,7 +83,7 @@ graph TD
     B -- Bytes Brutos --> C{Output Mapper};
     C -- Comando Universal --> D(Roteador de Comandos);
     D -- Consulta Protocolo de Entrada (DevID) --> E{Redis};
-    E -- Retorna Protocolo (ex: 'j16x-j16') --> D;
+    E -- Retorna Protocolo (ex: 'j16x_j16') --> D;
     D -- Comando Universal para Builder Específico --> F{Input Builder};
     F -- Pacote Binário Nativo --> G(Socket do Dispositivo);
     G -- Pacote TCP --> H[Dispositivo Rastreador];
@@ -92,7 +92,7 @@ graph TD
         C
     end
 
-    subgraph "Módulo de Protocolo de Entrada (Ex: j16x-j16, vl01)"
+    subgraph "Módulo de Protocolo de Entrada (Ex: j16x_j16, vl01)"
         F
     end
 
@@ -113,7 +113,7 @@ Para cada rastreador conectado ou que já se conectou, um hash é mantido no Red
 
 | Campo                  | Tipo      | Descrição                                                                         | Exemplo             |
 | :--------------------- | :-------- | :-------------------------------------------------------------------------------- | :------------------ |
-| `protocol`             | `string`  | O protocolo que o dispositivo utiliza (ex: `j16x-j16`, `jt808`, `vl01`, `nt40`).        | `"j16x-j16"`            |
+| `protocol`             | `string`  | O protocolo que o dispositivo utiliza (ex: `j16x_j16`, `jt808`, `vl01`, `nt40`).        | `"j16x_j16"`            |
 | `output_protocol`      | `string`  | O protocolo de saída que o dispositivo utiliza (ex: `suntech4g`, `gt06`).        | `"suntech4g"`            |
 | `imei`                 | `string`  | O IMEI do dispositivo.                                                            | `"358204012345678"` |
 | `last_serial`          | `integer` | O último número de série do pacote recebido do dispositivo.                       | `"12345"`           |
@@ -246,7 +246,7 @@ Exemplo de Resposta:
 ```json
 {
   "IMEI_DO_RASTREADOR_1": {
-    "protocol": "j16x-j16",
+    "protocol": "j16x_j16",
     "last_active_timestamp": "2023-10-27T10:30:00.000000+00:00",
     "is_connected": true,
     "last_packet_data": "{\"latitude\": -23.55052, ...}",
@@ -277,7 +277,7 @@ Exemplo de Resposta:
   "total_active_translator_sessions": 25,
   "total_active_main_server_sessions": 20,
   "protocol_distribution": {
-    "j16x-j16": 30,
+    "j16x_j16": 30,
     "jt808": 15,
     "vl01": 5
   },
@@ -296,7 +296,7 @@ Exemplo de Resposta:
 {
   "device_id": "IMEI_DO_RASTREADOR",
   "imei": "IMEI_DO_RASTREADOR",
-  "protocol": "j16x-j16",
+  "protocol": "j16x_j16",
   "is_connected_translator": true,
   "is_connected_main_server": true,
   "last_active_timestamp": "2023-10-27T10:35:00.000000+00:00",
@@ -437,7 +437,7 @@ O servidor iniciará os listeners para todos os protocolos definidos em [`app/co
     Dentro de `app/src/input/`, crie um novo diretório com o nome do seu protocolo (ex: `novo_protocolo`).
 
 2.  **Implemente os Módulos Essenciais:**
-    Crie os seguintes arquivos dentro do novo diretório, seguindo a estrutura dos módulos `j16x-j16` ou `jt808`:
+    Crie os seguintes arquivos dentro do novo diretório, seguindo a estrutura dos módulos `j16x_j16` ou `jt808`:
     *   `handler.py`: Gerencia o ciclo de vida da conexão TCP.
     *   `processor.py`: Valida a integridade e disseca a estrutura dos pacotes.
     *   `mapper.py`: **O coração da tradução**. Converte os dados do protocolo para o dicionário Python padronizado.
@@ -484,7 +484,7 @@ A estrutura de diretórios foi organizada para separar claramente as responsabil
 │   ├── services/         # Serviços de background (Redis, histórico)
 │   └── src/              # Lógica principal da aplicação
 │       ├── input/        # Módulos de protocolos de entrada (rastreadores)
-│       │   ├── j16x-j16/
+│       │   ├── j16x_j16/
 │       │   ├── nt40/
 │       │   ├── satellite/
 │       │   └── vl01/

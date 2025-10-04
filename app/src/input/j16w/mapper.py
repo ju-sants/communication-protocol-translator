@@ -167,7 +167,7 @@ def handle_alarm_packet(dev_id_str: str, body: bytes):
     
     alarm_code = body[30]
 
-    universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("j16x-j16").get(alarm_code)
+    universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("j16x_j16").get(alarm_code)
 
     
     if universal_alert_id:
