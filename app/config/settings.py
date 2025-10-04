@@ -24,9 +24,9 @@ class Settings(BaseSettings):
 
     # --- Módulos de Protocolo a serem Carregados ---
     INPUT_PROTOCOL_HANDLERS: Dict[str, Dict[str, Any]] = {
-        "j16-j16w": {
+        "j16w": {
             "port": 65430,
-            "handler_path": "app.src.input.j16-j16w.handler.handle_connection"
+            "handler_path": "app.src.input.j16w.handler.handle_connection"
         },
         "j16x-j16": {
             "port": 65431,
