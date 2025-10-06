@@ -36,7 +36,7 @@ def scheduled_work():
                 all_gsm_last_packets = pipe.execute()
 
                 for key in tracker_keys:
-                    pipe.hget(key, "last_satellite_location")
+                    pipe.hget(key, "last_hybrid_location")
                 
                 all_satellite_last_packets = pipe.execute()
 
