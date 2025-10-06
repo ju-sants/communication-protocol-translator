@@ -1,6 +1,7 @@
 import threading
 import socket
 import importlib
+import os
 from simple_websocket_server import WebSocketServer
 from dotenv import load_dotenv
 load_dotenv()
@@ -35,6 +36,16 @@ def run_ws_server():
     server = WebSocketServer("0.0.0.0", 8575, ws.LogStreamer)
     server.serve_forever()
 
+def run_workers():
+    import importlib
+    for item in os.listdir("app/workers"):
+        if item.endswith(".py") and not "__" in item:
+            module = importlib.import_module(item.replace("/", "."))
+            for attr in dir(module):
+                if "worker" in attr:
+                    worker_func = getattr(module, attr)
+                    threading.Thread(target=worker_func, daemon=True).start()
+
 def main():
     logger.info("Iniciando Servidor Tradutor...", log_label="SERVIDOR")
 
@@ -47,6 +58,11 @@ def main():
     ws_thread = threading.Thread(target=run_ws_server, daemon=True)
     ws_thread.start()
     logger.info("✅ Servidor WebSocket iniciado em ws://0.0.0.0:8575", log_label="SERVIDOR")
+
+    # Iniciar os workers (executam código arbitrário)
+    workers_thread = threading.Thread(target=run_workers, daemon=True)
+    workers_thread.start()
+    logger.info("✅ Workers Iniciados!", tracker_id="SERVIDOR")
 
     
     for protocol_name, config in settings.INPUT_PROTOCOL_HANDLERS.items():
