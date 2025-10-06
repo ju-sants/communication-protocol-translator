@@ -77,17 +77,17 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     
     voltage = None
     if not voltage_stored:
-        voltage = str(packet_data.get("voltage", "1.11"))
+        voltage = float(packet_data.get("voltage", 1.11))
     elif voltage_stored and not is_realtime:
-        voltage = str(packet_data.get("voltage", "1.11"))
+        voltage = float(packet_data.get("voltage", 1.11))
     elif voltage_stored and is_realtime:
         voltage = device_info.get("last_voltage")
         if voltage:
-            voltage = voltage
+            voltage = float(voltage)
         
     telemetry_fields = [
         assign_map,
-        voltage if voltage else "1.11", # PWR_VOLT
+        f"{voltage:.2f}" if voltage else "1.11", # PWR_VOLT
         "0.0",   # BCK_VOLT
         str(int(packet_data.get('gps_odometer', 0))), # GPS_ODOM
         "1"  # H_METER
