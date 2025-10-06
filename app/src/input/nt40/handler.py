@@ -13,13 +13,13 @@ def handle_connection(conn: socket.socket, addr):
     """
     Lida com uma única conexão de cliente NT40, gerenciando o estado da sessão.
     """
-    logger.info(f"Nova conexão NT40 recebida endereco={addr}", tracker_id="SERVIDOR")
+    logger.info(f"Nova conexão NT40 recebida endereco={addr}", log_label="SERVIDOR")
     buffer = b''
     dev_id_session = None
     
     try:
         while True:
-            with logger.contextualize(tracker_id=dev_id_session):
+            with logger.contextualize(log_label=dev_id_session):
                 data = conn.recv(1024)
                 if not data:
                     logger.info(f"Conexão NT40 fechada pelo cliente endereco={addr}")
@@ -71,22 +71,22 @@ def handle_connection(conn: socket.socket, addr):
                             buffer = b''
     
     except (ConnectionResetError, BrokenPipeError):
-        logger.warning(f"Conexão NT40 fechada abruptamente endereco={addr}", tracker_id="SERVIDOR")
+        logger.warning(f"Conexão NT40 fechada abruptamente endereco={addr}", log_label="SERVIDOR")
     except Exception:
-        logger.exception(f"Erro fatal na conexão NT40 endereco={addr}", tracker_id="SERVIDOR")
+        logger.exception(f"Erro fatal na conexão NT40 endereco={addr}", log_label="SERVIDOR")
     finally:
-        logger.debug(f"[DIAGNOSTIC] Entering finally block for NT40 handler (addr={addr}).", tracker_id="SERVIDOR")
+        logger.debug(f"[DIAGNOSTIC] Entering finally block for NT40 handler (addr={addr}).", log_label="SERVIDOR")
         if dev_id_session:
-            with logger.contextualize(tracker_id=dev_id_session):
-                logger.info(f"Deletando Sessões em ambos os lados para esse rastreador", tracker_id="SERVIDOR")
+            with logger.contextualize(log_label=dev_id_session):
+                logger.info(f"Deletando Sessões em ambos os lados para esse rastreador", log_label="SERVIDOR")
                 output_sessions_manager.delete_session(dev_id_session)
                 input_sessions_manager.remove_tracker_client(dev_id_session)
         
-        logger.info(f"Fechando conexão e thread NT40 endereco={addr}", tracker_id="SERVIDOR")
+        logger.info(f"Fechando conexão e thread NT40 endereco={addr}", log_label="SERVIDOR")
 
         try:
             conn.shutdown(socket.SHUT_RDWR)
             conn.close()
             conn = None
         except Exception as e:
-            logger.error(f"Impossível limpar conexão com rastreador: {e}", tracker_id="SERVIDOR")
+            logger.error(f"Impossível limpar conexão com rastreador: {e}", log_label="SERVIDOR")

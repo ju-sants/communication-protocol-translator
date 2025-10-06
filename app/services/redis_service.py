@@ -15,12 +15,12 @@ def get_redis(db: int | None = None, host: str | None = None, port: int | None =
     host = host if host is not None else settings.REDIS_HOST
     port = port if port is not None else settings.REDIS_PORT
     password = password if password is not None else settings.REDIS_PASSWORD
-    logger.info(f"Connecting to Redis DB {db} at {host}:{port} with password {'set' if password else 'not set'}", tracker_id="SERVIDOR")
+    logger.info(f"Connecting to Redis DB {db} at {host}:{port} with password {'set' if password else 'not set'}", log_label="SERVIDOR")
 
     try:
         redis_conn = redis.Redis(db=db, host=host, port=port, password=password, decode_responses=True)
         redis_conn.ping()
-        logger.info(f"Successfully connected to Redis DB {db} at {host}:{port}", tracker_id="SERVIDOR")
+        logger.info(f"Successfully connected to Redis DB {db} at {host}:{port}", log_label="SERVIDOR")
     except redis.ConnectionError as e:
         import traceback
         import inspect
@@ -32,10 +32,10 @@ def get_redis(db: int | None = None, host: str | None = None, port: int | None =
         line_number = caller_frame.f_lineno
         function_name = caller_frame.f_code.co_name
         
-        logger.info(f"Chamada de: {filename}:{line_number} na função '{function_name}'", tracker_id="SERVIDOR")
+        logger.info(f"Chamada de: {filename}:{line_number} na função '{function_name}'", log_label="SERVIDOR")
 
-        logger.error(f"Failed to connect to Redis DB {db} at {host}:{port}; {e}", tracker_id="SERVIDOR")
-        logger.info(traceback.format_exc(), tracker_id="SERVIDOR")
+        logger.error(f"Failed to connect to Redis DB {db} at {host}:{port}; {e}", log_label="SERVIDOR")
+        logger.info(traceback.format_exc(), log_label="SERVIDOR")
         exit(1)
 
     return redis_conn

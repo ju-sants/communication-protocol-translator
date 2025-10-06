@@ -15,7 +15,7 @@ def handle_connection(conn: socket.socket, addr):
     """
     Handles a single satellite client connection, managing the session state.
     """
-    logger.info(f"New Satellite connection received address={addr}", tracker_id="SERVIDOR")
+    logger.info(f"New Satellite connection received address={addr}", log_label="SERVIDOR")
     buffer = b''
     esn_id = None
 
@@ -23,7 +23,7 @@ def handle_connection(conn: socket.socket, addr):
         while True:
             data = conn.recv(1024)
             if not data:
-                logger.info(f"Satellite connection closed by client address={addr}, esn_id={esn_id}", tracker_id="SERVIDOR")
+                logger.info(f"Satellite connection closed by client address={addr}, esn_id={esn_id}", log_label="SERVIDOR")
                 break
 
             buffer += data
@@ -41,7 +41,7 @@ def handle_connection(conn: socket.socket, addr):
             data_json = json.loads(data)
             esn_id = data_json.get("ESN")
 
-            with logger.contextualize(tracker_id=esn_id):
+            with logger.contextualize(log_label=esn_id):
 
                 if data:
                     try:
@@ -53,15 +53,15 @@ def handle_connection(conn: socket.socket, addr):
                     logger.debug("No complete data packet yet.")
 
     except (ConnectionResetError, BrokenPipeError):
-        logger.warning(f"Satellite connection closed abruptly address={addr}, esn_id={esn_id}", tracker_id="SERVIDOR")
+        logger.warning(f"Satellite connection closed abruptly address={addr}, esn_id={esn_id}", log_label="SERVIDOR")
     except Exception:
-        logger.exception(f"Fatal error in Satellite connection address={addr}, esn_id={esn_id}", tracker_id="SERVIDOR")
+        logger.exception(f"Fatal error in Satellite connection address={addr}, esn_id={esn_id}", log_label="SERVIDOR")
     finally:
-        logger.info(f"Closing connection and Satellite thread address={addr}, esn_id={esn_id}", tracker_id="SERVIDOR")
+        logger.info(f"Closing connection and Satellite thread address={addr}, esn_id={esn_id}", log_label="SERVIDOR")
 
         try:
             conn.shutdown(socket.SHUT_RDWR)
             conn.close()
             conn = None
         except Exception as e:
-            logger.error(f"Impossible to clean connection with tracker esn_id={esn_id}", tracker_id="SERVIDOR")
+            logger.error(f"Impossible to clean connection with tracker esn_id={esn_id}", log_label="SERVIDOR")

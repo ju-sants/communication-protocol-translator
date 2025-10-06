@@ -11,7 +11,7 @@ logger.add(
     level=settings.LOG_LEVEL.upper(),
     format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
            "<level>{level}</level> | "
-           "<yellow>[{extra[tracker_id]}]</yellow> |"
+           "<yellow>[{extra[log_label]}]</yellow> |"
            "<cyan>{name}:{function}:{line}</cyan> - <level>{message}</level>",
     colorize=True,
     backtrace=True,

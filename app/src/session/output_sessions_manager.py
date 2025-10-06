@@ -86,7 +86,7 @@ class MainServerSession:
 
     def _reader_loop(self):
         while self._is_connected:
-            with logger.contextualize(tracker_id=self.dev_id):
+            with logger.contextualize(log_label=self.dev_id):
                 try:
                     if not self.sock:
                         logger.warning(f"Socket is None, exiting reader loop for device_id={self.dev_id}")

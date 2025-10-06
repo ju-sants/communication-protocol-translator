@@ -20,7 +20,7 @@ def signal_fail_worker():
         time.sleep(60)
 
 def scheduled_work():
-    with logger.contextualize(tracker_id="SIGNAL FAIL WORKER"):
+    with logger.contextualize(log_label="SIGNAL FAIL WORKER"):
         try:            
             tracker_keys = list(redis_client_gateway.scan_iter("tracker:*", count=1000))
             

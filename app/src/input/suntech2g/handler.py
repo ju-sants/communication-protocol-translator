@@ -9,13 +9,13 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 def handle_connection(conn: socket.socket, addr):
-    logger.info(f"New connection from {addr}", tracker_id="SERVIDOR")
+    logger.info(f"New connection from {addr}", log_label="SERVIDOR")
     buffer = b''
     dev_id = None
 
     try:
         while True:
-            with logger.contextualize(tracker_id=dev_id):
+            with logger.contextualize(log_label=dev_id):
                 data = conn.recv(1024)
                 if not data:
                     logger.info(f"Connection with {addr} closed by client.")
@@ -42,15 +42,15 @@ def handle_connection(conn: socket.socket, addr):
 
 
     except ConnectionResetError:
-        logger.warning(f"Connection with {addr} was reset.", tracker_id="SERVIDOR")
+        logger.warning(f"Connection with {addr} was reset.", log_label="SERVIDOR")
     except Exception as e:
         import traceback
         traceback.print_exc()
-        logger.error(f"Error in connection with {addr}: {e}", tracker_id="SERVIDOR")
+        logger.error(f"Error in connection with {addr}: {e}", log_label="SERVIDOR")
     finally:
         if dev_id:
-            with logger.contextualize(tracker_id=dev_id):
-                logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id}", tracker_id="SERVIDOR")
+            with logger.contextualize(log_label=dev_id):
+                logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id}", log_label="SERVIDOR")
                 input_sessions_manager.remove_tracker_client(dev_id)
                 output_sessions_manager.delete_session(dev_id)
 
@@ -59,4 +59,4 @@ def handle_connection(conn: socket.socket, addr):
             conn.close()
             conn = None
         except Exception as e:
-            logger.error(f"Impossible to shutdown connection with {addr}: {e}", tracker_id="SERVIDOR")
+            logger.error(f"Impossible to shutdown connection with {addr}: {e}", log_label="SERVIDOR")

@@ -34,9 +34,9 @@ A força deste projeto reside em sua arquitetura inteligente e desacoplada, que 
 
 *   **Roteamento Reverso de Comandos**: O fluxo de comandos (downlink) é igualmente robusto. Comandos recebidos pela plataforma são traduzidos por um `mapper` de saída (ex: [`app/src/output/suntech4g/mapper.py`](app/src/output/suntech4g/mapper.py)) para um formato universal. O sistema então identifica o protocolo de origem do dispositivo e invoca o `builder` correspondente (ex: [`app/src/input/j16x_j16/builder.py`](app/src/input/j16x_j16/builder.py)) para enviar o comando no formato nativo do rastreador.
 
-*   **Logs Contextualizados e Rastreáveis**: O sistema de log foi aprimorado para incluir um `tracker_id` em cada registro. Utilizando `logger.contextualize`, cada thread de comunicação de um rastreador é "marcada" com sua identidade, garantindo que todas as operações subsequentes, de qualquer função ou módulo, sejam registradas com o ID correto. Isso simplifica drasticamente a depuração e o monitoramento de dispositivos específicos em um ambiente de alta concorrência.
+*   **Logs Contextualizados e Rastreáveis**: O sistema de log foi aprimorado para incluir um `log_label` em cada registro. Utilizando `logger.contextualize`, cada thread de comunicação de um rastreador é "marcada" com sua identidade, garantindo que todas as operações subsequentes, de qualquer função ou módulo, sejam registradas com o ID correto. Isso simplifica drasticamente a depuração e o monitoramento de dispositivos específicos em um ambiente de alta concorrência.
 
-*   **Streaming de Logs em Tempo Real via WebSocket**: Para facilitar a depuração e o monitoramento ao vivo, foi implementado um servidor WebSocket ([`app/websocket/ws.py`](app/websocket/ws.py)). Clientes podem se conectar a este servidor para receber um fluxo contínuo de logs filtrados por um `tracker_id` específico, permitindo uma análise detalhada do comportamento de um dispositivo em tempo real.
+*   **Streaming de Logs em Tempo Real via WebSocket**: Para facilitar a depuração e o monitoramento ao vivo, foi implementado um servidor WebSocket ([`app/websocket/ws.py`](app/websocket/ws.py)). Clientes podem se conectar a este servidor para receber um fluxo contínuo de logs filtrados por um `log_label` específico, permitindo uma análise detalhada do comportamento de um dispositivo em tempo real.
 
 ## Arquitetura do Sistema
 
@@ -195,16 +195,16 @@ O sistema possui uma lógica especializada para lidar com rastreadores "híbrido
 
 ## Rastreabilidade de Logs Aprimorada
 
-O sistema utiliza um mecanismo de log contextual para garantir que cada operação possa ser rastreada até um dispositivo específico. Isso é alcançado através da injeção de um `tracker_id` (geralmente o IMEI do dispositivo) no contexto do logger.
+O sistema utiliza um mecanismo de log contextual para garantir que cada operação possa ser rastreada até um dispositivo específico. Isso é alcançado através da injeção de um `log_label` (geralmente o IMEI do dispositivo) no contexto do logger.
 
 ### Como Funciona:
 
-A função `logger.contextualize(tracker_id=dev_id)` é usada no início de cada thread de conexão de um rastreador (ex: em [`app/src/input/nt40/handler.py`](app/src/input/nt40/handler.py:22)). Uma vez que o contexto é definido, qualquer chamada subsequente ao logger (`logger.info`, `logger.error`, etc.), não importa de qual módulo ou função, incluirá automaticamente o `tracker_id` no registro de log.
+A função `logger.contextualize(log_label=dev_id)` é usada no início de cada thread de conexão de um rastreador (ex: em [`app/src/input/nt40/handler.py`](app/src/input/nt40/handler.py:22)). Uma vez que o contexto é definido, qualquer chamada subsequente ao logger (`logger.info`, `logger.error`, etc.), não importa de qual módulo ou função, incluirá automaticamente o `log_label` no registro de log.
 
 **Exemplo de linha de log:**
 ```
-INFO     | __main__: ✅ Protocol listener iniciado com sucesso na porta 7028 extra={'tracker_id': 'SERVIDOR'}
-INFO     | app.src.input.nt40.handler: Nova conexão NT40 recebida endereco=('127.0.0.1', 49774) extra={'tracker_id': '358204012345678'}
+INFO     | __main__: ✅ Protocol listener iniciado com sucesso na porta 7028 extra={'log_label': 'SERVIDOR'}
+INFO     | app.src.input.nt40.handler: Nova conexão NT40 recebida endereco=('127.0.0.1', 49774) extra={'log_label': '358204012345678'}
 ```
 
 Isso torna a análise de logs e a depuração de problemas de um dispositivo específico extremamente eficiente.

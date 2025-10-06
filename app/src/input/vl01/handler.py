@@ -15,13 +15,13 @@ def handle_connection(conn: socket.socket, addr):
     """
     Lida com uma única conexão de cliente VL01, gerenciando o estado da sessão.
     """
-    logger.info(f"Nova conexão VL01 recebida endereco={addr}", tracker_id="SERVIDOR")
+    logger.info(f"Nova conexão VL01 recebida endereco={addr}", log_label="SERVIDOR")
     buffer = b''
     dev_id_session = None
 
     try:
         while True:
-            with logger.contextualize(tracker_id=dev_id_session):
+            with logger.contextualize(log_label=dev_id_session):
                 data = conn.recv(1024)
                 if not data:
                     logger.info(f"Conexão VL01 fechada pelo cliente endereco={addr}, device_id={dev_id_session}")
@@ -85,20 +85,20 @@ def handle_connection(conn: socket.socket, addr):
                             buffer = b''
     
     except (ConnectionResetError, BrokenPipeError):
-        logger.warning(f"Conexão VL01 fechada abruptamente endereco={addr}, device_id={dev_id_session}", tracker_id="SERVIDOR")
+        logger.warning(f"Conexão VL01 fechada abruptamente endereco={addr}, device_id={dev_id_session}", log_label="SERVIDOR")
     except Exception:
-        logger.exception(f"Erro fatal na conexão VL01 endereco={addr}, device_id={dev_id_session}", tracker_id="SERVIDOR")
+        logger.exception(f"Erro fatal na conexão VL01 endereco={addr}, device_id={dev_id_session}", log_label="SERVIDOR")
     finally:
         if dev_id_session:
-            with logger.contextualize(tracker_id=dev_id_session):
-                logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}", tracker_id="SERVIDOR")
+            with logger.contextualize(log_label=dev_id_session):
+                logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}", log_label="SERVIDOR")
                 input_sessions_manager.remove_tracker_client(dev_id_session)
                 output_sessions_manager.delete_session(dev_id_session)
 
-        logger.info(f"Fechando conexão e thread VL01 endereco={addr}, device_id={dev_id_session}", tracker_id="SERVIDOR")
+        logger.info(f"Fechando conexão e thread VL01 endereco={addr}, device_id={dev_id_session}", log_label="SERVIDOR")
         try:
             conn.shutdown(socket.SHUT_RDWR)
             conn.close()
             conn = None
         except Exception as e:
-            logger.error(f"Impossível limpar conexão com rastreador dev_id={dev_id_session if dev_id_session in locals() else 'None'}", tracker_id="SERVIDOR")
+            logger.error(f"Impossível limpar conexão com rastreador dev_id={dev_id_session if dev_id_session in locals() else 'None'}", log_label="SERVIDOR")
