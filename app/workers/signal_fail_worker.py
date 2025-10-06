@@ -33,28 +33,38 @@ def scheduled_work():
                 for key in tracker_keys:
                     pipe.hget(key, "last_packet_data")
                 
-                all_last_packets = pipe.execute()
+                all_gsm_last_packets = pipe.execute()
 
-            for i, last_packet_data_json in enumerate(all_last_packets):
-                if last_packet_data_json:
-                    try:
-                        last_packet_data = json.loads(last_packet_data_json)
-                        timestamp_str = last_packet_data.get("timestamp")
-                        
-                        if timestamp_str:
-                            timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S")
-                            timestamp = timestamp.replace(tzinfo=timezone.utc)
+                for key in tracker_keys:
+                    pipe.hget(key, "last_satellite_location")
+                
+                all_satellite_last_packets = pipe.execute()
+
+            for i, last_positions in enumerate(zip(all_gsm_last_packets, all_satellite_last_packets)):
+                for position in last_positions:
+                    if position:
+                        try:
+                            packet_data = json.loads(position)
+                            timestamp_str = packet_data.get("timestamp")
                             
-                            if datetime.now(timezone.utc) - timestamp >= timedelta(hours=24):
-                                to_add_to_failing.add(tracker_keys[i])
-                                logger.info(f"Tracker {tracker_keys[i]} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
-                            else:
-                                if tracker_keys[i] in failing_trackers:
-                                    to_remove_from_failing.add(tracker_keys[i])
-                                    logger.info(f"Tracker {tracker_keys[i]} voltou a comunicar. Marcando para retirar dos registros de falha.")
+                            if timestamp_str:
+                                timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S")
+                                timestamp = timestamp.replace(tzinfo=timezone.utc)
+                                
+                                key = tracker_keys[i]
+                                if float(packet_data.get("voltage")) == 2.22 and int(packet_data.get("satellites")) == 2:
+                                    key = "satellite|" + key
 
-                    except (json.JSONDecodeError, KeyError, TypeError) as e:
-                        logger.error(f"Error processing tracker data for key {tracker_keys[i]}: {e}")
+                                if datetime.now(timezone.utc) - timestamp >= timedelta(hours=24):
+                                    to_add_to_failing.add(key)
+                                    logger.info(f"Tracker {key} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
+                                else:
+                                    if key in failing_trackers:
+                                        to_remove_from_failing.add(key)
+                                        logger.info(f"Tracker {key} voltou a comunicar. Marcando para retirar dos registros de falha.")
+
+                        except (json.JSONDecodeError, KeyError, TypeError) as e:
+                            logger.error(f"Error processing tracker data for key {tracker_keys[i]}: {e}")
 
             update_failing_trackers_list(to_add_to_failing, to_remove_from_failing)
                 
@@ -108,6 +118,7 @@ def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
                 "id": vehicle_details.get("id"),
                 "rastreador": vehicle_details.get("imei"),
                 "fabricanteRastreador": vehicle_details.get("manufacturer_id"),
+                "telefone": vehicle_details.get("chip_number"),
                 "features": vehicle_details.get("features"),
                 "placas": vehicle_details.get("license_plate"),
                 "marca": vehicle_details.get("brand"),
@@ -116,17 +127,22 @@ def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
                 "dataHora": last_position.get("datetime"),
                 "latitude": last_position.get("latitude"),
                 "longitude": last_position.get("longitude"),
+                "satGps": last_position.get("satellites"),
                 "ign": last_position.get("ignition"),
                 "tensao": last_position.get("tension"),
                 "vel": last_position.get("velocity"),
                 "tracker_label": tracker_label,
                 "fcel": owner_info.get("phone_number"),
                 "fres": owner_info.get("residencial_number"), 
-                "fcom": owner_info.get("comercial_number")
+                "fcom": owner_info.get("comercial_number"),
+                "hybridImei": hybrid_id,
+                "hybridProtocolId": 10 if hybrid_id and is_hybrid else None,
+                "isHybridVehicle": 1 if hybrid_id and is_hybrid else 0,
             }
 
-            if is_hybrid and hybrid_id:
-                fail_register["isHybridPosition"]
+            if "satellite|" in tracker_label:
+                fail_register["isHybridPosition"] = True
+                logger.info("Falha satelital encontrada!")
 
             fail_register_str = json.dumps({k: v for k, v in fail_register.items() if v is not None})
             redis_client_data.sadd("translator_server:failing_trackers", fail_register_str)
