@@ -31,31 +31,51 @@ def scheduled_work():
             
             with redis_client_gateway.pipeline() as pipe:
                 for key in tracker_keys:
-                    pipe.hget(key, "last_packet_data")
+                    pipe.hmget(key, "is_hybrid", "hybrid_id", "last_packet_data", "last_hybrid_location")
                 
-                all_gsm_last_packets = pipe.execute()
-
-                for key in tracker_keys:
-                    pipe.hget(key, "last_hybrid_location")
+                all_trackers_data = pipe.execute()
                 
-                all_satellite_last_packets = pipe.execute()
+            for i, tracker_data in enumerate(all_trackers_data):
+                
+                is_hybrid = tracker_data[0]
+                hybrid_id = tracker_data[1]
+                last_gsm_location_str = tracker_data[2]
+                last_hybrid_location_str = tracker_data[3]
 
-            for i, last_positions in enumerate(zip(all_gsm_last_packets, all_satellite_last_packets)):
-                for position in last_positions:
-                    if position:
+                # Se não for um veículo híbrido, dropamos
+                if not is_hybrid and not hybrid_id:
+                    continue
+
+                if not last_gsm_location_str or not last_hybrid_location_str:
+                    logger.error(f"Pacotes de dados inválidos! \n{last_hybrid_location_str}\n{last_gsm_location_str}")
+                    continue
+
+                last_gsm_location = json.loads(last_gsm_location_str)
+                last_hybrid_location = json.loads(last_hybrid_location_str)
+                
+                gsm_last_timestamp = last_gsm_location.get("timestamp")
+                satellite_last_timestamp = last_hybrid_location.get("timestamp")
+                both_failed = all(
+                                    (utils.is_signal_fail(gsm_last_timestamp), utils.is_signal_fail(satellite_last_timestamp))
+                                )
+
+                # Se temos uma falha em ambos os rastreadores, adicionamos apenas o registro do satelital (regras específicas de negócio)
+                if both_failed:
+                    packets_to_check = (last_hybrid_location,)
+                else:
+                    packets_to_check = (last_gsm_location, last_hybrid_location)
+
+                for packet in packets_to_check:
+                    if packet:
                         try:
-                            packet_data = json.loads(position)
-                            timestamp_str = packet_data.get("timestamp")
+                            timestamp_str = packet.get("timestamp")
                             
                             if timestamp_str:
-                                timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S")
-                                timestamp = timestamp.replace(tzinfo=timezone.utc)
-                                
                                 key = tracker_keys[i]
-                                if float(packet_data.get("voltage", 0.0)) == 2.22 and int(packet_data.get("satellites", 0)) == 2:
+                                if float(packet.get("voltage", 0.0)) == 2.22 and int(packet.get("satellites", 0)) == 2:
                                     key = "satellite|" + key
 
-                                if datetime.now(timezone.utc) - timestamp >= timedelta(hours=24):
+                                if utils.is_signal_fail(timestamp_str):
                                     to_add_to_failing.add(key)
                                     logger.info(f"Tracker {key} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
                                 else:
@@ -97,8 +117,9 @@ def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
         added_count = 0
         for tracker_label in to_add_to_failing:
             tracker_id = tracker_label.split(":")[-1]
+            tracker_label_norm = tracker_label.replace("satellite|", "")
 
-            output_protocol, is_hybrid, hybrid_id = redis_client_gateway.hmget(tracker_label, "output_protocol", "is_hybrid", "hybrid_id")
+            output_protocol, is_hybrid, hybrid_id = redis_client_gateway.hmget(tracker_label_norm, "output_protocol", "is_hybrid", "hybrid_id")
             output_tracker_id = get_output_dev_id(tracker_id, output_protocol)
 
             vehicle_data = utils.get_vehicle_data_from_tracker_id(output_tracker_id)
@@ -142,11 +163,10 @@ def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
 
             if "satellite|" in tracker_label:
                 fail_register["isHybridPosition"] = True
-                logger.info("Falha satelital encontrada!")
 
             fail_register_str = json.dumps({k: v for k, v in fail_register.items() if v is not None})
             redis_client_data.sadd("translator_server:failing_trackers", fail_register_str)
-            logger.info(f"Registro de falha adicionado ao set com sucesso! dev_id={tracker_id}")
+            logger.info(f"Registro de falha adicionado ao set com sucesso! dev_id={tracker_id}, tracker_label={tracker_label}")
             added_count += 1
         
         logger.info(f"Adicionados {added_count} registros de falha nessa rodada.")

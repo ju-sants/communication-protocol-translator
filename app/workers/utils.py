@@ -1,4 +1,5 @@
 import requests
+from datetime import datetime, timezone, timedelta
 
 from app.config.settings import settings
 from app.core.logger import get_logger
@@ -96,3 +97,13 @@ def get_vehicle_data_from_tracker_id(dev_id: str):
         return {}
 
     return vehicle_data
+
+
+def is_signal_fail(timestamp_str: str):
+    timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S")
+    timestamp = timestamp.replace(tzinfo=timezone.utc)
+
+    if datetime.now(timezone.utc) - timestamp >= timedelta(hours=24):
+        return True
+    else:
+        return False
