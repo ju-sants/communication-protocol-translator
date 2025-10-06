@@ -10,6 +10,11 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
 
+    API_BASE_URL: str = "..."
+    API_X_TOKEN: str = "..."
+    API_ORIGIN: str = "..."
+    API_REFERER: str = "..."
+
     # --- Configurações de Rede e Credenciais ---
     SUNTECH_MAIN_SERVER_HOST: str = '127.0.0.1'
     SUNTECH_MAIN_SERVER_PORT: int = 12345
