@@ -18,6 +18,7 @@ pydantic_core==2.33.2
 python-dotenv==1.1.1
 redis==6.2.0
 requests==2.32.5
+schedule==1.2.2
 simple-websocket-server==0.4.4
 structlog==25.4.0
 typing-inspection==0.4.1
