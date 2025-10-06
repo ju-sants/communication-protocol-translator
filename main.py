@@ -40,7 +40,8 @@ def run_workers():
     import importlib
     for item in os.listdir("app/workers"):
         if item.endswith(".py") and not "__" in item:
-            module = importlib.import_module(item.replace("/", "."))
+            module_name = item.removesuffix(".py")
+            module = importlib.import_module(f"app.workers.{module_name}")
             for attr in dir(module):
                 if "worker" in attr:
                     worker_func = getattr(module, attr)
@@ -62,7 +63,7 @@ def main():
     # Iniciar os workers (executam código arbitrário)
     workers_thread = threading.Thread(target=run_workers, daemon=True)
     workers_thread.start()
-    logger.info("✅ Workers Iniciados!", tracker_id="SERVIDOR")
+    logger.info("✅ Workers Iniciados!", log_label="SERVIDOR")
 
     
     for protocol_name, config in settings.INPUT_PROTOCOL_HANDLERS.items():
