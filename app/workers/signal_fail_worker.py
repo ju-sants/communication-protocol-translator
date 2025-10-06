@@ -52,7 +52,7 @@ def scheduled_work():
                                 timestamp = timestamp.replace(tzinfo=timezone.utc)
                                 
                                 key = tracker_keys[i]
-                                if float(packet_data.get("voltage")) == 2.22 and int(packet_data.get("satellites")) == 2:
+                                if float(packet_data.get("voltage", 0.0)) == 2.22 and int(packet_data.get("satellites", 0)) == 2:
                                     key = "satellite|" + key
 
                                 if datetime.now(timezone.utc) - timestamp >= timedelta(hours=24):
