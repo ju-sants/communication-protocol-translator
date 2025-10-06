@@ -46,10 +46,13 @@ def handle_satelite_data(raw_data: bytes):
         last_hybrid_location["is_realtime"] = False
         last_hybrid_location["device_type"] = "satellital"
 
+        redis_last_hybrid_location = copy.deepcopy(last_hybrid_location)
+        redis_last_hybrid_location["timestamp"] = redis_last_hybrid_location["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
+
         redis_data = {
             "last_satellite_location": json.dumps(data),
             "last_satellite_active_timestamp": datetime.now(timezone.utc).isoformat(),
-            "last_hybrid_location": last_hybrid_location
+            "last_hybrid_location": json.dumps(redis_last_hybrid_location)
         }
 
 
