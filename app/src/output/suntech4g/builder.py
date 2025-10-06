@@ -2,7 +2,7 @@ from datetime import datetime
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from ..utils import normalize_dev_id
+from ..utils import get_output_dev_id
 from app.config.settings import settings
 
 logger = get_logger(__name__)
@@ -49,13 +49,13 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
         logger.warning(f"Tentando construir pacote Suntech para dispositivo desconhecido: {dev_id}")
         device_info = {}
 
-    dev_id_normalized = normalize_dev_id(dev_id)[-10:]
-    redis_client.hset(f"tracker:{dev_id}", "output_id", dev_id_normalized)
+    output_dev_id = get_output_dev_id(dev_id, "suntech4g")
+    redis_client.hset(f"tracker:{dev_id}", "output_id", output_dev_id)
 
     # Campos básicos (comuns a todos)
     base_fields = [
         hdr,
-        dev_id_normalized,
+        output_dev_id,
         "FFF83F",
         "218",
         "1.0.12",
@@ -154,11 +154,11 @@ def build_reply_packet(dev_id: str, packet_data: dict, *args) -> str:
 
         mode = "0" if device_info.get('last_output_status') else "1"
 
-        dev_id_normalized = normalize_dev_id(dev_id)
+        output_dev_id = get_output_dev_id(dev_id, "suntech4g")
 
         packet_fields = [
             "RES",
-            dev_id_normalized[-10:],
+            output_dev_id,
             cmd_group,
             cmd_action,
             *date_fields,

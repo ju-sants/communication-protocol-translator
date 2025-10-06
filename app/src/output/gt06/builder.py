@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from app.core.logger import get_logger
 from app.src.input.utils import crc_itu
 from app.services.redis_service import get_redis
-from ..utils import normalize_dev_id
+from ..utils import get_output_dev_id
 from app.config.settings import settings
 
 logger = get_logger(__name__)
@@ -145,10 +145,10 @@ def build_login_packet(imei: str, serial_number: int) -> bytes:
     """
     protocol_number = 0x01
 
-    imei_normalized = normalize_dev_id(imei)[-15:]
-    redis_client.hset(f"tracker:{imei}", "output_id", imei_normalized)
+    output_imei = get_output_dev_id(imei, "gt06")
+    redis_client.hset(f"tracker:{imei}", "output_id", output_imei)
 
-    imei_bcd = imei_to_bcd(imei_normalized)
+    imei_bcd = imei_to_bcd(output_imei)
 
     packet_content_for_crc = (
         struct.pack(">B", protocol_number) +
