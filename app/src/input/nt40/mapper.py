@@ -192,8 +192,8 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
             redis_data["acc_status"] = packet_data.get("acc_status")
             redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
     else:
-        ign_alert_packet_data = handle_ignition_change(dev_id_str, packet_data)
-        alarm_from_location_packet_data = handle_alarm_from_location(dev_id_str, packet_data)
+        ign_alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
+        alarm_from_location_packet_data = handle_alarm_from_location(dev_id_str, copy.deepcopy(packet_data))
 
         redis_data["acc_status"] = packet_data.get("acc_status")
   
