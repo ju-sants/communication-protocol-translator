@@ -1,4 +1,5 @@
 from crc import Calculator, Configuration
+from datetime import datetime, timezone
 
 from app.services.redis_service import get_redis
 from app.core.logger import get_logger
@@ -70,6 +71,8 @@ def handle_ignition_change(dev_id_str: str, packet_data: dict):
                 logger.info(f"EVENTO DETECTADO: Ignição Desligada para device_id={dev_id_str}")
 
                 packet_data["universal_alert_id"] = alert_id
+
+        packet_data["timestamp"] = datetime.now(timezone.utc)
 
         # Atualiza o estado no Redis para a próxima verificação
         redis_client.hset(f"tracker:{dev_id_str}", 'acc_status', current_acc_status)
