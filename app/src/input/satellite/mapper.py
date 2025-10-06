@@ -49,6 +49,7 @@ def handle_satelite_data(raw_data: bytes):
         redis_data = {
             "last_satellite_location": json.dumps(data),
             "last_satellite_active_timestamp": datetime.now(timezone.utc).isoformat(),
+            "last_hybrid_location": last_hybrid_location
         }
 
 
