@@ -58,7 +58,7 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
         output_dev_id,
         "FFF83F",
         "218",
-        "1.0.12",
+        "1.0.11",
         "1" if is_realtime else "0",
         packet_data['timestamp'].strftime('%Y%m%d'),
         packet_data['timestamp'].strftime('%H:%M:%S'),
