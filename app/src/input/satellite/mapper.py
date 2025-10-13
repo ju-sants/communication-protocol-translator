@@ -49,6 +49,7 @@ def handle_satelite_data(raw_data: bytes):
             last_location["connection_type"] = "gsm"
 
         else:
+            logger.info("Standalone satellite tracker, initiating standalone location.")
             pipe.hset(f"tracker:{esn}", "mode", "solo_satellite")
             pipe.hsetnx(f"tracker:{esn}", "protocol", "satellital")
 
