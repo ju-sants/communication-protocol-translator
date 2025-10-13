@@ -34,6 +34,7 @@ def handle_satelite_data(raw_data: bytes):
         output_dev_id = gsm_dev_id if is_hybrid else esn
 
         last_serial = 0
+        speed_filter = None
 
         pipe = redis_client.pipeline()
         
@@ -42,18 +43,18 @@ def handle_satelite_data(raw_data: bytes):
             pipe.hset(f"tracker:{esn}", "mode", "hybrid")
 
             # Obtendo a última localização GSM conhecida
-            last_serial, last_location_str = redis_client.hmget(f"tracker:{gsm_dev_id}", "last_serial", "last_packet_data")
+            last_serial, last_location_str, speed_filter = redis_client.hmget(f"tracker:{gsm_dev_id}", "last_serial", "last_packet_data", "speed_filter")
 
             last_serial = int(last_serial) if last_serial else 0
             last_location = json.loads(last_location_str) if last_location_str else {}
             last_location["connection_type"] = "gsm"
-
+            
         else:
             logger.info("Standalone satellite tracker, initiating standalone location.")
             pipe.hset(f"tracker:{esn}", "mode", "solo_satellite")
             pipe.hsetnx(f"tracker:{esn}", "protocol", "satellital")
 
-            last_packet_data = redis_client.hget(f"tracker:{esn}", "last_merged_location")
+            last_packet_data, speed_filter = redis_client.hmget(f"tracker:{esn}", "last_merged_location", "speed_filter")
             if not last_packet_data:
                 # Não há um pacote salvo, iniciando com pacote padrão
                 last_location = {
@@ -63,12 +64,19 @@ def handle_satelite_data(raw_data: bytes):
                     "gps_odometer": 222,
                     "connection_type": "satellital",
                 }
+                
 
         last_merged_location = {**last_location, **data}
         last_merged_location["voltage"] = 2.22
         last_merged_location["satellites"] = 2
         last_merged_location["timestamp"] = datetime.fromisoformat(data.get("timestamp"))
         last_merged_location["is_realtime"] = False
+
+        if speed_filter and speed_filter.isdigit():
+            speed_filter = int(speed_filter)
+            actual_speed = int(last_merged_location.get("speed_kmh", 0))
+            if actual_speed > speed_filter:
+                last_merged_location["speed_kmh"] = 0
 
         redis_last_merged_location = copy.deepcopy(last_merged_location)
         redis_last_merged_location["timestamp"] = redis_last_merged_location["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
