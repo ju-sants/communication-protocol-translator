@@ -28,57 +28,77 @@ def handle_satelite_data(raw_data: bytes):
         
         logger.info(f"Parsed JSON data: {data}")
 
-        hybrid_gsm_dev_id = redis_client.hget("SAT_GSM_MAPPING", esn)
+        gsm_dev_id = redis_client.hget("SAT_GSM_MAPPING", esn)
+        is_hybrid = bool(gsm_dev_id)
 
-        if not hybrid_gsm_dev_id:
-            logger.info("Satellite tracker without a GSM pair, dropping.")
-            return None, None, None, None
+        output_dev_id = gsm_dev_id if is_hybrid else esn
 
-        last_serial, last_gsm_location_str = redis_client.hmget(f"tracker:{hybrid_gsm_dev_id}", "last_serial", "last_packet_data")
+        last_serial = 0
 
-        last_serial = int(last_serial) if last_serial else 0
-        last_gsm_location = json.loads(last_gsm_location_str) if last_gsm_location_str else {}
+        if is_hybrid:
+            logger.info("Satellite tracker without a GSM pair, initiating hybrid location.")
 
-        last_hybrid_location = {**last_gsm_location, **data}
-        last_hybrid_location["voltage"] = 2.22
-        last_hybrid_location["satellites"] = 2
-        last_hybrid_location["timestamp"] = datetime.fromisoformat(data.get("timestamp"))
-        last_hybrid_location["is_realtime"] = False
-        last_hybrid_location["device_type"] = "satellital"
+            # Obtendo a última localização GSM conhecida
+            last_serial, last_location_str = redis_client.hmget(f"tracker:{gsm_dev_id}", "last_serial", "last_packet_data")
 
-        redis_last_hybrid_location = copy.deepcopy(last_hybrid_location)
-        redis_last_hybrid_location["timestamp"] = redis_last_hybrid_location["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
+            last_serial = int(last_serial) if last_serial else 0
+            last_location = json.loads(last_location_str) if last_location_str else {}
+            last_location["connection_type"] = "gsm"
+
+        else:
+            last_packet_data = redis_client.hget(f"tracker:{esn}", "last_merged_location")
+            if not last_packet_data:
+                # Não há um pacote salvo, iniciando com pacote padrão
+                last_location = {
+                    "gps_fixed": 1,
+                    "is_realtime": False,
+                    "output_status": 0,
+                    "gps_odometer": 222,
+                    "connection_type": "satellital",
+                }
+
+        last_merged_location = {**last_location, **data}
+        last_merged_location["voltage"] = 2.22
+        last_merged_location["satellites"] = 2
+        last_merged_location["timestamp"] = datetime.fromisoformat(data.get("timestamp"))
+        last_merged_location["is_realtime"] = False
+
+        redis_last_merged_location = copy.deepcopy(last_merged_location)
+        redis_last_merged_location["timestamp"] = redis_last_merged_location["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
 
         redis_data = {
             "last_satellite_location": json.dumps(data),
             "last_satellite_active_timestamp": datetime.now(timezone.utc).isoformat(),
-            "last_hybrid_location": json.dumps(redis_last_hybrid_location)
+            "last_merged_location": json.dumps(redis_last_merged_location)
         }
 
 
         ign_alert_packet_data = None
         # Lidando com o estado da ignição, muito preciso para veículos híbridos.
-        last_altered_acc_str = redis_client.hget(f"tracker:{hybrid_gsm_dev_id}", "last_altered_acc")
+        last_altered_acc_str = redis_client.hget(f"tracker:{gsm_dev_id if is_hybrid else esn}", "last_altered_acc")
         if last_altered_acc_str:
             last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
 
-        if not last_altered_acc_str or (last_hybrid_location.get("timestamp") and last_altered_acc_dt < last_hybrid_location.get("timestamp")):
+        if not last_altered_acc_str or (last_merged_location.get("timestamp") and last_altered_acc_dt < last_merged_location.get("timestamp")):
             # Lidando com mudanças no status da ignição
-            ign_alert_packet_data = handle_ignition_change(hybrid_gsm_dev_id, copy.deepcopy(last_hybrid_location))
+            ign_alert_packet_data = handle_ignition_change(gsm_dev_id if is_hybrid else esn, copy.deepcopy(last_merged_location))
 
-            redis_data["acc_status"] = last_hybrid_location.get("acc_status")
-            redis_data["last_altered_acc"] = last_hybrid_location.get("timestamp").isoformat()
+            redis_data["acc_status"] = last_merged_location.get("acc_status")
+            redis_data["last_altered_acc"] = last_merged_location.get("timestamp").isoformat()
 
         actual_month = datetime.now().month
 
         pipe = redis_client.pipeline()
         pipe.rpush(f"payloads:{esn}", json.dumps(data))
         pipe.ltrim(f"payloads:{esn}", 0, 10000)
-        pipe.hmset(f"tracker:{hybrid_gsm_dev_id}", redis_data)
         pipe.hincrby(f"monthly_counts:{esn}", actual_month, 1)
+        
+        pipe.hmset(f"tracker:{gsm_dev_id}", redis_data)
+        pipe.hmset(f"tracker:{esn}", redis_data)
+
         pipe.execute()
 
-        return hybrid_gsm_dev_id, last_hybrid_location, ign_alert_packet_data, last_serial 
+        return output_dev_id, last_merged_location, ign_alert_packet_data, last_serial 
     
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON: {e}")
