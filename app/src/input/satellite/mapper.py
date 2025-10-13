@@ -35,9 +35,11 @@ def handle_satelite_data(raw_data: bytes):
 
         last_serial = 0
 
+        pipe = redis_client.pipeline()
+        
         if is_hybrid:
             logger.info("Satellite tracker with a GSM pair, initiating hybrid location.")
-            redis_client.hset(f"tracker:{esn}", "mode", "hybrid")
+            pipe.hset(f"tracker:{esn}", "mode", "hybrid")
 
             # Obtendo a última localização GSM conhecida
             last_serial, last_location_str = redis_client.hmget(f"tracker:{gsm_dev_id}", "last_serial", "last_packet_data")
@@ -47,7 +49,9 @@ def handle_satelite_data(raw_data: bytes):
             last_location["connection_type"] = "gsm"
 
         else:
-            redis_client.hset(f"tracker:{esn}", "mode", "solo")
+            pipe.hset(f"tracker:{esn}", "mode", "solo_satellite")
+            pipe.hsetnx(f"tracker:{esn}", "protocol", "satellital")
+
             last_packet_data = redis_client.hget(f"tracker:{esn}", "last_merged_location")
             if not last_packet_data:
                 # Não há um pacote salvo, iniciando com pacote padrão
@@ -90,7 +94,6 @@ def handle_satelite_data(raw_data: bytes):
 
         actual_month = datetime.now().month
 
-        pipe = redis_client.pipeline()
         pipe.rpush(f"payloads:{esn}", json.dumps(data))
         pipe.ltrim(f"payloads:{esn}", 0, 10000)
         pipe.hincrby(f"monthly_counts:{esn}", actual_month, 1)
