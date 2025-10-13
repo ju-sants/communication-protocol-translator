@@ -54,8 +54,8 @@ def handle_satelite_data(raw_data: bytes):
             pipe.hset(f"tracker:{esn}", "mode", "solo_satellite")
             pipe.hsetnx(f"tracker:{esn}", "protocol", "satellital")
 
-            last_packet_data, speed_filter = redis_client.hmget(f"tracker:{esn}", "last_merged_location", "speed_filter")
-            if not last_packet_data:
+            last_location, speed_filter = redis_client.hmget(f"tracker:{esn}", "last_merged_location", "speed_filter")
+            if not last_location:
                 # Não há um pacote salvo, iniciando com pacote padrão
                 last_location = {
                     "gps_fixed": 1,
