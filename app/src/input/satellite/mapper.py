@@ -58,8 +58,8 @@ def handle_satelite_data(raw_data: bytes):
             pipe.hmset(f"tracker:{esn}", mapping)
             pipe.hsetnx(f"tracker:{esn}", "protocol", "satellital")
 
-            last_location, speed_filter = redis_client.hmget(f"tracker:{esn}", "last_merged_location", "speed_filter")
-            if not last_location:
+            last_location_str, speed_filter = redis_client.hmget(f"tracker:{esn}", "last_merged_location", "speed_filter")
+            if not last_location_str:
                 # Não há um pacote salvo, iniciando com pacote padrão
                 last_location = {
                     "gps_fixed": 1,
@@ -68,6 +68,8 @@ def handle_satelite_data(raw_data: bytes):
                     "gps_odometer": 222,
                     "connection_type": "satellital",
                 }
+            else:
+                last_location = json.loads(last_location_str)
                 
 
         last_merged_location = {**last_location, **data}
