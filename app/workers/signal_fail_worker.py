@@ -24,7 +24,8 @@ def scheduled_work():
         try:            
             tracker_keys = list(redis_client_gateway.scan_iter("tracker:*", count=1000))
             
-            failing_trackers = set(redis_client_data.smembers("translator_server:failing_trackers"))
+            failing_trackers_str = set(redis_client_data.smembers("translator_server:failing_trackers"))
+            failing_trackers = [json.loads(fail) for fail in failing_trackers_str]
             
             to_add_to_failing = set()
             to_remove_from_failing = set()
@@ -75,11 +76,11 @@ def scheduled_work():
                                 if float(packet.get("voltage", 0.0)) == 2.22 and int(packet.get("satellites", 0)) == 2:
                                     key = "satellite|" + key
 
-                                if utils.is_signal_fail(timestamp_str):
+                                if utils.is_signal_fail(timestamp_str) and not any(key == fail.get("tracker_label") for fail in failing_trackers):
                                     to_add_to_failing.add(key)
                                     logger.info(f"Tracker {key} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
                                 else:
-                                    if key in failing_trackers:
+                                    if any(key == fail.get("tracker_label") for fail in failing_trackers):
                                         to_remove_from_failing.add(key)
                                         logger.info(f"Tracker {key} voltou a comunicar. Marcando para retirar dos registros de falha.")
 
