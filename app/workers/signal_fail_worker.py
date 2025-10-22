@@ -13,6 +13,8 @@ redis_client_gateway = get_redis()
 redis_client_data = get_redis(db=3)
 
 def signal_fail_worker():
+    scheduled_work()
+
     schedule.every(2).hours.do(scheduled_work)
 
     while True:
