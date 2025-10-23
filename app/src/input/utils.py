@@ -1,5 +1,6 @@
 from crc import Calculator, Configuration
 from datetime import datetime, timezone
+from math import radians, sin, cos, sqrt, atan2
 
 from app.services.redis_service import get_redis
 from app.core.logger import get_logger
@@ -117,3 +118,14 @@ def handle_power_change(dev_id_str: str, serial, packet_data: dict):
         redis_client.hset(f"tracker:{dev_id_str}", 'power_status', current_power_disconnected)
     except Exception:
         logger.exception(f"Erro ao processar mudança de alimentação para device_id={dev_id_str}")
+
+
+def haversine(lat1, lon1, lat2, lon2):
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1 
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1-a)) 
+    r = 6371
+    return c * r

@@ -6,8 +6,7 @@ import copy
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from app.config.settings import settings
-from .utils import haversine
-from ..utils import handle_ignition_change
+from ..utils import handle_ignition_change, haversine
 
 logger = get_logger(__name__)
 redis_client = get_redis()
