@@ -4,7 +4,7 @@ import copy
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from ..utils import handle_ignition_change
+from ..utils import handle_ignition_change, haversine
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -65,11 +65,21 @@ def handle_satelite_data(raw_data: bytes):
                     "gps_fixed": 1,
                     "is_realtime": False,
                     "output_status": 0,
-                    "gps_odometer": 222,
+                    "gps_odometer": 0,
                     "connection_type": "satellital",
                 }
             else:
                 last_location = json.loads(last_location_str)
+                lat, long = last_location.get("latitude"), last_location.get("longitude")
+                new_lat, new_long = data.get("latitude"), data.get("longitude")
+
+                if all(lat, new_lat, long, new_long):
+                    last_odometer = last_location.get("gps_odometer") or 0
+                    to_add_odometer = haversine(lat, long, new_lat, new_long)
+
+                    odometer = last_odometer + to_add_odometer
+
+                    last_location["gps_odometer"] = odometer
                 
 
         last_merged_location = {**last_location, **data}
