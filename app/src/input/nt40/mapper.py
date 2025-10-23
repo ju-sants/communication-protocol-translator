@@ -136,7 +136,7 @@ def handle_alarm_from_location(dev_id_str,  alarm_packet_data):
     if universal_alert_id:
         alarm_packet_data["is_realtime"] = True
         alarm_packet_data["universal_alert_id"] = universal_alert_id
-        alarm_packet_data["timestamp"] = datetime.now(timezone.utc)
+        alarm_packet_data["timestamp"] = alarm_packet_data["timestamp"] + timedelta(seconds=1)
         return alarm_packet_data
     elif universal_alert_id is not None:
         logger.warning(f"Alarme NT40 não mapeado recebido device_id={dev_id_str}, alarm_code={alarm_packet_data.get('alarm')}, terminal_info={alarm_packet_data.get('terminal_info')}")
@@ -192,7 +192,6 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
             redis_data["acc_status"] = packet_data.get("acc_status")
             redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
     else:
-        ign_alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
         alarm_from_location_packet_data = handle_alarm_from_location(dev_id_str, copy.deepcopy(packet_data))
 
         redis_data["acc_status"] = packet_data.get("acc_status")
