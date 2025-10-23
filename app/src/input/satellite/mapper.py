@@ -73,7 +73,7 @@ def handle_satelite_data(raw_data: bytes):
                 lat, long = last_location.get("latitude"), last_location.get("longitude")
                 new_lat, new_long = data.get("latitude"), data.get("longitude")
 
-                if all(lat, new_lat, long, new_long):
+                if all([lat, new_lat, long, new_long]):
                     last_odometer = last_location.get("gps_odometer") or 0
                     to_add_odometer = haversine(lat, long, new_lat, new_long)
 
