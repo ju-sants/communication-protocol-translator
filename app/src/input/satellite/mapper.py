@@ -17,17 +17,28 @@ def handle_satelite_data(raw_satellite_data: bytes):
     try:
         satellite_data = json.loads(raw_satellite_data)
 
+        # Verificando se o campo ESN está presente.
         esn = satellite_data.get("ESN")
         if not esn:
             logger.info(f"Message received without ESN, dropping.")
             return None, None, None, None
         
-        logger.info(f"Parsed JSON data: {data}")
-
+        # Verificando se o mesmo é híbrido.
         gsm_dev_id = redis_client.hget("SAT_GSM_MAPPING", esn)
         is_hybrid = bool(gsm_dev_id)
 
         output_dev_id = gsm_dev_id if is_hybrid else esn
+
+        if satellite_data.get("message_type") == "heartbeat":
+            logger.info(f"HeartBeat Message Received")
+
+            # Apenas enviamos pacotes de heartbeat se não for híbrido, pois se for quem manda é o GSM.
+            if not is_hybrid:
+                return output_dev_id, satellite_data, None, 0        
+            else: return None, None, None, None
+
+
+        logger.info(f"Parsed Satellite Location data: {satellite_data}")
 
         last_serial = 0
         speed_filter = None
