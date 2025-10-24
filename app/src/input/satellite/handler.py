@@ -4,6 +4,7 @@ import json
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from . import processor
+from app.src.session.input_sessions_manager import input_sessions_manager
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -43,6 +44,10 @@ def handle_connection(conn: socket.socket, addr):
 
             with logger.contextualize(log_label=esn_id):
 
+                if esn_id and not input_sessions_manager.exists(esn_id):
+                    input_sessions_manager.register_tracker_client(esn_id, conn)
+                    logger.info(f"Rastreador satelital {esn_id}, registrado na seção.")
+                    
                 if data:
                     try:
                         processor.process_packet(data)
