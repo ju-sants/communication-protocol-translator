@@ -21,7 +21,7 @@ class InputSessionsManager:
                     cls._instance = super().__new__(cls)
                     cls._instance.active_trackers = {}
                     cls._instance.to_expire_keys = {}
-                    threading.Thread(cls._instance.expire_keys, daemon=True).start()
+                    threading.Thread(target=cls._instance.expire_keys, daemon=True).start()
 
         return cls._instance
     
