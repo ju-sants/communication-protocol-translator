@@ -53,7 +53,6 @@ def build_location_packet(dev_id, packet_data: dict, serial_number: int, *args) 
     content_body = time_bytes + struct.pack(">B", gps_info_byte) + lat_lon_bytes + speed_kmh_bytes + course_status_bytes
 
     acc_status = 1 if packet_data.get("acc_status", 0) else 0
-    is_realtime = 0x00 if packet_data.get("is_realtime", True) else 0x01
     gps_odometer = int(packet_data.get("gps_odometer", 0))
     voltage = float(packet_data.get("voltage", 0.0))
     voltage_raw = int(voltage * 100)
@@ -79,7 +78,7 @@ def build_location_packet(dev_id, packet_data: dict, serial_number: int, *args) 
 
         content_body += struct.pack(">B", acc_status)
         content_body += b'\x00' # Data Upload
-        content_body += struct.pack(">B", is_realtime) # Real-time/Historical
+        content_body += b'\x00' # Sempre em tempo real, para que a plataforma principal possa ouvir os pacotes de voltagem
         content_body += struct.pack(">I", gps_odometer) # Mileage
 
     elif protocol_number == 0x32:
@@ -90,7 +89,7 @@ def build_location_packet(dev_id, packet_data: dict, serial_number: int, *args) 
 
         content_body += struct.pack(">B", acc_status)
         content_body += b'\x00'
-        content_body += struct.pack(">B", is_realtime) 
+        content_body += b'\x00' # Sempre em tempo real, para que a plataforma principal possa ouvir os pacotes de voltagem
         content_body += struct.pack(">I", gps_odometer)
         content_body += struct.pack(">H", voltage_raw)
         content_body += b"\x00" * 6
@@ -105,7 +104,7 @@ def build_location_packet(dev_id, packet_data: dict, serial_number: int, *args) 
 
         content_body += struct.pack(">B", acc_status)
         content_body += b'\x00'
-        content_body += struct.pack(">B", is_realtime)
+        content_body += b'\x00' # Sempre em tempo real, para que a plataforma principal possa ouvir os pacotes de voltagem
         content_body += struct.pack(">I", gps_odometer)
         content_body += struct.pack(">H", voltage_raw)
 
