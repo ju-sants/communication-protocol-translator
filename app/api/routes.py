@@ -9,6 +9,7 @@ from app.src.session.input_sessions_manager import input_sessions_manager
 from app.src.session.output_sessions_manager import output_sessions_manager
 from app.services.history_service import get_packet_history
 from app.src.input.j16x_j16.builder import build_command as build_j16x_j16_command
+from app.src.input.j16w.builder import build_command as build_j16w_command
 from app.src.input.vl01.builder import build_command as build_vl01_command
 from app.src.input.nt40.builder import build_command as build_nt40_command
 # from app.src.input.jt808.builder import build_command as build_jt808_command
@@ -18,7 +19,8 @@ redis_client = get_redis()
 COMMAND_BUILDERS = {
     "j16x_j16": build_j16x_j16_command,
     "vl01": build_vl01_command,
-    "nt40": build_nt40_command
+    "nt40": build_nt40_command,
+    "j16w": build_j16w_command,
     # "jt808": build_jt808_command
 }
 
