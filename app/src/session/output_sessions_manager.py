@@ -191,7 +191,7 @@ class MainServerSession:
                         voltage = 2.22
                     elif packet_data.get("voltage"): # Prioridade 2: é GSM e possui voltagem no pacote
                         voltage = packet_data.get("voltage")
-                    elif not self._is_realtime and current_output_protocol.lower() in ("vl01"): # Prioridade 3: Estamos enviando pacotes de memória de protocolos que não enviam voltagem nos pacotes, envia voltagem específica.
+                    elif not self._is_realtime: # Prioridade 3: Estamos enviando pacotes de memória de protocolos que não enviam voltagem nos pacotes, envia voltagem específica.
                         voltage = 1.11
                     else: # Prioridade 4: estamos em tempo real, o protocolo em questão não envia dados de voltagem no pacote, mas o conseguimos de outra forma, e se não o conseguirmos, enviamos 1.11.
                         voltage = packet_data.get("last_voltage") or "1.11" 
