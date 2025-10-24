@@ -88,6 +88,7 @@ def handle_satelite_data(raw_data: bytes):
         last_merged_location["timestamp"] = datetime.fromisoformat(data.get("timestamp"))
         last_merged_location["is_realtime"] = False
 
+        # FIltro de velocidade para ALTAS velocidades
         if speed_filter and speed_filter.isdigit():
             speed_filter = int(speed_filter)
             actual_speed = int(last_merged_location.get("speed_kmh", 0))
@@ -95,6 +96,12 @@ def handle_satelite_data(raw_data: bytes):
                 last_merged_location["speed_kmh"] = 0
                 last_merged_location["satellites"] = 1
 
+        # Filtro de velocidade para IGN DESLIGADA
+        if last_merged_location["acc_status"] == 0 and last_merged_location["speed_kmh"] < 5:
+            last_merged_location["speed_kmh"] = 0
+
+        
+        # Normalização para salvamento no redis
         redis_last_merged_location = copy.deepcopy(last_merged_location)
         redis_last_merged_location["timestamp"] = redis_last_merged_location["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
 
