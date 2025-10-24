@@ -3,7 +3,7 @@ from .. import utils
 from app.src.session.output_sessions_manager import send_to_main_server
 
 def process_packet(data: bytes):
-    output_dev_id, last_merged_location, ign_alert_packet_data, last_serial = mapper.handle_satelite_data(data)
+    output_dev_id, satellite_packet_data, ign_alert_packet_data, last_serial = mapper.handle_satelite_data(data)
 
     if last_merged_location:
         utils.log_mapped_packet(last_merged_location, "SATELLITAL")

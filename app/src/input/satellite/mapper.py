@@ -10,18 +10,14 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 
-def handle_satelite_data(raw_data: bytes):
+def handle_satelite_data(raw_satellite_data: bytes):
     """
     Maps satellite data to a structured python dict and sends it to the main server.
     """
     try:
-        data = json.loads(raw_data)
+        satellite_data = json.loads(raw_satellite_data)
 
-        if data.get("message_type") == "heartbeat":
-            logger.info(f"HeartBeat Message Received")
-            return None, None, None, None
-        
-        esn = data.get("ESN")
+        esn = satellite_data.get("ESN")
         if not esn:
             logger.info(f"Message received without ESN, dropping.")
             return None, None, None, None
@@ -71,7 +67,7 @@ def handle_satelite_data(raw_data: bytes):
             else:
                 last_location = json.loads(last_location_str)
                 lat, long = last_location.get("latitude"), last_location.get("longitude")
-                new_lat, new_long = data.get("latitude"), data.get("longitude")
+                new_lat, new_long = satellite_data.get("latitude"), satellite_data.get("longitude")
 
                 if all([lat, new_lat, long, new_long]):
                     last_odometer = last_location.get("gps_odometer") or 0
@@ -82,10 +78,10 @@ def handle_satelite_data(raw_data: bytes):
                     last_location["gps_odometer"] = odometer
                 
 
-        last_merged_location = {**last_location, **data}
+        last_merged_location = {**last_location, **satellite_data}
         last_merged_location["voltage"] = 2.22
         last_merged_location["satellites"] = 2
-        last_merged_location["timestamp"] = datetime.fromisoformat(data.get("timestamp"))
+        last_merged_location["timestamp"] = datetime.fromisoformat(satellite_data.get("timestamp"))
         last_merged_location["is_realtime"] = False
 
         # FIltro de velocidade para ALTAS velocidades
@@ -106,7 +102,7 @@ def handle_satelite_data(raw_data: bytes):
         redis_last_merged_location["timestamp"] = redis_last_merged_location["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
 
         redis_data = {
-            "last_satellite_location": json.dumps(data),
+            "last_satellite_location": json.dumps(satellite_data),
             "last_satellite_active_timestamp": datetime.now(timezone.utc).isoformat(),
             "last_merged_location": json.dumps(redis_last_merged_location)
         }
@@ -127,7 +123,7 @@ def handle_satelite_data(raw_data: bytes):
 
         actual_month = datetime.now().month
 
-        pipe.rpush(f"payloads:{esn}", json.dumps(data))
+        pipe.rpush(f"payloads:{esn}", json.dumps(satellite_data))
         pipe.ltrim(f"payloads:{esn}", 0, 10000)
         pipe.hincrby(f"monthly_counts:{esn}", actual_month, 1)
         
