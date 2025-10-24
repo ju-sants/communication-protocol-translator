@@ -56,7 +56,7 @@ def handle_satelite_data(raw_data: bytes):
                 "last_output_status": 0,
             }
             pipe.hmset(f"tracker:{esn}", mapping)
-            pipe.hsetnx(f"tracker:{esn}", "protocol", "satellital")
+            pipe.hset(f"tracker:{esn}", "protocol", "satellital")
 
             last_location_str, speed_filter = redis_client.hmget(f"tracker:{esn}", "last_merged_location", "speed_filter")
             if not last_location_str:
