@@ -1,5 +1,8 @@
 import threading
 import socket
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+import time
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -17,14 +20,37 @@ class InputSessionsManager:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
                     cls._instance.active_trackers = {}
+                    cls._instance.to_expire_keys = {}
+                    threading.Thread(cls._instance.expire_keys, daemon=True).start()
 
         return cls._instance
     
-    def register_tracker_client(self, dev_id: str, conn: socket.socket):
+    def expire_keys(self):
+        while True:
+            for k in self.to_expire_keys:
+                now = datetime.now()
+                
+                ex, start_time = self.to_expire_keys[k]
+                complete_time = start_time + relativedelta(seconds=ex)
+                
+                if complete_time < now:
+                    del self._instance.active_trackers[k]
+                    redis_client.srem("active_trackers", k)
+            
+            time.sleep(5)
+
+
+    def register_tracker_client(self, dev_id: str, conn: socket.socket, ex: int = -1):
         with self._lock:
             self.active_trackers[str(dev_id)] = conn
-            logger.info(f"Rastreador registrado na sessão: dev_id={dev_id}")
             redis_client.sadd("active_trackers", dev_id)
+
+            if ex != -1 and isinstance(ex, int):
+                self.to_expire_keys[dev_id] = (ex, datetime.now())
+
+            logger.info(f"Rastreador registrado na sessão: dev_id={dev_id}")
+            
+
     def remove_tracker_client(self, dev_id: str):
         with self._lock:
             dev_id_str = str(dev_id)
