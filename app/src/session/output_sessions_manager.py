@@ -2,6 +2,7 @@ import socket
 import threading
 import time
 import importlib
+from typing import Literal
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -278,7 +279,7 @@ output_sessions_manager = OutputSessionsManager()
 def send_to_main_server(
         dev_id: str, packet_data: dict = None, serial: str = None, 
         raw_packet_hex: str = None, original_protocol: str = None, 
-        type: str = "location",
+        type: Literal["location", "heartbeat", "alert", "command_reply"] = "location",
         managed_alert: bool = False
     ):
     """
