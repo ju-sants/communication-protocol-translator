@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import os
 
 from app.services.redis_service import get_redis
+from app.core.logger import get_logger
 from app.config.settings import settings
 from app.src.session.input_sessions_manager import input_sessions_manager
 from app.src.session.output_sessions_manager import output_sessions_manager
@@ -15,6 +16,7 @@ from app.src.input.nt40.builder import build_command as build_nt40_command
 # from app.src.input.jt808.builder import build_command as build_jt808_command
 
 redis_client = get_redis()
+logger = get_logger(__name__)
 
 COMMAND_BUILDERS = {
     "j16x_j16": build_j16x_j16_command,
@@ -113,27 +115,28 @@ def send_tracker_command(dev_id):
         return jsonify({"error": f"No command builder found for protocol '{protocol_type}'"}), 500
 
     try:
-        command_packet = builder_func(command_str, serial)
-        
-        tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
-        if tracker_socket:
-            tracker_socket.sendall(command_packet)
-            # Store command sent in Redis
-            redis_client.hset(f"tracker:{dev_id}", "last_command_sent", json.dumps({
-                "command": command_str,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "packet_hex": command_packet.hex()
-            }))
-            redis_client.hincrby(f"tracker:{dev_id}", "total_commands_sent", 1)
+        with logger.contextualize(log_label=dev_id):
+            command_packet = builder_func(command_str, serial)
+            
+            tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
+            if tracker_socket:
+                tracker_socket.sendall(command_packet)
+                # Store command sent in Redis
+                redis_client.hset(f"tracker:{dev_id}", "last_command_sent", json.dumps({
+                    "command": command_str,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "packet_hex": command_packet.hex()
+                }))
+                redis_client.hincrby(f"tracker:{dev_id}", "total_commands_sent", 1)
 
-            return jsonify({
-                "status": "Command sent successfully",
-                "device_id": dev_id,
-                "command": command_str,
-                "packet_hex": command_packet.hex()
-            })
-        else:
-            return jsonify({"error": "Tracker is not connected"}), 404
+                return jsonify({
+                    "status": "Command sent successfully",
+                    "device_id": dev_id,
+                    "command": command_str,
+                    "packet_hex": command_packet.hex()
+                })
+            else:
+                return jsonify({"error": "Tracker is not connected"}), 404
             
     except Exception as e:
         return jsonify({"error": f"Failed to send command: {str(e)}"}), 500
