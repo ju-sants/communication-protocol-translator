@@ -199,6 +199,7 @@ class MainServerSession:
                     voltage_packet = build_gt06_voltage_info_packet({"voltage": voltage}, int(self.serial))
                     logger.info(f"Enviando pacote de voltagem antes do pacote de localização em tempo real. dev_id={self.dev_id} voltage={voltage}V")
                     self.sock.sendall(voltage_packet)
+                    time.sleep(1)
 
                 logger.info(f"Encaminhando pacote de {len(packet)} bytes device_id={self.dev_id}")
 
