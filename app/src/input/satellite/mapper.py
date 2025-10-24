@@ -93,7 +93,7 @@ def handle_satelite_data(raw_satellite_data: bytes):
         last_merged_location["voltage"] = 2.22
         last_merged_location["satellites"] = 2
         last_merged_location["timestamp"] = datetime.fromisoformat(satellite_data.get("timestamp"))
-        last_merged_location["is_realtime"] = False
+        last_merged_location["is_realtime"] = True
 
         # FIltro de velocidade para ALTAS velocidades
         if speed_filter and speed_filter.isdigit():
