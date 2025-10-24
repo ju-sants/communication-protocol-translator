@@ -93,6 +93,7 @@ def handle_satelite_data(raw_data: bytes):
             actual_speed = int(last_merged_location.get("speed_kmh", 0))
             if actual_speed > speed_filter:
                 last_merged_location["speed_kmh"] = 0
+                last_merged_location["satellites"] = 1
 
         redis_last_merged_location = copy.deepcopy(last_merged_location)
         redis_last_merged_location["timestamp"] = redis_last_merged_location["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
