@@ -417,5 +417,5 @@ def build_voltage_info_packet(packet_data: dict, serial_number: int) -> bytes:
         b"\x0d\x0a"   
     )
 
-    logger.debug(f"Construído pacote de Informação (Protocol {hex(protocol_number)}): {final_packet.hex()}")
+    logger.info(f"Construído pacote de Informação (Protocol {hex(protocol_number)}): {final_packet.hex()}")
     return final_packet
