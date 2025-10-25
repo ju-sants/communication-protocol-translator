@@ -1,6 +1,7 @@
 from crc import Calculator, Configuration
 from datetime import datetime, timezone
 from math import radians, sin, cos, sqrt, atan2
+from dateutil.relativedelta import relativedelta
 
 from app.services.redis_service import get_redis
 from app.core.logger import get_logger
@@ -73,7 +74,7 @@ def handle_ignition_change(dev_id_str: str, packet_data: dict):
 
                 packet_data["universal_alert_id"] = alert_id
 
-        packet_data["timestamp"] = datetime.now(timezone.utc)
+        packet_data["timestamp"] = packet_data["timestamp"] + relativedelta(seconds=1)
 
         # Atualiza o estado no Redis para a próxima verificação
         redis_client.hset(f"tracker:{dev_id_str}", 'acc_status', current_acc_status)
