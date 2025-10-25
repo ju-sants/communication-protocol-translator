@@ -266,8 +266,10 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
         "last_event_type": "location",
         "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
-        "last_voltage": packet_data.get('voltage', 0.0),
     }
+
+    if packet_data.get('voltage') is not None:
+        redis_data['last_voltage'] = packet_data.get('voltage', 0.0)
 
     ign_alert_packet_data = None
     if redis_client.hget(f"tracker:{dev_id_str}", "is_hybrid"):
@@ -384,3 +386,28 @@ def handle_reply_command_packet(dev_id: str, body: bytes):
     except Exception:
         import traceback
         logger.error(f"Erro ao decodificar comando de REPLY: {traceback.format_exc()}, body={body.hex()}, dev_id={dev_id}")
+
+def handle_information_packet(dev_id: str, body: bytes):
+    redis_data = {
+        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_event_type": "information",
+    }
+    pipeline = redis_client.pipeline()
+    pipeline.hmset(f"tracker:{dev_id}", redis_data)
+    pipeline.hincrby(f"tracker:{dev_id}", "total_packets_received", 1)
+    
+    type = body[0]
+    if type == 0x00:
+        voltage = struct.unpack(">H", body[1:])
+        if voltage:
+            voltage = voltage[0] / 100
+            logger.info(f"Recebido pacote de informação com dados de voltagem, dev_id={dev_id}, voltage={voltage}")
+
+            redis_data = {
+                "last_voltage": voltage,
+                "power_status": 0 if voltage > 0 else 1
+            }
+
+            pipeline.hmset(f"tracker:{dev_id}", redis_data)
+    else:
+        pass

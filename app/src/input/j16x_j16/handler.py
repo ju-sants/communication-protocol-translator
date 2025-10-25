@@ -1,6 +1,7 @@
 import socket
 from app.core.logger import get_logger
 from .processor import process_packet
+import struct
 
 from app.src.session.input_sessions_manager import input_sessions_manager
 from app.services.redis_service import get_redis
@@ -28,10 +29,17 @@ def handle_connection(conn: socket.socket, addr):
                 buffer += data
                 
                 while len(buffer) > 4:
-                    if buffer.startswith(b'\x78\x78'):
-                        packet_length = buffer[2]
-                        # Tamanho total do pacote na stream: Start(2) + [Length(1) + Corpo(length-2)] + Stop(2)
-                        full_packet_size = 2 + 1 + packet_length + 2
+                    if buffer.startswith(b'\x78\x78') or buffer.startswith(b"\x79\x79"):
+
+                        packet_length = buffer[2] if buffer.startswith(b"\x78\x78") else struct.unpack(">H", buffer[2:4])[0]
+
+                        is_x79 = False
+                        if buffer.startswith(b'\x78\x78'):
+                            # Tamanho total do pacote na stream: Start(2) + [Length(1) + Corpo(length-2)] + Stop(2)
+                            full_packet_size = 2 + 1 + packet_length + 2
+                        else:
+                            is_x79 = True
+                            full_packet_size = 2 + 2 + packet_length + 2
                         
                         if len(buffer) >= full_packet_size:
                             raw_packet = buffer[:full_packet_size]
@@ -48,7 +56,7 @@ def handle_connection(conn: socket.socket, addr):
                             logger.info(f"Recebido pacote J16X-J16: {packet_body.hex()}")
                             
                             # Chama o processador, passando o ID da sessão
-                            newly_logged_in_dev_id = process_packet(dev_id_session, packet_body, conn)
+                            newly_logged_in_dev_id = process_packet(dev_id_session, packet_body, conn, is_x79)
                             
                             if newly_logged_in_dev_id and newly_logged_in_dev_id != dev_id_session:
                                 dev_id_session = newly_logged_in_dev_id
@@ -62,7 +70,13 @@ def handle_connection(conn: socket.socket, addr):
                             break
                     else:
                         # Procuramos o próximo início de pacote válido para tentar nos recuperar.
-                        next_start = buffer.find(b'\x78\x78', 1)
+                        next_start_78 = buffer.find(b'\x78\x78', 1)
+                        next_start_79 = buffer.find(b"\x79\x79", 1)
+
+                        next_start = next_start_78
+                        if next_start_79 != -1 and next_start_78 != -1 and next_start_79 < next_start_78:
+                            next_start = next_start_79
+
                         if next_start != -1:
                             dados_descartados = buffer[:next_start]
                             logger.warning(f"Dados desalinhados no buffer, descartando {len(dados_descartados)} bytes dados={dados_descartados.hex()}")

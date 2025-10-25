@@ -11,7 +11,7 @@ from app.services.redis_service import get_redis
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.socket) -> tuple[bytes | None, str | None]:
+def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.socket, is_x79: bool) -> tuple[bytes | None, str | None]:
     """
     Processa o corpo de um pacote J16X-J16, valida, disseca e delega a ação.
     Recebe o dev_id da sessão (se já conhecido).
@@ -30,9 +30,9 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         logger.warning(f"Checksum J16X-J16 inválido! pacote={packet_body.hex()}, crc_recebido={hex(received_crc)}, crc_calculado={hex(calculated_crc)}")
         return None, None
     
-    protocol_number = packet_body[1]
+    protocol_number = packet_body[1] if not is_x79 else packet_body[2]
     serial_number = struct.unpack('>H', packet_body[-4:-2])[0]
-    content_body = packet_body[2:-4]
+    content_body = packet_body[2:-4] if not is_x79 else packet_body[3:-4]
     
     response_to_device = None
     newly_logged_in_dev_id = None
@@ -76,6 +76,14 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
             logger.warning(f"Pacote de alarme J16X-J16 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
         response_to_device = builder.build_generic_response(protocol_number, serial_number)
     
+    elif protocol_number == 0x94: # Information Packet
+        if dev_id_str:
+            mapper.handle_information_packet(dev_id_str, content_body)
+        else:
+            logger.warning(f"Pacote de information J16X-J16 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
+
+        response_to_device = builder.build_generic_response(protocol_number, serial_number)
+
     elif protocol_number == 0x15:
         if dev_id_str:
             reply_command_packet_data = mapper.handle_reply_command_packet(dev_id_str, content_body)
