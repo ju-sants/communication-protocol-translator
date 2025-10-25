@@ -186,7 +186,7 @@ class MainServerSession:
                     logger.info(f"Resposta do server principal recebida, continuando a entrega de pacotes. dev_id={self.dev_id}")
 
                 # Enviando pacote de info de voltagem antes de qualquer pacote de localização em tempo real
-                if self.output_protocol == "gt06" and packet_data and packet_data.get("packet_type") == "location":
+                if self.output_protocol == "gt06" and packet_data and packet_data.get("packet_type") in ("location", "alert"):
                     if packet_data.get("device_type") == "satellital": # Prioridade 1: é um satelital? mande a voltagem específica.
                         voltage = 2.22
                     elif packet_data.get("voltage"): # Prioridade 2: é GSM e possui voltagem no pacote
