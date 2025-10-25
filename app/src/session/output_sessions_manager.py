@@ -317,7 +317,8 @@ def send_to_main_server(
                 last_voltage = redis_client.hget(f"tracker:{dev_id}", "last_voltage")
                 packet_data["last_voltage"] = last_voltage if last_voltage else "1.11"
 
-        logger.info(f"Pacote de {type.upper()} {output_protocol.upper()} traduzido de pacote {str(original_protocol).upper()}:\n{str_output_packet}")
+        logger.info(f"Pacote de {type.upper()} {output_protocol.upper()} traduzido de pacote {str(original_protocol).upper()}:")
+        logger.info(f"{str_output_packet}")
 
         add_packet_to_history(dev_id, raw_packet_hex, str_output_packet)
         
