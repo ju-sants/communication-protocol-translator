@@ -28,7 +28,8 @@ def build_location_packet(dev_id, packet_data: dict, serial_number: int, *args) 
         timestamp.second,
     )
 
-    satellites = packet_data.get("satellites", 0) & 0x0F
+    packet_satellites = packet_data.get("satellites", 0)
+    satellites = min(15, packet_satellites) 
     gps_info_byte = 0xC0 | satellites
 
     latitude_val = packet_data.get("latitude", 0.0)
