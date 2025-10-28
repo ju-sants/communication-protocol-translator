@@ -46,12 +46,20 @@ def process_packet(payload_starts_at: int, packet_body: bytes, conn: socket.sock
         payload_type_field_len = 2
 
         payload_type = payload[:2] & 0x1FFF
+    
+    first_byte_payload_length = payload[payload_type_field_len]
+    if not first_byte_payload_length >= 224:
+        payload_length_field_len = 1
+    else:
+        payload_length_field_len = 2
+
     # =========================================
     
     response_to_device = None
+    payload_value_starts_at = payload_type_field_len + payload_length_field_len
 
     if payload_type == 0x00: # General Report
-        packet_data = mapper.handle_general_report(dev_id_str, payload, timestamp, event, payload_type_field_len)
+        packet_data = mapper.handle_general_report(dev_id_str, serial_number, payload, event, payload_value_starts_at)
         if packet_data:
             utils.log_mapped_packet(packet_data, "GP900M")
 
@@ -61,7 +69,7 @@ def process_packet(payload_starts_at: int, packet_body: bytes, conn: socket.sock
             response_to_device = builder.build_generic_response(payload_type, serial_number)
             
     elif payload_type == 0x41:
-        packet_data = mapper.handle_odometer_read(dev_id_str, payload, timestamp, event, payload_type_field_len)
+        packet_data = mapper.handle_odometer_read(dev_id_str, serial_number, payload, event, payload_type_field_len)
         if packet_data:
             send_to_main_server(...)
 
