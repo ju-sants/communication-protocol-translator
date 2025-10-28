@@ -52,13 +52,23 @@ def process_packet(payload_starts_at: int, packet_body: bytes, conn: socket.sock
     response_to_device = None
 
     if payload_type == 0x00: # General Report
-        mapper.handle_general_report(dev_id_str, payload, timestamp, event, payload_type_field_len)
+        packet_data = mapper.handle_general_report(dev_id_str, payload, timestamp, event, payload_type_field_len)
+        if packet_data:
+            utils.log_mapped_packet(packet_data, "GP900M")
+
+            send_to_main_server(...)
+
         if needs_response: 
             response_to_device = builder.build_generic_response(payload_type, serial_number)
+            
     elif payload_type == 0x41:
-        mapper.handle_odometer_read(dev_id_str, payload, timestamp, event, payload_type_field_len)
+        packet_data = mapper.handle_odometer_read(dev_id_str, payload, timestamp, event, payload_type_field_len)
+        if packet_data:
+            send_to_main_server(...)
+
         if needs_response: 
             response_to_device = builder.build_generic_response(payload_type, serial_number)
+            
     else:
         logger.warning(f"Protocolo GP900M não mapeado: {hex(payload_type)} device_id={dev_id_str}")
         if needs_response: 
