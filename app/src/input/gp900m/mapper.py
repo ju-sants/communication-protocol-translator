@@ -11,6 +11,18 @@ from ..utils import handle_ignition_change
 logger = get_logger(__name__)
 redis_client = get_redis()
 
+def decode_timestamp(timestamp_bytes: bytes):
+    timestamp = struct.unpack(">I", timestamp_bytes)
+    
+    seconds = timestamp % 60
+    minutes = int(timestamp / 60) % 60
+    hours = int(timestamp / (60 * 60)) % 24
+    days = 1 + int(timestamp / (60 * 60 * 24)) % 31
+    month = 1 + int(timestamp / (60 * 60 * 24 * 31)) % 12
+    year = 2000 + int(timestamp / (60 * 60 * 24 * 31 * 12))
+
+    return datetime(year, month, days, hours, minutes, seconds)
+
 def decode_general_report(payload: bytes):
 
     data = {}
