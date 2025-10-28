@@ -32,7 +32,6 @@ def process_packet(payload_starts_at: int, packet_body: bytes, conn: socket.sock
     dev_id_str = header[1:9].hex()
     serial_number = struct.unpack('>H', header[9:11])[0]
     # Mapper-Scope
-    timestamp = header[11:15]
     event = header[15]
     # ============================================
     
