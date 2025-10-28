@@ -187,11 +187,9 @@ class MainServerSession:
 
                 # Enviando pacote de info de voltagem antes de qualquer pacote de localização em tempo real
                 if self.output_protocol == "gt06" and packet_data and packet_data.get("packet_type") in ("location", "alert"):
-                    if packet_data.get("device_type") == "satellital": # Prioridade 1: é um satelital? mande a voltagem específica.
-                        voltage = 2.22
-                    elif packet_data.get("voltage"): # Prioridade 2: é GSM e possui voltagem no pacote
+                    if packet_data.get("voltage"): # Prioridade 1: é GSM/SAT e possui voltagem no pacote
                         voltage = packet_data.get("voltage")
-                    elif not self._is_realtime: # Prioridade 3: Estamos enviando pacotes de memória de protocolos que não enviam voltagem nos pacotes, envia voltagem específica.
+                    elif not self._is_realtime: # Prioridade 2: Estamos enviando pacotes de memória de protocolos que não enviam voltagem nos pacotes, envia voltagem específica.
                         voltage = 1.11
                     else: # Prioridade 4: estamos em tempo real, o protocolo em questão não envia dados de voltagem no pacote, mas o conseguimos de outra forma, e se não o conseguirmos, enviamos 1.11.
                         voltage = packet_data.get("last_voltage") or "1.11" 
