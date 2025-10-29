@@ -60,6 +60,10 @@ class Settings(BaseSettings):
         "gp900m": {
             "port": 65437,
             "handler_path": "app.src.input.gp900m.handler.handle_connection"
+        },
+        "vl03": {
+            "port": 65438,
+            "handler_path": "app.src.input.vl03.handler.handle_connection"
         }
     }
 
@@ -99,6 +103,10 @@ class Settings(BaseSettings):
         #     0: 6542, 1: 6501, 5: 6503, 8: 6541, 27: 6573, 20: 6505, 21: 6505
         # },
         "vl01": {
+            0x01: 6542, 0x02: 6541, 0x03: 6515, 0x04: 6506, 0x05: 6505, 0x06: 6501,
+            0x19: 6514, 0xF0: 6546, 0xF1: 6547, 0xFE: 6533, 0xFF: 6534
+        },
+        "vl03": {
             0x01: 6542, 0x02: 6541, 0x03: 6515, 0x04: 6506, 0x05: 6505, 0x06: 6501,
             0x19: 6514, 0xF0: 6546, 0xF1: 6547, 0xFE: 6533, 0xFF: 6534
         },
