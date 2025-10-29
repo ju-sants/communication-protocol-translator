@@ -77,7 +77,7 @@ def process_packet(payload_starts_at: int, packet_body: bytes, conn: socket.sock
             response_to_device = builder.build_generic_response(payload_type, serial_number)
             
     elif payload_type == 0x41:
-        packet_data = mapper.handle_odometer_read(dev_id_str, serial_number, payload, event, payload_type_field_len)
+        packet_data = mapper.handle_odometer_read(dev_id_str, serial_number, payload, event, payload_value_starts_at)
         if packet_data:
             send_to_main_server(...)
 
