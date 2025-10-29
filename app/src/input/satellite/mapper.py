@@ -102,6 +102,7 @@ def handle_satelite_data(raw_satellite_data: bytes):
             if actual_speed > speed_filter:
                 last_merged_location["speed_kmh"] = 0
                 last_merged_location["satellites"] = 1
+                last_merged_location["voltage"] = 3.33
 
         # Filtro de velocidade para IGN DESLIGADA
         if last_merged_location["acc_status"] == 0 and last_merged_location["speed_kmh"] < 5:
