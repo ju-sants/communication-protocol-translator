@@ -120,8 +120,8 @@ def decode_general_report(payload: bytes):
             gpio_ad = int.from_bytes(payload[parser_at:parser_at + 1], 'big')
             logger.debug(f"gpio_ad={bin(gpio_ad)}")
 
-            acc_status = (gpio_ad >> 7) & 0b1
-            output_status = (gpio_ad >> 3) & 0b1
+            acc_status = gpio_ad & 0b1
+            output_status = (gpio_ad >> 4) & 0b1
             
             data["acc_status"] = acc_status
             data["output_status"] = output_status
