@@ -156,8 +156,12 @@ def handle_general_report(dev_id_str: str, serial: int, payload: bytes, event: i
     
     alarm_packet_data = None
     if event:
+        logger.info(f"Recebido um evento no pacote de reporte geral: {event}:{hex(event)}")
+        
         universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get(event)
         if universal_alert_id:
+            logger.info(f"Alerta universal mapeado: {universal_alert_id}")
+
             alarm_packet_data = copy.deepcopy(packet_data)
             alarm_packet_data["universal_alert_id"] = universal_alert_id
 
