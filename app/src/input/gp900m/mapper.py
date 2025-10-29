@@ -5,14 +5,14 @@ import copy
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-
 from ..utils import handle_ignition_change
+from app.config.settings import settings
 
 logger = get_logger(__name__)
 redis_client = get_redis()
 
 def decode_timestamp(timestamp_bytes: bytes):
-    timestamp = struct.unpack(">I", timestamp_bytes)
+    timestamp = int.from_bytes(timestamp_bytes, "big")
     
     seconds = timestamp % 60
     minutes = int(timestamp / 60) % 60
@@ -27,7 +27,8 @@ def decode_general_report(payload: bytes):
 
     data = {}
     try:
-        mask = payload[:4]
+        mask = int.from_bytes(payload[:4], "big")
+        logger.debug(f"mask={bin(mask)}")
         parser_at = 4
         if mask & 0b1: # Product ID present
             parser_at = 5
@@ -70,7 +71,8 @@ def decode_general_report(payload: bytes):
             parser_at += 2
 
         if (mask >> 5) & 0b1: # GPS Accuracy present
-            gps_accuracy_byte = payload[parser_at:parser_at + 1]
+            gps_accuracy_byte = int.from_bytes(payload[parser_at:parser_at + 1], "big")
+            logger.debug(f"gps_accuracy_byte={hex(gps_accuracy_byte)}")
 
             # Deslocamos 4 bits para a direita e aplicamos a máscara 0x0F para termos certeza de ter isolado os bits 4-7, depois aplicamos uma máscara para descobrir se o gps está fixado, se os três primeiros bits do nibble forem 001.
             gps_fixed = (gps_accuracy_byte >> 4) & 0x0F & 0b111 == 1
@@ -86,7 +88,7 @@ def decode_general_report(payload: bytes):
             main_voltage_bytes = payload[parser_at:parser_at + 2]
             logger.debug(f"main_voltage_bytes={main_voltage_bytes.hex()}")
 
-            main_voltage = struct.unpack(">H", main_voltage_bytes)
+            main_voltage = int.from_bytes(main_voltage_bytes, "big")
             voltage = main_voltage / 1000
             
             data["voltage"] = voltage
@@ -129,7 +131,8 @@ def decode_general_report(payload: bytes):
             odometer_bytes = payload[parser_at:parser_at + 4]
             logger.debug(f"odometer_bytes={odometer_bytes.hex()}")
 
-            odometer = struct.unpack(">I", odometer_bytes)
+            odometer = int.from_bytes(odometer_bytes, "big")
+            odometer = odometer * 100
 
             data["gps_odometer"] = odometer
             logger.debug(f"odometer={odometer}")

@@ -30,7 +30,7 @@ def process_packet(payload_starts_at: int, packet_body: bytes, conn: socket.sock
     tag = header[0]
     needs_response = tag & 0b11 != 0 # Verificamos se os dois primeiros bits são diferentes de 0, em caso positivo o dipositivo precisa de resposta (ACK)
     dev_id_str = header[1:9].hex()
-    serial_number = struct.unpack('>H', header[9:11])[0]
+    serial_number = int.from_bytes(header[9:11], "big")
     # Mapper-Scope
     event = header[15]
     # ============================================
