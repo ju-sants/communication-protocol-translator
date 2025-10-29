@@ -56,6 +56,10 @@ class Settings(BaseSettings):
         "suntech4g": {
             "port": 65436,
             "handler_path": "app.src.input.suntech4g.handler.handle_connection"
+        },
+        "gp900m": {
+            "port": 65437,
+            "handler_path": "app.src.input.gp900m.handler.handle_connection"
         }
     }
 
@@ -100,6 +104,9 @@ class Settings(BaseSettings):
         },
         "nt40": {
             0x01: 6542, 0x02: 6541, 0x03: 6515, 0x04: 6533, 0x05: 6534, 0x12: 6647
+        },
+        "gp900m": {
+            0x04: 6541, 0x05: 6540, 0x13: 6501, 0x14: 6502, 0x1C: 6517, 0x0E: 6533, 0x0F: 6534
         }
     }
 
