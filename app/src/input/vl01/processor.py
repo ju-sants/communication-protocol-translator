@@ -93,7 +93,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
     
     elif protocol_number == 0x21:
         if dev_id_str:
-            reply_command_packet_data = mapper.handle_reply_command_packet(dev_id_str, serial_number, content_body)
+            reply_command_packet_data = mapper.handle_reply_command_packet(dev_id_str, content_body)
             if reply_command_packet_data:
                 utils.log_mapped_packet(reply_command_packet_data, "VL01")
                 send_to_main_server(dev_id_str, reply_command_packet_data, serial_number, packet_body.hex(), original_protocol="VL01", type="command_reply")
