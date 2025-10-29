@@ -78,13 +78,16 @@ def scheduled_work():
                                 if float(packet.get("voltage", 0.0)) == 2.22 and int(packet.get("satellites", 0)) == 2:
                                     key = "satellite|" + key
 
-                                if utils.is_signal_fail(timestamp_str) and not any(key == fail.get("tracker_label") for fail in failing_trackers):
+                                is_signal_fail = utils.is_signal_fail(timestamp_str)
+                                if is_signal_fail and not any(key == fail.get("tracker_label") for fail in failing_trackers):
                                     to_add_to_failing.add(key)
                                     logger.info(f"Tracker {key} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
-                                else:
+
+                                elif not is_signal_fail:
                                     if any(key == fail.get("tracker_label") for fail in failing_trackers):
                                         to_remove_from_failing.add(key)
                                         logger.info(f"Tracker {key} voltou a comunicar. Marcando para retirar dos registros de falha.")
+                                    
 
                         except (json.JSONDecodeError, KeyError, TypeError) as e:
                             logger.error(f"Error processing tracker data for key {tracker_keys[i]}: {e}")
