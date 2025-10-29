@@ -35,11 +35,13 @@ def decode_general_report(payload: bytes):
         if (mask >> 1) & 0b1: # GPS timestamp present
             gps_timestamp_bytes = payload[parser_at:parser_at + 4]
             data["timestamp"] = decode_timestamp(gps_timestamp_bytes)
+            logger.debug(f"gps_timestamp_bytes={gps_timestamp_bytes.hex()}, timestamp={data['timestamp']}")
 
             parser_at += 4
 
         if (mask >> 2) & 0b1: # Lat e Lon present
             lat_long_bytes = payload[parser_at:parser_at + 8]
+            logger.debug(f"lat_long_bytes={lat_long_bytes.hex()}")
             
             encodedLat, encodedLon = struct.unpack(">II", lat_long_bytes)
             latitude = (encodedLat / 1000000.0) - 90.0
@@ -47,20 +49,24 @@ def decode_general_report(payload: bytes):
 
             data["latitude"] = latitude
             data["longitude"] = longitude
+            logger.debug(f"encodedLat={encodedLat}, encodedLon={encodedLon}, latitude={latitude}, longitude={longitude}")
 
             parser_at += 8
 
         if (mask >> 3) & 0b1: # Speed And Direction Degrees present
             speed_degree = payload[parser_at:parser_at + 3]
+            logger.debug(f"speed_degree={speed_degree.hex()}")
 
             speed_kmh, direction = struct.unpack(">BH", speed_degree)
             
             data["speed_kmh"] = speed_kmh 
             data["direction"] = direction
+            logger.debug(f"speed_kmh={speed_kmh}, direction={direction}")
             
             parser_at += 3
 
         if (mask >> 4) & 0b1: # GPS Altitude present
+            logger.debug(f"GPS Altitude present, skipping 2 bytes")
             parser_at += 2
 
         if (mask >> 5) & 0b1: # GPS Accuracy present
@@ -72,32 +78,40 @@ def decode_general_report(payload: bytes):
             
             data["gps_fixed"] = gps_fixed
             data["satellites"] = satellites
+            logger.debug(f"gps_fixed={gps_fixed}, satellites={satellites}")
 
             parser_at += 2
 
         if (mask >> 6) & 0b1: # Main Voltage present
-            main_voltage_bytes = parser_at[parser_at:parser_at + 2]
+            main_voltage_bytes = payload[parser_at:parser_at + 2]
+            logger.debug(f"main_voltage_bytes={main_voltage_bytes.hex()}")
 
             main_voltage = struct.unpack(">H", main_voltage_bytes)
             voltage = main_voltage / 1000
             
             data["voltage"] = voltage
+            logger.debug(f"main_voltage={main_voltage}, voltage={voltage}")
 
             parser_at += 2
 
         if (mask >> 7) & 0b1: # Battery Voltage present
+            logger.debug(f"Battery Voltage present, skipping 2 bytes")
             parser_at += 2
 
         if (mask >> 8) & 0b1: # Aux Voltage present
+            logger.debug(f"Aux Voltage present, skipping 2 bytes")
             parser_at += 2
 
         if (mask >> 9) & 0b1: # Solar Voltage present
+            logger.debug(f"Solar Voltage present, skipping 2 bytes")
             parser_at += 2
 
         if (mask >> 10) & 0b1: # Cellular Service present
+            logger.debug(f"Cellular Service present, skipping 5 bytes")
             parser_at += 5
 
         if (mask >> 11) & 0b1: # RSSI present
+            logger.debug(f"RSSI present, skipping 1 byte")
             parser_at += 1
 
         if (mask >> 12) & 0b1: # GPIO A-D present
@@ -107,15 +121,18 @@ def decode_general_report(payload: bytes):
 
         if (mask >> 13) & 0b1: # GPIO E-H present
             gpio_eh = payload[parser_at:parser_at + 1]
+            logger.debug(f"gpio_eh={bin(int.from_bytes(gpio_eh, 'big'))}")
 
             parser_at += 1
 
         if (mask >> 14) & 0b1: # Odometer present
             odometer_bytes = payload[parser_at:parser_at + 4]
+            logger.debug(f"odometer_bytes={odometer_bytes.hex()}")
 
             odometer = struct.unpack(">I", odometer_bytes)
 
             data["gps_odometer"] = odometer
+            logger.debug(f"odometer={odometer}")
 
         
     except Exception as e:
