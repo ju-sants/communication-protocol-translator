@@ -411,3 +411,5 @@ def handle_information_packet(dev_id: str, body: bytes):
             pipeline.hmset(f"tracker:{dev_id}", redis_data)
     else:
         pass
+
+    pipeline.execute()
