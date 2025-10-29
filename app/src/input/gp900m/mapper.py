@@ -148,3 +148,60 @@ def decode_general_report(payload: bytes):
     except Exception as e:
         logger.exception(f"Falha ao decodificar pacote de localização GP900M body_hex={payload.hex()}")
         return None
+
+def handle_general_report(dev_id_str: str, serial: int, payload: bytes, event: int, payload_value_starts_at: int):
+    packet_data = decode_general_report(payload[payload_value_starts_at:]) # Enviando o payload depois dos bytes de tipo
+    if not packet_data:
+        return
+    
+    alarm_packet_data = None
+    if event:
+        alarm_packet_data = copy.deepcopy(packet_data)
+        universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get(event)
+        if universal_alert_id:
+            alarm_packet_data["universal_alert_id"] = universal_alert_id
+
+    last_packet_data = copy.deepcopy(packet_data)
+    
+    last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
+    
+    # Salvando para uso em caso de alarmes
+    redis_data = {
+        "imei": dev_id_str,
+        "last_packet_data": json.dumps(last_packet_data),
+        "last_full_location": json.dumps(packet_data, default=str),
+        "last_serial": serial,
+        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_event_type": "location",
+        "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
+        "last_voltage": packet_data.get("voltage"),
+        "last_output_status": packet_data.get("output_status")
+    }
+
+
+    ign_alert_packet_data = None
+    if redis_client.hget(f"tracker:{dev_id_str}", "is_hybrid"):
+        # Lidando com o estado da ignição, muito preciso para veículos híbridos.
+        last_altered_acc_str = redis_client.hget(f"tracker:{dev_id_str}", "last_altered_acc")
+        if last_altered_acc_str:
+            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+
+        if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt < packet_data.get("timestamp")):
+            # Lidando com mudanças no status da ignição
+            ign_alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
+
+            redis_data["acc_status"] = packet_data.get("acc_status")
+            redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
+
+    else:
+        redis_data["acc_status"] = packet_data.get("acc_status")
+
+    pipeline = redis_client.pipeline()
+    pipeline.hmset(f"tracker:{dev_id_str}", redis_data)
+    pipeline.hincrby(f"tracker:{dev_id_str}", "total_packets_received", 1)
+    pipeline.execute()
+
+    return packet_data, alarm_packet_data, ign_alert_packet_data
+
+def handle_odometer_read(dev_id_str, serial_number, payload, event, payload_value_starts_at):
+    pass
