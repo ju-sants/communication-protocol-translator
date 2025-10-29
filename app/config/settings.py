@@ -59,7 +59,25 @@ class Settings(BaseSettings):
         }
     }
 
-     # -------------- Dicionários Globais Para IDs de Alerta ----------------------
+    # -------------- Dicionários Globais Para IDs de Alerta ----------------------
+    UNIVERSAL_ALERT_ID_GLOSSARY: Dict[int, str] = {
+        6501: "Over Speed",
+        6502: "Under Speed",
+        6503: "GPS Antenna Disconnected",
+        6504: "GPS Antenna Connected",
+        6505: "Exit Geofence",
+        6506: "Enter Geofence",
+        6514: "Battery Low",
+        6515: "Shocked",
+        6517: "Motion Detected",
+        6533: "Ignition On",
+        6534: "Ignition Off",
+        6540: "Power Connected",
+        6541: "Power Disconnected",
+        6542: "Panic Button",
+        6573: "Anti Theft",
+    }
+
     UNIVERSAL_ALERT_ID_DICTIONARY: Dict[str, Dict[int, int]] = {
         "suntech4g": {
             1: 6501, 3: 6503, 4: 6504, 5: 6505, 6: 6506, 14: 6514, 15: 6515, 17: 6517, 33: 6533, 34: 6534,
