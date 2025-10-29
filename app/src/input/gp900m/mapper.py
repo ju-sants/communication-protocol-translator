@@ -117,7 +117,14 @@ def decode_general_report(payload: bytes):
             parser_at += 1
 
         if (mask >> 12) & 0b1: # GPIO A-D present
-            gpio_ad = payload[parser_at:parser_at + 1]
+            gpio_ad = int.from_bytes(payload[parser_at:parser_at + 1], 'big')
+            logger.debug(f"gpio_ad={bin(gpio_ad)}")
+
+            acc_status = (gpio_ad >> 7) & 0b1
+            output_status = (gpio_ad >> 3) & 0b1
+            
+            data["acc_status"] = acc_status
+            data["output_status"] = output_status
 
             parser_at += 1
 
