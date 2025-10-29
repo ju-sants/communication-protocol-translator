@@ -137,7 +137,7 @@ def decode_general_report(payload: bytes):
             data["gps_odometer"] = odometer
             logger.debug(f"odometer={odometer}")
 
-        
+        return data
     except Exception as e:
         logger.exception(f"Falha ao decodificar pacote de localização GP900M body_hex={payload.hex()}")
         return None
