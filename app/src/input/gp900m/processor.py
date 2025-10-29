@@ -59,12 +59,20 @@ def process_packet(payload_starts_at: int, packet_body: bytes, conn: socket.sock
     payload_value_starts_at = payload_type_field_len + payload_length_field_len
 
     if payload_type == 0x00: # General Report
-        packet_data = mapper.handle_general_report(dev_id_str, serial_number, payload, event, payload_value_starts_at)
+        packet_data, alarm_packet_data, ign_alarm_packet_data = mapper.handle_general_report(dev_id_str, serial_number, payload, event, payload_value_starts_at)
         if packet_data:
             utils.log_mapped_packet(packet_data, "GP900M")
 
             send_to_main_server(...)
 
+        last_alarm = None
+        if alarm_packet_data:
+            last_alarm = alarm_packet_data.get("universal_alert_id")
+            send_to_main_server(...)
+        
+        if ign_alarm_packet_data and not last_alarm or last_alarm != ign_alarm_packet_data.get("universal_alert_id"):
+            send_to_main_server(...)
+            
         if needs_response: 
             response_to_device = builder.build_generic_response(payload_type, serial_number)
             
