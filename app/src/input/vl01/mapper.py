@@ -270,7 +270,7 @@ def handle_reply_command_packet(dev_id: str, body: bytes):
                 return last_packet_data
             
             else:
-                logger.warning(f"Resposta a comando não mapeada para enviar reply ao server principal, dev_id={dev_id}")
+                logger.warning(f"Resposta a comando não mapeada para enviar reply ao server principal, dev_id={dev_id} reply={command_content_str}")
 
     except Exception as e:
         logger.error(f"Erro ao decodificar comando de REPLY: {e} body={body.hex()}, dev_id={dev_id}")
@@ -286,10 +286,12 @@ def handle_information_packet(dev_id: str, body: bytes):
     
     type = body[0]
     if type == 0x00:
-        logger.info(f"Recebido pacote de informação com dados de voltagem, dev_id={dev_id}")
         voltage = struct.unpack(">H", body[1:])
+        voltage = voltage[0] / 100
+
+        logger.info(f"Recebido pacote de informação com dados de voltagem, dev_id={dev_id}, voltage={voltage}")
+
         if voltage:
-            voltage = voltage[0] / 100
             redis_data = {
                 "last_voltage": voltage,
                 "power_status": 0 if voltage > 0 else 1
