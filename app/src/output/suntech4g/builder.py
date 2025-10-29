@@ -31,7 +31,6 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     universal_alert_id = packet_data.get("universal_alert_id")
     suntech_alert_id = settings.REVERSE_UNIVERSAL_ALERT_ID_DICTIONARY.get("suntech4g").get(universal_alert_id)
     geo_fence_id = packet_data.get("geo_fence_id")
-    voltage_stored = packet_data.get("voltage_stored")
 
     # Condição para híbridos
     if not managed_alert:
@@ -76,11 +75,11 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     assign_map = "00028003"
     
     voltage = None
-    if not voltage_stored:
-        voltage = float(packet_data.get("voltage", 1.11))
-    elif voltage_stored and not is_realtime:
-        voltage = float(packet_data.get("voltage", 1.11))
-    elif voltage_stored and is_realtime:
+    if packet_data.get("voltage"):
+        voltage = float(packet_data.get("voltage"))
+    elif not is_realtime:
+        voltage = 1.11
+    else:
         voltage = device_info.get("last_voltage")
         if voltage:
             voltage = float(voltage)
