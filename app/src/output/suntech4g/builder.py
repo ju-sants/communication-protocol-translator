@@ -69,7 +69,7 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
         str(packet_data.get('satellites', 15)),
         "1" if packet_data.get('gps_fixed') else "0",
         f"0000000{int(packet_data.get('acc_status', 0))}",
-        f"0000000{device_info.get('last_output_status')}"
+        f"0000000{device_info.get('last_output_status', 0)}"
     ]
 
     # Campos de telemetria extra (Assign Headers)
