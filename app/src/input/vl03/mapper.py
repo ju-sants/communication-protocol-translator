@@ -261,10 +261,10 @@ def handle_reply_command_packet(dev_id: str, body: bytes):
 
             if command_content_str in ("Cut off the fuel supply: Success!", "Restore fuel supply: Success!"):
                 if command_content_str == "Cut off the fuel supply: Success!":
-                    redis_client.hset(dev_id, "last_output_status", 1)
+                    redis_client.hset(f"tracker:{dev_id}", "last_output_status", 1)
                     last_packet_data["REPLY"] = "OUTPUT ON"
                 elif command_content_str == "Restore fuel supply: Success!":
-                    redis_client.hset(dev_id, "last_output_status", 0)
+                    redis_client.hset(f"tracker:{dev_id}", "last_output_status", 0)
                     last_packet_data["REPLY"] = "OUTPUT OFF"
                 
                 return last_packet_data

@@ -261,10 +261,10 @@ def handle_reply_command_packet(dev_id: str, body: bytes):
 
             if command_content_str in ("RELAY:ON", "RELAY:OFF"):
                 if command_content_str == "RELAY:ON":
-                    redis_client.hset(dev_id, "last_output_status", 1)
+                    redis_client.hset(f"tracker:{dev_id}", "last_output_status", 1)
                     last_packet_data["REPLY"] = "OUTPUT ON"
                 elif command_content_str == "RELAY:OFF":
-                    redis_client.hset(dev_id, "last_output_status", 0)
+                    redis_client.hset(f"tracker:{dev_id}", "last_output_status", 0)
                     last_packet_data["REPLY"] = "OUTPUT OFF"
                 
                 return last_packet_data
