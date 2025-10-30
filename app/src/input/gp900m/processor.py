@@ -1,7 +1,7 @@
 import struct
 import socket
 
-from . import builder, mapper
+from . import builder, mapper, utils as protocol_utils
 from .. import utils
 from app.src.session.output_sessions_manager import send_to_main_server
 from app.core.logger import get_logger
@@ -32,39 +32,23 @@ def process_packet(payload_starts_at: int, packet_body: bytes, conn: socket.sock
     dev_id_str = header[1:9].hex()
     serial_number = int.from_bytes(header[9:11], "big")
     # Mapper-Scope
-    first_byte_event = header[15]
-    if not first_byte_event >= 224:
-        event = first_byte_event
-    else:
-        event = int.from_bytes(header[15:16], "big") & 0x1FFF
+    event, _ = protocol_utils.get_dinamic_field(header, 15)
         
     # ============================================
     
     # Payload Decodification
     # ======================================
     # Processor-Scope
-    first_byte_payload_type = payload[0]
-    if not first_byte_payload_type >= 224:
-        payload_type_field_len = 1
-        payload_type = first_byte_payload_type
-    else:
-        payload_type_field_len = 2
+    payload_type, payload_type_end = protocol_utils.get_dinamic_field(payload, 0)
 
-        payload_type = payload[:2] & 0x1FFF
-    
-    first_byte_payload_length = payload[payload_type_field_len]
-    if not first_byte_payload_length >= 224:
-        payload_length_field_len = 1
-    else:
-        payload_length_field_len = 2
+    _, payload_length_end = protocol_utils.get_dinamic_field(payload, payload_type_end)
 
     # =========================================
     
     response_to_device = None
-    payload_value_starts_at = payload_type_field_len + payload_length_field_len
 
     if payload_type == 0x00: # General Report
-        packet_data, alarm_packet_data, ign_alarm_packet_data = mapper.handle_general_report(dev_id_str, serial_number, payload, event, payload_value_starts_at)
+        packet_data, alarm_packet_data, ign_alarm_packet_data = mapper.handle_general_report(dev_id_str, serial_number, payload, event, payload_length_end)
         if packet_data:
             utils.log_mapped_packet(packet_data, "GP900M")
 
@@ -82,7 +66,7 @@ def process_packet(payload_starts_at: int, packet_body: bytes, conn: socket.sock
             response_to_device = builder.build_generic_response(payload_type, serial_number)
             
     elif payload_type == 0x41:
-        packet_data = mapper.handle_odometer_read(dev_id_str, serial_number, payload, event, payload_value_starts_at)
+        packet_data = mapper.handle_odometer_read(dev_id_str, serial_number, payload, event, payload_length_end)
         if packet_data:
             send_to_main_server(...)
 
