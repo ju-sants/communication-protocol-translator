@@ -73,7 +73,7 @@ def process_packet(payload_starts_at: int, packet_body: bytes, conn: socket.sock
         last_alarm = None
         if alarm_packet_data:
             last_alarm = alarm_packet_data.get("universal_alert_id")
-            send_to_main_server(dev_id_str, alarm_packet_data, serial_number, packet_body.hex(), "GP900M", "alert")
+            send_to_main_server(dev_id_str, alarm_packet_data, serial_number, packet_body.hex(), "GP900M", "alert" if isinstance(last_alarm, int) else "command_reply")
         
         if ign_alarm_packet_data and not last_alarm or ign_alarm_packet_data and last_alarm != ign_alarm_packet_data.get("universal_alert_id"):
             send_to_main_server(dev_id_str, ign_alarm_packet_data, serial_number, packet_body.hex(), "GP900M", "alert")
