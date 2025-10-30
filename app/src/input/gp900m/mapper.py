@@ -139,7 +139,7 @@ def decode_general_report(payload: bytes):
             logger.debug(f"odometer_bytes={odometer_bytes.hex()}")
 
             odometer = int.from_bytes(odometer_bytes, "big")
-            odometer = odometer * 100
+            odometer = odometer * 1000
 
             data["gps_odometer"] = odometer
             logger.debug(f"odometer={odometer}")
