@@ -1,5 +1,5 @@
 import struct
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import json
 import copy
 
@@ -154,22 +154,35 @@ def handle_general_report(dev_id_str: str, serial: int, payload: bytes, event: i
     if not packet_data:
         return
     
+    # Criando pacote de alarme a partir de general report
     alarm_packet_data = None
     if event:
         logger.info(f"Recebido um evento no pacote de reporte geral: {event}:{hex(event)}")
         
-        universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get(event)
-        if universal_alert_id:
-            logger.info(f"Alerta universal mapeado: {universal_alert_id}")
+        universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("gp900m").get(event)
 
+        if universal_alert_id is not None:
             alarm_packet_data = copy.deepcopy(packet_data)
-            alarm_packet_data["universal_alert_id"] = universal_alert_id
+            alarm_packet_data["timestamp"] = alarm_packet_data["timestamp"] + timedelta(seconds=1)
 
+            # Alerta normal, funciona por ids em uma tabela pré definida
+            if isinstance(universal_alert_id, int):
+                logger.info(f"Alerta universal mapeado: {universal_alert_id}")
+
+                alarm_packet_data["universal_alert_id"] = universal_alert_id
+
+            # Alerta de bloq/desbloq funciona por emitir um pacote de resposta a comando
+            elif isinstance(universal_alert_id, str):
+                logger.info(f"Alerta de bloqueio/desbloqueio recebido.")
+
+                alarm_packet_data["REPLY"] = universal_alert_id
+
+
+    # Salvando dados no redis
     last_packet_data = copy.deepcopy(packet_data)
     
     last_packet_data["timestamp"] = last_packet_data["timestamp"].strftime("%Y-%m-%dT%H:%M:%S")
     
-    # Salvando para uso em caso de alarmes
     redis_data = {
         "imei": dev_id_str,
         "last_packet_data": json.dumps(last_packet_data),
