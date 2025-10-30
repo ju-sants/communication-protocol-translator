@@ -281,11 +281,13 @@ def send_to_main_server(
         managed_alert: bool = False
     ):
     """
-    Executa lógica de construção de pacotes se o mesmo não for fornecido, com base no protocolo de saída do dispositivo e o tipo de pacote especificado.
+    Executa lógica de construção de pacotes com base no protocolo de saída do dispositivo e o tipo de pacote especificado.
     """
 
+    # Obtendo dados necessários do redis
     output_protocol, protocol, is_hybrid = redis_client.hmget(f"tracker:{dev_id}", "output_protocol", "protocol", "is_hybrid")
     
+    # Verificação de protocolo de saída + setagem de valores padrão
     if not output_protocol:  # VL01 apenas se comunicará como GT06
         if is_hybrid or (protocol and protocol == "vl01"):
             output_protocol = "gt06"
@@ -294,7 +296,7 @@ def send_to_main_server(
         
         redis_client.hset(f"tracker:{dev_id}", "output_protocol", output_protocol)
     
-    
+    # Construção do pacote de saída, de acordo com o protocolo especificado
     output_packet_builder = output_protocol_settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get(type)
 
     if not managed_alert:
