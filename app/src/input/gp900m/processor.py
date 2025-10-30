@@ -32,7 +32,12 @@ def process_packet(payload_starts_at: int, packet_body: bytes, conn: socket.sock
     dev_id_str = header[1:9].hex()
     serial_number = int.from_bytes(header[9:11], "big")
     # Mapper-Scope
-    event = header[15]
+    first_byte_event = header[15]
+    if not first_byte_event >= 224:
+        event = first_byte_event
+    else:
+        event = int.from_bytes(header[15:16], "big") & 0x1FFF
+        
     # ============================================
     
     # Payload Decodification
