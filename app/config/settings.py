@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -86,7 +86,7 @@ class Settings(BaseSettings):
         6573: "Anti Theft",
     }
 
-    UNIVERSAL_ALERT_ID_DICTIONARY: Dict[str, Dict[int, int]] = {
+    UNIVERSAL_ALERT_ID_DICTIONARY: Dict[str, Dict[int, Union[int, str]]] = {
         "suntech4g": {
             1: 6501, 3: 6503, 4: 6504, 5: 6505, 6: 6506, 14: 6514, 15: 6515, 17: 6517, 33: 6533, 34: 6534,
             40: 6540, 41: 6541, 42: 6542, 73: 6573
@@ -114,12 +114,13 @@ class Settings(BaseSettings):
             0x01: 6542, 0x02: 6541, 0x03: 6515, 0x04: 6533, 0x05: 6534, 0x12: 6647
         },
         "gp900m": {
-            0x04: 6541, 0x05: 6540, 0x13: 6501, 0x14: 6502, 0x1C: 6517, 0x0E: 6533, 0x0F: 6534
+            0x04: 6541, 0x05: 6540, 0x13: 6501, 0x14: 6502, 0x1C: 6517, 0x0E: 6533, 0x0F: 6534, 0x1020: 6533, 0x1000: 6534,
+            0x0C: "OUTPUT ON", 0x0D: "OUTPUT OFF"
         }
     }
 
     # Mapeamento reverso para consultas mais rápidas
-    REVERSE_UNIVERSAL_ALERT_ID_DICTIONARY: Dict[str, Dict[int, int]] = {
+    REVERSE_UNIVERSAL_ALERT_ID_DICTIONARY: Dict[str, Dict[Union[str, int], int]] = {
         protocol: {v: k for k, v in alerts.items()}
         for protocol, alerts in UNIVERSAL_ALERT_ID_DICTIONARY.items()
     }
