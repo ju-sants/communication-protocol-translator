@@ -84,7 +84,7 @@ def handle_satelite_data(raw_satellite_data: bytes):
                     last_odometer = last_location.get("gps_odometer") or 0
                     to_add_odometer = haversine(lat, long, new_lat, new_long)
 
-                    odometer = last_odometer + to_add_odometer
+                    odometer = last_odometer + (to_add_odometer * 1000)
 
                     last_location["gps_odometer"] = odometer
                 
