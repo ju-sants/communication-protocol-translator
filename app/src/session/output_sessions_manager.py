@@ -6,6 +6,7 @@ from typing import Literal
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
+from app.src.output.utils import get_output_dev_id
 from app.services.history_service import add_packet_to_history
 from app.config.output_protocol_settings import output_protocol_settings
 from app.src.output.suntech4g.builder import build_login_packet as build_suntech_login_packet
@@ -329,3 +330,7 @@ def send_to_main_server(
             heartbeat_packet = heartbeat_packet_builder(dev_id, packet_data, serial)
 
             session.send(heartbeat_packet, output_protocol, None)
+
+    # Setando mapeamento de ids de saída com o protocolo de entrada dos dispositivos, para uso em nossa API
+    output_dev_id = get_output_dev_id(dev_id, output_protocol)
+    redis_client.hsetnx("output_ids:protocol", output_dev_id, original_protocol.lower())
