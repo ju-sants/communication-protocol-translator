@@ -11,15 +11,18 @@ redis_client = get_redis()
 def build_login_packet(dev_id_str: str) -> bytes:
     """Constrói um pacote de Manutenção (MNT) para 'apresentar' o dispositivo."""
 
-    device_info = redis_client.hgetall(f"tracker:{dev_id_str}")
+    protocol = redis_client.hget(f"tracker:{dev_id_str}", "protocol")
 
     sw_ver = "Poliglot"
-    if device_info and device_info.get("protocol"):
-        sw_ver = str(device_info.get("protocol", "")).upper()
+    if protocol:
+        sw_ver = str(protocol).upper()
     
     sw_ver += "_Translator_2.0"
 
-    packet_str = f"MNT;{dev_id_str};{sw_ver}"
+    output_dev_id = get_output_dev_id(dev_id_str, "suntech4g")
+
+    packet_str = f"MNT;{output_dev_id};{sw_ver}"
+
     logger.info(f"Construído pacote de apresentação MNT, pacote={packet_str}")
     return packet_str.encode('ascii')
 
