@@ -59,7 +59,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         response_to_device = builder.build_generic_response(protocol_number, serial_number)
 
 
-    elif protocol_number == 0x95: # Alarm Packet
+    elif protocol_number == 0x26: # Alarm Packet
         if dev_id_str:
             alarm_packet_data = mapper.handle_alarm_packet(dev_id_str, serial_number, content_body)
             if alarm_packet_data:
