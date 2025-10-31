@@ -205,6 +205,8 @@ def handle_reply_command_packet(dev_id: str, body: bytes):
         command_content_str = command_content.decode("ascii", errors="ignore")
 
         if command_content_str:
+            redis_client.hset(f"tracker:{dev_id}", "last_command_reply", command_content_str)
+            
             command_content_str = command_content_str.strip().upper()
             last_packet_data_str, last_command = redis_client.hmget(f"tracker:{dev_id}", "last_packet_data", "last_command")
             last_packet_data = json.loads(last_packet_data_str) if last_packet_data_str else {}

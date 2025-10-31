@@ -257,6 +257,8 @@ def handle_reply_command_packet(dev_id: str, body: bytes):
         command_content = body[5:]
         command_content_str = command_content.decode("ascii", errors="ignore")
         if command_content_str:
+            redis_client.hset(f"tracker:{dev_id}", "last_command_reply", command_content_str)
+
             last_packet_data_str = redis_client.hget(f"tracker:{dev_id}", "last_packet_data")
             last_packet_data = json.loads(last_packet_data_str) if last_packet_data_str else {}
             last_packet_data["timestamp"] = datetime.now(timezone.utc)

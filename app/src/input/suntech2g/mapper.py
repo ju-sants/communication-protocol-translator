@@ -350,9 +350,11 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
         logger.error(f"Error parsing ALT packet: {e}")
         return {}
 
-def handle_reply_packet(fields: list) -> dict:
+def handle_reply_packet(dev_id: str, fields: list) -> dict:
     try:
         reply = fields[-1]
+        redis_client.hset(f"tracker:{dev_id}", "last_command_reply", reply)
+
 
         packet_data_str = redis_client.hget(f"tracker:{fields[2]}", "last_packet_data")
         packet_data = json.loads(packet_data_str) if packet_data_str else {}

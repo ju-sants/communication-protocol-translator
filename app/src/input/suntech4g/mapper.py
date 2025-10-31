@@ -159,7 +159,7 @@ def handle_alt_packet(fields: list) -> dict:
         logger.error(f"Error parsing ALT packet: {e}")
         return {}
 
-def handle_reply_packet(fields: list) -> dict:
+def handle_reply_packet(dev_id: str, fields: list) -> dict:
     try:
         reply_group = fields[2]
         reply_action = fields[3]
@@ -171,8 +171,12 @@ def handle_reply_packet(fields: list) -> dict:
 
         if reply_group == "04" and reply_action == "02" and not error:
             packet_data["REPLY"] = "OUTPUT OFF"
+            redis_client.hset(f"tracker:{dev_id}", "last_command_reply", "Unblocked")
+
         elif reply_group == "04" and reply_action == "01" and not error:
             packet_data["REPLY"] = "OUTPUT ON"
+            redis_client.hset(f"tracker:{dev_id}", "last_command_reply", "Blocked")
+
         else:
             logger.warning(f"Unknown reply command received: {';'.join(fields)}")
 

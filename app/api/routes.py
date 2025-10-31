@@ -2,6 +2,7 @@ import json
 from flask import current_app as app, jsonify, request
 from datetime import datetime, timezone
 import os
+import time
 
 from . import utils
 from app.services.redis_service import get_redis
@@ -122,6 +123,23 @@ def send_tracker_command(dev_id):
             tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
             if tracker_socket:
                 tracker_socket.sendall(command_packet)
+
+                device_response = None
+                max_retries = 5
+                tries = 0
+                while True:
+                    if tries > max_retries:
+                        break
+
+                    device_response = redis_client.hget(f"tracker:{dev_id}", "last_command_reply")
+                    if device_response:
+                        redis_client.hdel(f"tracker:{dev_id}", "last_command_reply")
+                        break
+
+                    tries += 1
+
+                    time.sleep(1)
+
                 # Store command sent in Redis
                 redis_client.hset(f"tracker:{dev_id}", "last_command_sent", json.dumps({
                     "command": command_str,
@@ -132,6 +150,7 @@ def send_tracker_command(dev_id):
 
                 return jsonify({
                     "status": "Command sent successfully",
+                    "device_response": device_response,
                     "device_id": dev_id,
                     "command": command_str,
                     "packet_hex": command_packet.hex()
