@@ -238,9 +238,17 @@ def input_protocol(id):
 @app.route("/output_ids", methods=["GET"])
 def get_output_ids():
 
+    just_ids = request.args.get("just_ids")
+
     output_ids_map_0Padded = utils.get_mapping_cached("output_ids:protocol") or {}
     output_ids_map_notPadded = {k.lstrip("0"): v for k, v in output_ids_map_0Padded.items()}
+    
+    if just_ids:
+        ids = list(output_ids_map_0Padded.keys()) + list(output_ids_map_notPadded.keys())
 
-    ids = list(output_ids_map_0Padded.keys()) + list(output_ids_map_notPadded.keys())
+        return jsonify(ids)
 
-    return jsonify(ids)
+    else:
+        output_ids_map_0Padded.update(output_ids_map_notPadded)
+
+        return jsonify(output_ids_map_0Padded)
