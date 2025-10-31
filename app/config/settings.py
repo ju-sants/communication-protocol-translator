@@ -1,6 +1,8 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Dict, Any, Union
 
+import os
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -10,7 +12,7 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
 
-    CACHE_DIR: str = "cache/"
+    CACHE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/cache"
 
     API_BASE_URL: str = "..."
     API_X_TOKEN: str = "..."
