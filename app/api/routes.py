@@ -217,7 +217,8 @@ def get_tracker_details(dev_id):
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
-    
+
+# Controle de IDs comunicando no servidor
 @app.route("/input_protocol/<string:id>", methods=["GET"])
 def input_protocol(id):
     type = request.args.get("type")
@@ -233,3 +234,13 @@ def input_protocol(id):
         input_protocol = redis_client.hget(f"tracker:{id}", "protocol")
 
     return jsonify({"found": bool(input_protocol), "protocol": input_protocol})
+
+@app.route("/output_ids", methods=["GET"])
+def get_output_ids():
+
+    output_ids_map_0Padded = utils.get_mapping_cached("output_ids:protocol") or {}
+    output_ids_map_notPadded = {k.lstrip("0"): v for k, v in output_ids_map_0Padded.items()}
+
+    ids = list(output_ids_map_0Padded.keys()) + list(output_ids_map_notPadded.keys())
+
+    return jsonify(ids)
