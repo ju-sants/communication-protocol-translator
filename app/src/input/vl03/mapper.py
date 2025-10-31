@@ -168,6 +168,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
             redis_data["last_altered_acc"] = packet_data.get("timestamp").isoformat()
 
     else:
+        ign_alert_packet_data = handle_ignition_change(dev_id_str, copy.deepcopy(packet_data))
         redis_data["acc_status"] = packet_data.get("acc_status")
 
     pipeline = redis_client.pipeline()
@@ -176,6 +177,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
     pipeline.execute()
 
     return packet_data, ign_alert_packet_data
+
 def handle_alarm_packet(dev_id_str: str, body: bytes):
     redis_data = {
         "last_active_timestamp": datetime.now(timezone.utc).isoformat(),

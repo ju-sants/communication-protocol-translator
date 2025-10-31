@@ -50,7 +50,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
                 utils.log_mapped_packet(location_packet_data, "VL03")
                 send_to_main_server(dev_id_str, location_packet_data, serial_number, packet_body.hex(), "VL03")
 
-            if ign_alert_packet_data:
+            if ign_alert_packet_data and ign_alert_packet_data.get("universal_alert_id"):
                 send_to_main_server(dev_id_str, ign_alert_packet_data, serial_number, packet_body.hex(), "VL03", "alert", True)
 
         else:
