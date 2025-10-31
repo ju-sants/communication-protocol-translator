@@ -122,6 +122,9 @@ def send_tracker_command(dev_id):
             
             tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
             if tracker_socket:
+                # Limpando estado da variável "last_command_reply" antes de enviar o comando 
+                redis_client.hdel(f"tracker:{dev_id}", "last_command_reply")
+
                 tracker_socket.sendall(command_packet)
 
                 device_response = None
