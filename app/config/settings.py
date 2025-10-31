@@ -10,6 +10,8 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
 
+    CACHE_DIR: str = "cache/"
+
     API_BASE_URL: str = "..."
     API_X_TOKEN: str = "..."
     API_ORIGIN: str = "..."
