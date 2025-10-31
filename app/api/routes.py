@@ -3,6 +3,7 @@ from flask import current_app as app, jsonify, request
 from datetime import datetime, timezone
 import os
 
+from . import utils
 from app.services.redis_service import get_redis
 from app.core.logger import get_logger
 from app.config.settings import settings
@@ -216,3 +217,19 @@ def get_tracker_details(dev_id):
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+    
+@app.route("/input_protocol/<string:id>", methods=["GET"])
+def input_protocol(id):
+    type = request.args.get("type")
+    
+    # Obtendo todas as chaves de uma só vez
+    outputids_protocol_map_0Padded = utils.get_mapping_cached("output_ids:protocol") or {}
+    # Criando um dicionário normalizado, em que as chaves não tem zeros a esquerda, para ser robusto em casos de IDs sem os devidos 0s a esquerda
+    outputids_protocol_map_notPadded = {k.lstrip("0"): v for k, v in outputids_protocol_map_0Padded.items()}
+
+    if type and type == "OUTPUT":
+        input_protocol = outputids_protocol_map_0Padded.get(id) or outputids_protocol_map_notPadded.get(id.lstrip("0"))
+    else:
+        input_protocol = redis_client.hget(f"tracker:{id}", "protocol")
+
+    return jsonify({"found": bool(input_protocol), "protocol": input_protocol})
