@@ -37,16 +37,17 @@ def process_packet(packet_str: str):
     logger.info(f"Processing packet from device: {dev_id}")
 
     packet_data = {}
+    ign_alert_packet_data = {}
     type = ""
     serial = 0
     if hdr == "STT":
         logger.info("Location packet (STT) received.")
-        packet_data, serial = mapper.handle_stt_packet(fields, standard)
+        packet_data, ign_alert_packet_data, serial = mapper.handle_stt_packet(fields, standard)
         type = "location"
 
     elif hdr == "ALT":
         logger.info("Alert packet (ALT) received.")
-        packet_data = mapper.handle_alt_packet(fields, standard)
+        packet_data, ign_alert_packet_data = mapper.handle_alt_packet(fields, standard)
         type = "alert"
 
     elif hdr == "EMG":
@@ -80,5 +81,13 @@ def process_packet(packet_str: str):
             send_to_main_server(dev_id, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech2g", type=type)
         else:
             send_to_main_server(dev_id, packet_data=packet_data, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech2g", type=type)
+
+    if ign_alert_packet_data and ign_alert_packet_data.get("universal_alert_id"):
+        if not serial:
+            serial = redis_client.hget(f"tracker:{dev_id}", "last_serial") or 0
+            serial = int(serial)
+
+        send_to_main_server(dev_id, packet_data=ign_alert_packet_data, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech2g", type="alert")
+
 
     return dev_id
