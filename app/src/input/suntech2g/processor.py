@@ -87,7 +87,7 @@ def process_packet(packet_str: str):
             serial = redis_client.hget(f"tracker:{dev_id}", "last_serial") or 0
             serial = int(serial)
 
-        send_to_main_server(dev_id, packet_data=ign_alert_packet_data, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech2g", type="alert")
+        send_to_main_server(dev_id, packet_data=ign_alert_packet_data, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech2g", type="alert", managed_alert=True)
 
 
     return dev_id
