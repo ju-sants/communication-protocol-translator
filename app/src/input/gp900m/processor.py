@@ -1,4 +1,3 @@
-import struct
 import socket
 
 from . import builder, mapper, utils as protocol_utils
