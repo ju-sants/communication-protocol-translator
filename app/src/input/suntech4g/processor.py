@@ -31,6 +31,7 @@ def process_packet(packet_str: str):
     logger.info(f"Processing packet from device: {dev_id}")
 
     packet_data = {}
+    ign_alert_packet_data = {}
     type = ""
     serial = 0
     if hdr == "STT":
@@ -38,17 +39,11 @@ def process_packet(packet_str: str):
         packet_data, ign_alert_packet_data, serial = mapper.handle_stt_packet(fields)
         type = "location"
 
-        if ign_alert_packet_data:
-            send_to_main_server(dev_id, ign_alert_packet_data, serial, packet_str, "SUNTECH4G", "alert", True)
-    
     if hdr == "ALT":
         logger.info("Alert packet (ALT) received.")
         packet_data, ign_alert_packet_data = mapper.handle_alt_packet(fields)
         type = "alert"
 
-        if ign_alert_packet_data:
-            send_to_main_server(dev_id, ign_alert_packet_data, serial, packet_str, "SUNTECH4G", "alert", True)
-            
     elif hdr == "RES":
         logger.info("Command response packet (CMD) received.")
         packet_data = mapper.handle_reply_packet(dev_id, fields)
@@ -69,6 +64,18 @@ def process_packet(packet_str: str):
         if type == "heartbeat":
             send_to_main_server(dev_id, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech4g", type=type)
         else:
-            send_to_main_server(dev_id, packet_data=packet_data, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech4g", type=type)
+            # Criando uma condição especial para o suntech4g: Quando tivermos pacotes do tipo de alerta, 
+            # que geraram um pacote de "ign_alert_packet_data" com alerta 6533 ou 6534, encaramos ele como se fosse um pacote de localização.
+            # Devido a regras internas de negócio.
+            condition = not ign_alert_packet_data or not str(ign_alert_packet_data.get("universal_alert_id")) in ("6533", "6534") 
+            send_to_main_server(dev_id, packet_data=packet_data, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech4g", type=type if condition else "location")
+
+    if ign_alert_packet_data and ign_alert_packet_data.get("universal_alert_id"):
+        if not serial:
+            serial = redis_client.hget(f"tracker:{dev_id}", "last_serial") or 0
+            serial = int(serial)
+
+        send_to_main_server(dev_id, packet_data=ign_alert_packet_data, serial=serial, raw_packet_hex=packet_str, original_protocol="suntech4g", type="alert")
+
 
     return dev_id
