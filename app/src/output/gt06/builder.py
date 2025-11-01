@@ -248,8 +248,9 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
         timestamp.second,
     )
 
-    satellites = packet_data.get("satellites", 0) & 0x0F
-    gps_info_byte = struct.pack(">B", satellites)
+    satellites = min(15, packet_data.get("satellites", 0))
+    gps_info = 0xC0 | satellites
+    gps_info_byte = struct.pack(">B", gps_info)
 
     latitude_val = packet_data.get("latitude", 0.0)
     longitude_val = packet_data.get("longitude", 0.0)
