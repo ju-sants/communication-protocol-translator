@@ -23,7 +23,12 @@ def handle_satelite_data(raw_satellite_data: bytes):
         if not esn:
             logger.info(f"Message received without ESN, dropping.")
             return None, None, None, None
-        
+        # Updating Satellite trackers set
+        satellite_set = redis_client.smembers("satellite_trackers:set")
+        if esn not in satellite_set:
+            redis_client.sadd("satellite_trackers:set", esn)
+            satellite_set = None
+
         # Verificando se o mesmo é híbrido.
         gsm_dev_id = redis_client.hget("SAT_GSM_MAPPING", esn)
         is_hybrid = bool(gsm_dev_id)
