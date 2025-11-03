@@ -41,8 +41,8 @@ def get_gateway_info():
                 "port_protocol_mapping": {
                     protocol: settings.INPUT_PROTOCOL_HANDLERS[protocol]["port"] for protocol in settings.INPUT_PROTOCOL_HANDLERS
                 },
-                "total_active_translator_sessions": len(input_sessions_manager.active_trackers),
-                "total_active_main_server_sessions": len(output_sessions_manager._sessions),
+                "total_active_translator_sessions": len(input_sessions_manager.get_active_trackers()),
+                "total_active_main_server_sessions": len(output_sessions_manager.get_active_trackers()),
             }
         }
         return jsonify(info)

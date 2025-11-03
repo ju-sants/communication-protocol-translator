@@ -288,6 +288,13 @@ class OutputSessionsManager:
                 return socket_obj.fileno() != -1
             except OSError:
                 return False
+    
+    def get_active_trackers(self, use_redis: bool = False):
+        if use_redis:
+            return redis_client.smembers("output_sessions:active_trackers")
+        
+        else: return self._sessions
+
 
 
 output_sessions_manager = OutputSessionsManager()
