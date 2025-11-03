@@ -199,10 +199,13 @@ def get_tracker_details(dev_id):
     try:
         id_type = request.args.get("id_type")
         if id_type == "output":
-            mapped_id = redis_client.hget("output_input_ids:mapping", dev_id)
+            output_input_ids_0Padded = utils.get_mapping_cached("output_input_ids:mapping") or {}
+            output_input_ids_notPadded = {k.lstrip("0"): v for k, v in output_input_ids_0Padded.items()}
+
+            mapped_id = output_input_ids_0Padded.get(dev_id) or output_input_ids_notPadded.get(dev_id.lstrip("0"))
             if mapped_id:
                 dev_id = mapped_id
-                
+
         device_data = redis_client.hgetall(f"tracker:{dev_id}")
         if not device_data:
             return jsonify({"error": "Device not found in Redis"}), 404
