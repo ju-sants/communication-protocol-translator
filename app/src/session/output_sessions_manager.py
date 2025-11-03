@@ -293,7 +293,7 @@ class OutputSessionsManager:
         if use_redis:
             return redis_client.smembers("output_sessions:active_trackers")
         
-        else: return self._sessions
+        else: return self._sessions.keys()
 
 
 

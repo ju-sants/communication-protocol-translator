@@ -81,6 +81,6 @@ class InputSessionsManager:
         if use_redis:
             return redis_client.smembers("input_sessions:active_trackers")
         
-        else: return self.active_trackers
+        else: return self.active_trackers.keys()
 
 input_sessions_manager = InputSessionsManager()
