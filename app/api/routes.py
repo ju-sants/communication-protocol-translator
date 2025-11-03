@@ -212,7 +212,7 @@ def get_tracker_details(dev_id):
             "imei": device_data.get('imei', dev_id),
             "protocol": device_data.get('protocol'),
             "output_protocol": device_data.get("output_protocol") or "suntech4g",
-            "is_connected_translator": input_sessions_manager.exists(dev_id, use_redis=True),
+            "is_connected_translator": input_sessions_manager.exists(dev_id),
             "is_connected_main_server": dev_id in output_sessions_manager._sessions,
             "last_active_timestamp": device_data.get('last_active_timestamp'),
             "last_event_type": device_data.get('last_event_type'),
