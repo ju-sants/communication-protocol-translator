@@ -19,7 +19,7 @@ def decode_location_packet_v3(body: bytes):
         data = {}
 
         year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
-        data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second).replace(tzinfo=timezone.utc)
+        data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second)
 
         sats_byte = body[6]
         data["satellites"] = sats_byte & 0x0F

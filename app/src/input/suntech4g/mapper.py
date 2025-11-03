@@ -25,7 +25,7 @@ def handle_stt_packet(fields: list) -> dict:
             packet_data = {
                 "is_realtime": fields[5] == "1",
                 "timestamp": datetime(int(fields[6][:4]), int(fields[6][4:6]), int(fields[6][6:8]),
-                                int(fields[7][:2]), int(fields[7][3:5]), int(fields[7][6:8]), tzinfo=timezone.utc),
+                                int(fields[7][:2]), int(fields[7][3:5]), int(fields[7][6:8])),
                 "latitude": float(fields[8]),
                 "longitude": float(fields[9]),
                 "speed_kmh": float(fields[10]),
@@ -99,7 +99,7 @@ def handle_alt_packet(fields: list) -> dict:
             packet_data = {
                 "is_realtime": fields[5] == "1",
                 "timestamp": datetime(int(fields[6][:4]), int(fields[6][4:6]), int(fields[6][6:8]),
-                                int(fields[7][:2]), int(fields[7][3:5]), int(fields[7][6:8]), tzinfo=timezone.utc),
+                                int(fields[7][:2]), int(fields[7][3:5]), int(fields[7][6:8])),
                 "latitude": float(fields[8]),
                 "longitude": float(fields[9]),
                 "speed_kmh": float(fields[10]),

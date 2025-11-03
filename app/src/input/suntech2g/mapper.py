@@ -23,7 +23,7 @@ def handle_stt_packet(fields: list, standard: str) -> dict:
         if standard == "ST300":
             packet_data = {
                 "timestamp": datetime(int(fields[4][:4]), int(fields[4][4:6]), int(fields[4][6:8]),
-                                    int(fields[5][:2]), int(fields[5][3:5]), int(fields[5][6:8]), tzinfo=timezone.utc),
+                                    int(fields[5][:2]), int(fields[5][3:5]), int(fields[5][6:8])),
                 "latitude": float(fields[7]),
                 "longitude": float(fields[8]),
                 "speed_kmh": float(fields[9]),
@@ -42,7 +42,7 @@ def handle_stt_packet(fields: list, standard: str) -> dict:
         elif standard == "SA200":
             packet_data = {
                 "timestamp": datetime(int(fields[3][:4]), int(fields[3][4:6]), int(fields[3][6:8]),
-                                    int(fields[4][:2]), int(fields[4][3:5]), int(fields[4][6:8]), tzinfo=timezone.utc),
+                                    int(fields[4][:2]), int(fields[4][3:5]), int(fields[4][6:8])),
                 "latitude": float(fields[6]),
                 "longitude": float(fields[7]),
                 "speed_kmh": float(fields[8]),
@@ -106,7 +106,7 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
         if standard == "ST300":
             packet_data = {
                 "timestamp": datetime(int(fields[4][:4]), int(fields[4][4:6]), int(fields[4][6:8]),
-                                    int(fields[5][:2]), int(fields[5][3:5]), int(fields[5][6:8]), tzinfo=timezone.utc),
+                                    int(fields[5][:2]), int(fields[5][3:5]), int(fields[5][6:8])),
                 "latitude": float(fields[7]),
                 "longitude": float(fields[8]),
                 "speed_kmh": float(fields[9]),
@@ -125,7 +125,7 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
         elif standard == "SA200":
             packet_data = {
                 "timestamp": datetime(int(fields[3][:4]), int(fields[3][4:6]), int(fields[3][6:8]),
-                                    int(fields[4][:2]), int(fields[4][3:5]), int(fields[4][6:8]), tzinfo=timezone.utc),
+                                    int(fields[4][:2]), int(fields[4][3:5]), int(fields[4][6:8])),
                 "latitude": float(fields[6]),
                 "longitude": float(fields[7]),
                 "speed_kmh": float(fields[8]),
