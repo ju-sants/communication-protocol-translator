@@ -27,4 +27,4 @@ def process_command(dev_id, _, universal_command):
 
     redis_client.hset(f"tracker:{dev_id}", "last_merged_location", json.dumps(last_location_data))
 
-    logger.success(f"Hodometro atualizado com sucesso para: {meters / 1000} KM.")
+    logger.success(f"Hodometro atualizado com sucesso para: {int(meters) / 1000} KM.")
