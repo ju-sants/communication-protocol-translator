@@ -257,6 +257,7 @@ class OutputSessionsManager:
             if dev_id not in self._sessions:
                 logger.info(f"Nenhuma sessão encontrada no MainServerSessionsManager. Criando uma nova. dev_id={dev_id}")
                 self._sessions[dev_id] = MainServerSession(dev_id, serial, output_protocol)
+                redis_client.sadd("output_sessions:active_trackers", dev_id)
             
             session = self._sessions[dev_id]
             session.connect()
@@ -270,6 +271,8 @@ class OutputSessionsManager:
                 session = self._sessions[dev_id]
                 session.disconnect()
                 del self._sessions[dev_id]
+                redis_client.srem("output_sessions:active_trackers", dev_id)
+
                 logger.info(f"Sessão para dev_id={dev_id} deletada do MainServerSessionsManager.")
 
 output_sessions_manager = OutputSessionsManager()
