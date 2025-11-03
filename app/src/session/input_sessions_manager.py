@@ -35,7 +35,7 @@ class InputSessionsManager:
                 
                 if complete_time < now:
                     del self._instance.active_trackers[k]
-                    redis_client.srem("input_session:active_trackers", k)
+                    redis_client.srem("input_sessions:active_trackers", k)
             
             time.sleep(5)
 
@@ -43,7 +43,7 @@ class InputSessionsManager:
     def register_tracker_client(self, dev_id: str, conn: socket.socket, ex: int = -1):
         with self._lock:
             self.active_trackers[str(dev_id)] = conn
-            redis_client.sadd("input_session:active_trackers", dev_id)
+            redis_client.sadd("input_sessions:active_trackers", dev_id)
 
             if ex != -1 and isinstance(ex, int):
                 self.to_expire_keys[dev_id] = (ex, datetime.now())
@@ -57,7 +57,7 @@ class InputSessionsManager:
             if dev_id_str in self.active_trackers:
                 del self.active_trackers[dev_id_str]
                 logger.info(f"Rastreador removido de sua sessão: dev_id={dev_id_str}")
-                redis_client.srem("input_session:active_trackers", dev_id_str)
+                redis_client.srem("input_sessions:active_trackers", dev_id_str)
 
     def get_tracker_client_socket(self, dev_id: str):
         with self._lock:
@@ -66,7 +66,7 @@ class InputSessionsManager:
     def exists(self, dev_id: str, use_redis: bool = False) -> bool:
         with self._lock:
             if use_redis:
-                return redis_client.sismember("input_session:active_trackers", str(dev_id))
+                return redis_client.sismember("input_sessions:active_trackers", str(dev_id))
             
             socket_obj = self.active_trackers.get(str(dev_id))
             if socket_obj is None:
