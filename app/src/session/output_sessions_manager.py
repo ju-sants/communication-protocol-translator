@@ -332,7 +332,3 @@ def send_to_main_server(
             heartbeat_packet = heartbeat_packet_builder(dev_id, packet_data, serial)
 
             session.send(heartbeat_packet, output_protocol, None)
-
-    # Setando mapeamento de ids de saída com o protocolo de entrada dos dispositivos, para uso em nossa API
-    output_dev_id = get_output_dev_id(dev_id, output_protocol)
-    redis_client.hsetnx("output_ids:protocol", output_dev_id, original_protocol.lower())
