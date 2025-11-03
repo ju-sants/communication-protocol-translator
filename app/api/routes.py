@@ -248,3 +248,12 @@ def get_tracker_details(dev_id):
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+@app.route("/satellite_trackers", methods=["GET"])
+def get_satellite_trackers():
+    """
+    Obtem os IDs dos dispositivos satelitais conectados ao server
+    """
+    satellite_set = redis_client.smembers("satellite_trackers:set") or set()
+
+    return jsonify(list(satellite_set))
