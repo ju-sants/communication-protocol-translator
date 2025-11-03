@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 import copy
+from dateutil import parser
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -124,7 +125,7 @@ def handle_satelite_data(raw_satellite_data: bytes):
         # Lidando com o estado da ignição, muito preciso para veículos híbridos.
         last_altered_acc_str = redis_client.hget(f"tracker:{gsm_dev_id if is_hybrid else esn}", "last_altered_acc")
         if last_altered_acc_str:
-            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+            last_altered_acc_dt = parser.parse(last_altered_acc_str, ignoretz=True) 
 
         if not last_altered_acc_str or (last_merged_location.get("timestamp") and last_altered_acc_dt < last_merged_location.get("timestamp")):
             # Lidando com mudanças no status da ignição

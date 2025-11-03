@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 import copy
+from dateutil import parser
 
 from ..utils import handle_ignition_change
 from app.config.settings import settings
@@ -75,7 +76,7 @@ def handle_stt_packet(fields: list, standard: str) -> dict:
         ign_alert_packet_data = None
         last_altered_acc_str = redis_client.hget(f"tracker:{fields[1]}", "last_altered_acc")
         if last_altered_acc_str:
-            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+            last_altered_acc_dt = parser.parse(last_altered_acc_str, ignoretz=True) 
 
         if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt < packet_data.get("timestamp")):
             # Lidando com mudanças no status da ignição
@@ -164,7 +165,7 @@ def handle_alt_packet(fields: list, standard: str) -> dict:
         ign_alert_packet_data = None
         last_altered_acc_str = redis_client.hget(f"tracker:{fields[1]}", "last_altered_acc")
         if last_altered_acc_str:
-            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+            last_altered_acc_dt = parser.parse(last_altered_acc_str, ignoretz=True) 
 
         if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt < packet_data.get("timestamp")):
             # Lidando com mudanças no status da ignição

@@ -2,10 +2,10 @@ import struct
 from datetime import datetime, timezone, timedelta
 import json
 import copy
+from dateutil import parser
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-
 from ..utils import handle_ignition_change
 from app.config.settings import settings
 
@@ -276,7 +276,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_n
         # Lidando com o estado da ignição, muito preciso para veículos híbridos.
         last_altered_acc_str = redis_client.hget(f"tracker:{dev_id_str}", "last_altered_acc")
         if last_altered_acc_str:
-            last_altered_acc_dt = datetime.fromisoformat(last_altered_acc_str)
+            last_altered_acc_dt = parser.parse(last_altered_acc_str, ignoretz=True) 
 
         if not last_altered_acc_str or (packet_data.get("timestamp") and last_altered_acc_dt < packet_data.get("timestamp")):
             # Lidando com mudanças no status da ignição
