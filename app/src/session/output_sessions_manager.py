@@ -274,6 +274,21 @@ class OutputSessionsManager:
                 redis_client.srem("output_sessions:active_trackers", dev_id)
 
                 logger.info(f"Sessão para dev_id={dev_id} deletada do MainServerSessionsManager.")
+    
+    def exists(self, dev_id, use_redis: bool = False):
+        with self._lock:
+            if use_redis:
+                return redis_client.sismember("output_sessions:active_trackers", str(dev_id))
+            
+            socket_obj = self._sessions.get(str(dev_id))
+            if socket_obj is None:
+                return False
+            
+            try:
+                return socket_obj.fileno() != -1
+            except OSError:
+                return False
+
 
 output_sessions_manager = OutputSessionsManager()
 
