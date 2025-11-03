@@ -20,6 +20,8 @@ def build_login_packet(dev_id_str: str) -> bytes:
     sw_ver += "_Translator_2.0"
 
     output_dev_id = get_output_dev_id(dev_id_str, "suntech4g")
+    redis_client.hsetnx("output_input_ids:mapping", output_dev_id, dev_id_str)
+
 
     packet_str = f"MNT;{output_dev_id};{sw_ver}"
 

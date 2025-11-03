@@ -147,6 +147,7 @@ def build_login_packet(imei: str, serial_number: int) -> bytes:
 
     output_imei = get_output_dev_id(imei, "gt06")
     redis_client.hset(f"tracker:{imei}", "output_id", output_imei)
+    redis_client.hsetnx("output_input_ids:mapping", output_imei, imei)
 
     imei_bcd = imei_to_bcd(output_imei)
 

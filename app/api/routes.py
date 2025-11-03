@@ -197,6 +197,12 @@ def get_tracker_details(dev_id):
     Returns comprehensive details for a specific tracker, including Redis data and connection status.
     """
     try:
+        id_type = request.args.get("id_type")
+        if id_type == "output":
+            mapped_id = redis_client.hget("output_input_ids:mapping", dev_id)
+            if mapped_id:
+                dev_id = mapped_id
+                
         device_data = redis_client.hgetall(f"tracker:{dev_id}")
         if not device_data:
             return jsonify({"error": "Device not found in Redis"}), 404
