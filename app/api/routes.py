@@ -180,7 +180,7 @@ def get_tracker_sessions():
     """
     Returns a list of device IDs with active socket connections to the translator.
     """
-    active_sessions = list(input_sessions_manager.active_trackers.keys())
+    active_sessions = list(input_sessions_manager.get_active_trackers())
     return jsonify(active_sessions)
 
 @app.route('/sessions/main-server', methods=['GET'])
@@ -188,7 +188,7 @@ def get_main_server_sessions():
     """
     Returns a list of device IDs with active sessions to the main Suntech4G server.
     """
-    active_sessions = list(output_sessions_manager._sessions.keys())
+    active_sessions = list(output_sessions_manager.get_active_trackers())
     return jsonify(active_sessions)
 
 @app.route('/trackers/<string:dev_id>/details', methods=['GET'])
