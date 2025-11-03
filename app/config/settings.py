@@ -49,9 +49,9 @@ class Settings(BaseSettings):
             "port": 65433,
             "handler_path": "app.src.input.nt40.handler.handle_connection"
         },
-        "satellite": {
+        "satellital": {
             "port": 65434,
-            "handler_path": "app.src.input.satellite.handler.handle_connection"
+            "handler_path": "app.src.input.satellital.handler.handle_connection"
         },
         "suntech2g": {
             "port": 65435,

@@ -183,7 +183,7 @@ O sistema possui uma lógica especializada para lidar com rastreadores "híbrido
 
 #### Fluxo de Dados Satelital:
 
-1.  **Recepção e Mapeamento**: Um listener dedicado em [`app/src/input/satellite/handler.py`](app/src/input/satellite/handler.py:14) aguarda conexões de dispositivos satelitais. Ao receber um pacote, ele o encaminha para o [`mapper.py`](app/src/input/satellite/mapper.py:12).
+1.  **Recepção e Mapeamento**: Um listener dedicado em [`app/src/input/satellital/handler.py`](app/src/input/satellital/handler.py:14) aguarda conexões de dispositivos satelitais. Ao receber um pacote, ele o encaminha para o [`mapper.py`](app/src/input/satellital/mapper.py:12).
 
 2.  **Associação GSM**: O `mapper` extrai o Identificador Único do Equipamento (ESN) e consulta o Redis para encontrar o `device_id` (IMEI) do rastreador GSM correspondente. Essa associação é crucial, pois o dispositivo satelital atua como um "anexo" do GSM.
 
@@ -486,7 +486,7 @@ A estrutura de diretórios foi organizada para separar claramente as responsabil
 │       ├── input/        # Módulos de protocolos de entrada (rastreadores)
 │       │   ├── j16x_j16/
 │       │   ├── nt40/
-│       │   ├── satellite/
+│       │   ├── satellital/
 │       │   └── vl01/
 │       ├── output/       # Módulos de protocolos de saída (plataforma)
 │       │   ├── gt06/
