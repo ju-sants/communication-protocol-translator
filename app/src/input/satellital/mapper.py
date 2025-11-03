@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 import copy
 from dateutil import parser
 
@@ -116,7 +116,7 @@ def handle_satelite_data(raw_satellite_data: bytes):
 
         redis_data = {
             "last_satellite_location": json.dumps(satellite_data),
-            "last_satellite_active_timestamp": datetime.now(timezone.utc).isoformat(),
+            "last_satellite_active_timestamp": datetime.now().isoformat(),
             "last_merged_location": json.dumps(redis_last_merged_location)
         }
 

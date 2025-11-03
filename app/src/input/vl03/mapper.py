@@ -150,7 +150,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
         "last_packet_data": json.dumps(last_packet_data),
         "last_full_location": json.dumps(packet_data, default=str),
         "last_serial": serial,
-        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_active_timestamp": datetime.now().isoformat(),
         "last_event_type": "location",
     }
 
@@ -181,7 +181,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
 
 def handle_alarm_packet(dev_id_str: str, body: bytes):
     redis_data = {
-        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_active_timestamp": datetime.now().isoformat(),
         "last_event_type": "alarm",
     }
     pipeline = redis_client.pipeline()
@@ -203,7 +203,7 @@ def handle_alarm_packet(dev_id_str: str, body: bytes):
         logger.info(f"Pacote de alarme sem data e hora, descartando... dev_id={dev_id_str}")
         return
     
-    limit = datetime.now(timezone.utc) - timedelta(minutes=2)
+    limit = datetime.now() - timedelta(minutes=2)
 
     if not alarm_datetime > limit:
         logger.info(f"Alarme da memória, descartando... dev_id={dev_id_str}")
@@ -235,7 +235,7 @@ def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     logger.info(f"Pacote de heartbeat recebido de {dev_id_str}, body={body.hex()}")
     # O pacote de Heartbeat (0x13) contém informações de status
     redis_data = {
-        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_active_timestamp": datetime.now().isoformat(),
         "last_event_type": "heartbeat",
     }
     terminal_info = body[0]
@@ -262,7 +262,7 @@ def handle_reply_command_packet(dev_id: str, body: bytes):
 
             last_packet_data_str = redis_client.hget(f"tracker:{dev_id}", "last_packet_data")
             last_packet_data = json.loads(last_packet_data_str) if last_packet_data_str else {}
-            last_packet_data["timestamp"] = datetime.now(timezone.utc)
+            last_packet_data["timestamp"] = datetime.now()
 
             if any(message in command_content_str for message in ("Cut off the fuel supply: Success!", "Restore fuel supply: Success!")):
                 if command_content_str.startswith("Cut off the fuel supply: Success!"):
@@ -282,7 +282,7 @@ def handle_reply_command_packet(dev_id: str, body: bytes):
 
 def handle_information_packet(dev_id: str, body: bytes):
     redis_data = {
-        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_active_timestamp": datetime.now().isoformat(),
         "last_event_type": "information",
     }
     pipeline = redis_client.pipeline()

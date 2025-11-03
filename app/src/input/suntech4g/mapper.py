@@ -5,7 +5,6 @@ from dateutil import parser
 
 from ..utils import handle_ignition_change
 from app.config.settings import settings
-from app.src.session.output_sessions_manager import send_to_main_server
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 
@@ -49,7 +48,7 @@ def handle_stt_packet(fields: list) -> dict:
             "last_output_status": packet_data["output_status"],
             "last_voltage": packet_data["voltage"],
             "last_packet_data": json.dumps(packet_data_redis),
-            "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+            "last_active_timestamp": datetime.now().isoformat(),
             "last_event_type": "emergency",
             "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
         }
@@ -129,7 +128,7 @@ def handle_alt_packet(fields: list) -> dict:
             "last_output_status": packet_data["output_status"],
             "last_voltage": packet_data["voltage"],
             "last_packet_data": json.dumps(packet_data_redis),
-            "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+            "last_active_timestamp": datetime.now().isoformat(),
             "last_event_type": "emergency",
             "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
         }
@@ -168,7 +167,7 @@ def handle_reply_packet(dev_id: str, fields: list) -> dict:
 
         packet_data_str = redis_client.hget(f"tracker:{fields[2]}", "last_packet_data")
         packet_data = json.loads(packet_data_str) if packet_data_str else {}
-        packet_data["timestamp"] = datetime.now(timezone.utc)
+        packet_data["timestamp"] = datetime.now()
 
         if reply_group == "04" and reply_action == "02" and not error:
             packet_data["REPLY"] = "OUTPUT OFF"

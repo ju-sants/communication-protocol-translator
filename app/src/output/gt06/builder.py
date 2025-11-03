@@ -17,7 +17,7 @@ def build_location_packet(dev_id, packet_data: dict, serial_number: int, *args) 
     """
     protocol_number = 0xA0 # Deixaremos um valor constante por hora
 
-    timestamp: datetime = packet_data.get("timestamp", datetime.now(timezone.utc))
+    timestamp: datetime = packet_data.get("timestamp", datetime.now())
     time_bytes = struct.pack(
         ">BBBBBB",
         timestamp.year % 100,
@@ -238,7 +238,7 @@ def build_alarm_packet(dev_id: str, packet_data: dict, serial_number: int, *args
     
     protocol_number = 0x16
 
-    timestamp: datetime = packet_data.get("timestamp", datetime.now(timezone.utc))
+    timestamp: datetime = packet_data.get("timestamp", datetime.now())
     time_bytes = struct.pack(
         ">BBBBBB",
         timestamp.year % 100,

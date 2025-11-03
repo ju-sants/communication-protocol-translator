@@ -1,5 +1,4 @@
 from crc import Calculator, Configuration
-from datetime import datetime, timezone
 from math import radians, sin, cos, sqrt, atan2
 from dateutil.relativedelta import relativedelta
 

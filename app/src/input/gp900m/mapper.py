@@ -188,7 +188,7 @@ def handle_general_report(dev_id_str: str, serial: int, payload: bytes, event: i
         "last_packet_data": json.dumps(last_packet_data),
         "last_full_location": json.dumps(packet_data, default=str),
         "last_serial": serial,
-        "last_active_timestamp": datetime.now(timezone.utc).isoformat(),
+        "last_active_timestamp": datetime.now().isoformat(),
         "last_event_type": "location",
         "power_status": 0 if packet_data.get('voltage', 0.0) > 0 else 1,
         "last_voltage": packet_data.get("voltage"),
