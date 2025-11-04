@@ -170,7 +170,7 @@ class MainServerSession:
             if is_realtime is not None:
                 self._is_realtime = is_realtime
 
-            device_type = packet_data.get("device_type")
+            device_type = packet_data.get("device_type") if packet_data else None
             if device_type and device_type == "satellital":
                 self.device_type = "SAT"
             else:
