@@ -146,7 +146,7 @@ def send_tracker_command(dev_id):
                 # Store command sent in Redis
                 redis_client.hset(f"tracker:{dev_id}", "last_command_sent", json.dumps({
                     "command": command_str,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now().isoformat(),
                     "packet_hex": command_packet.hex()
                 }))
                 redis_client.hincrby(f"tracker:{dev_id}", "total_commands_sent", 1)
