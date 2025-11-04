@@ -97,6 +97,11 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
 
     else:
         logger.warning(f"Protocolo J16W não mapeado: {hex(protocol_number)} device_id={dev_id_str}")
+        if protocol_number == 0x12:
+            logger.info(f"Dispositivo J16W comunicando na variação x12, enviando comando de alteração.")
+            switch_command = builder.build_command("SZCS#GT06SEL=1", serial_number)
+            conn.sendall(switch_command)
+
         response_to_device = builder.build_generic_response(protocol_number, serial_number)
 
     if response_to_device:
