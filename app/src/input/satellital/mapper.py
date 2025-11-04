@@ -6,6 +6,8 @@ from dateutil import parser
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from ..utils import handle_ignition_change, haversine
+from app.src.session.input_sessions_manager import input_sessions_manager
+
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -62,7 +64,19 @@ def handle_satelite_data(raw_satellite_data: bytes):
             last_serial = int(last_serial) if last_serial else 0
             last_location = json.loads(last_location_str) if last_location_str else {}
             last_location["connection_type"] = "gsm"
-            
+
+            if not input_sessions_manager.exists(gsm_dev_id):
+                last_odometer = last_location.get("gps_odometer")
+
+                last_lat, last_long = last_location.get("latitude"), last_location.get("longitude")
+                new_lat, new_long = satellite_data.get("latitude"), satellite_data.get("longitude")
+                
+                to_add_odometer = haversine(last_lat, last_long, new_lat, new_long)
+
+                new_odometer = last_odometer + (to_add_odometer * 1000)
+
+                last_location["gps_odometer"] = new_odometer
+                
         else:
             logger.info("Standalone satellital tracker, initiating standalone location.")
             mapping = {
