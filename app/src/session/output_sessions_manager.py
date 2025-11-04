@@ -186,7 +186,8 @@ class MainServerSession:
                     
                     logger.info(f"Resposta do server principal recebida, continuando a entrega de pacotes. dev_id={self.dev_id}")
 
-                # Enviando pacote de info de voltagem antes de qualquer pacote de localização em tempo real
+                # Apenas para GT06:
+                # Enviando pacote de info de voltagem antes de qualquer pacote de localização/alerta em tempo real
                 if self.output_protocol == "gt06" and packet_data and packet_data.get("packet_type") in ("location", "alert"):
                     if packet_data.get("voltage"): # Prioridade 1: é GSM/SAT e possui voltagem no pacote
                         voltage = packet_data.get("voltage")
@@ -197,7 +198,7 @@ class MainServerSession:
                         voltage = float(voltage)
 
                     voltage_packet = build_gt06_voltage_info_packet({"voltage": voltage}, int(self.serial))
-                    logger.info(f"Enviando pacote de voltagem antes do pacote de localização em tempo real. dev_id={self.dev_id} voltage={voltage}V")
+                    logger.info(f"Enviando pacote de voltagem antes do pacote de localização/alerta em tempo real. dev_id={self.dev_id} voltage={voltage}V")
                     self.sock.sendall(voltage_packet)
 
                 logger.info(f"Encaminhando pacote de {len(packet)} bytes device_id={self.dev_id}")
