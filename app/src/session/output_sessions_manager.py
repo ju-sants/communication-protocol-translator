@@ -6,7 +6,6 @@ from typing import Literal
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
-from app.src.output.utils import get_output_dev_id
 from app.services.history_service import add_packet_to_history
 from app.config.output_protocol_settings import output_protocol_settings
 from app.src.output.suntech4g.builder import build_login_packet as build_suntech_login_packet
