@@ -23,9 +23,9 @@ class MainServerSession:
 
         self.sock: socket.socket = None
         self.lock = threading.RLock()
+
         self._is_connected = False
         self._conection_retries = 0
-        
         self._is_gt06_login_step = False
         self._is_realtime = False
     
