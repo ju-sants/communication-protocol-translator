@@ -98,12 +98,12 @@ def handle_satelite_data(raw_satellite_data: bytes):
                 }
             else:
                 last_location = json.loads(last_location_str)
-                lat, long = last_location.get("latitude"), last_location.get("longitude")
+                last_lat, last_long = last_location.get("latitude"), last_location.get("longitude")
                 new_lat, new_long = satellite_data.get("latitude"), satellite_data.get("longitude")
 
-                if all([lat, new_lat, long, new_long]):
+                if all([last_lat, new_lat, last_long, new_long]):
                     last_odometer = last_location.get("gps_odometer") or 0
-                    to_add_odometer = haversine(lat, long, new_lat, new_long)
+                    to_add_odometer = haversine(last_lat, last_long, new_lat, new_long)
 
                     odometer = last_odometer + (to_add_odometer * 1000)
 
