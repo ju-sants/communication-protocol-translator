@@ -23,6 +23,7 @@ def handle_satelite_data(raw_satellite_data: bytes):
         if not esn:
             logger.info(f"Message received without ESN, dropping.")
             return None, None, None, None
+        
         # Updating Satellite trackers set
         satellite_set = redis_client.smembers("satellite_trackers:set")
         if esn not in satellite_set:
