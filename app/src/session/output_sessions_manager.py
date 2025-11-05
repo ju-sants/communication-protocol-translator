@@ -190,11 +190,9 @@ class MainServerSession:
                         last_merged_location = json.loads(last_merged_location_str) if last_merged_location_str else {}
 
                         last_odometer = last_location.get("gps_odometer", 0)
-                        mapping = {
-                            "command": universal_command,
-                            "last_odometer": last_odometer
-                        }
-                        self.pending_odometer_command.update(mapping)
+
+                        self.pending_odometer_command["command"] = universal_command
+                        self.pending_odometer_command["last_odometer"] = last_odometer
 
                         # Atualizando GPS Hodometer de last_packet_data
                         meters = str(universal_command).split(":")[-1]
