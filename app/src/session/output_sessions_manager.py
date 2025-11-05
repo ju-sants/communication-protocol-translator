@@ -31,6 +31,7 @@ class MainServerSession:
         self._conection_retries = 0
         self._is_gt06_login_step = False
         self._is_realtime = False
+        self._is_sending_realtime_location = False
     
     def connect(self):
         with self.lock:
@@ -257,6 +258,10 @@ class MainServerSession:
                 self.device_type = "SAT"
             else:
                 self.device_type = "GSM"
+
+            packet_type = packet_data.get("packet_type") if packet_data else None
+            if packet_type is not None and packet_type == "location" and self._is_realtime:
+                self._is_sending_realtime_location = True
             
             # Lógica para lidar com comandos de hodometro pendentes para dispositivos GSM
             # Que saem de área (disconectam-se do server, consequentemente não tem mais uma sessão em input_sessions_manager)
@@ -391,6 +396,15 @@ class OutputSessionsManager:
             return redis_client.smembers("output_sessions:active_trackers")
         
         else: return self._sessions.keys()
+    
+    def is_sending_realtime_location(self, dev_id: str):
+
+        if dev_id in self._sessions:
+            session = self._sessions[dev_id]
+
+            return session._is_sending_realtime_location
+        
+        return False
 
 
 
