@@ -3,6 +3,7 @@ import threading
 import time
 import importlib
 from typing import Literal
+import json
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -10,6 +11,7 @@ from app.services.history_service import add_packet_to_history
 from app.config.output_protocol_settings import output_protocol_settings
 from app.src.output.suntech4g.builder import build_login_packet as build_suntech_login_packet
 from app.src.output.gt06.builder import build_login_packet as build_gt06_login_packet, build_voltage_info_packet as build_gt06_voltage_info_packet
+from .input_sessions_manager import input_sessions_manager
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -20,6 +22,7 @@ class MainServerSession:
         self.dev_id = dev_id
         self.serial = serial
         self.device_type = "GSM"
+        self.pending_odometer_command = {}
 
         self.sock: socket.socket = None
         self.lock = threading.RLock()
@@ -87,6 +90,58 @@ class MainServerSession:
         self._is_gt06_login_step = False
         logger.info(f"The server replyed the login data packet, dev_id={self.dev_id} data={data.hex()}")
 
+    def handle_pending_odometer_command(self, actual_odometer: int):
+        if self.pending_odometer_command:
+            if self._is_realtime and self.device_type == "GSM":
+                
+                # Verificação do hodometro atual
+                if not actual_odometer or not isinstance(actual_odometer, int):
+                    logger.error(f"Comando de hodometro pendente: o hodometro atual provido não é um inteiro: {actual_odometer} class: {type(actual_odometer).__name__}")
+                    return
+                
+                # Verificação do hodometro enviado no comando
+                command = str(self.pending_odometer_command.get("command"))
+                target_odometer_str = command.split(":")[-1]
+                if not target_odometer_str or not target_odometer_str.isdigit():
+                    logger.error(f"Comando de hodometro pendente: o hodometro enviado no comando de hodometro não é um inteiro: {target_odometer_str}")
+                    return
+                target_odometer = int(target_odometer_str)
+                
+                # Verificação do hodometro salvo no momento em que o comando foi recebido
+                last_odometer_str = str(self.pending_odometer_command.get("last_odometer"))
+                if not last_odometer_str or not last_odometer_str.isdigit():
+                    logger.error(f"Comando de hodometro pendente: o último hodometro salvo não é um inteiro: {last_odometer_str}")
+                    return
+                last_odometer = int(last_odometer_str)
+                
+                # =============================================================================
+                # Criando novo comando
+                difference = actual_odometer - last_odometer
+
+                new_odometer = target_odometer + difference
+
+                new_command = f"HODOMETRO:{new_odometer}"
+                
+                # ============================================================================
+
+                # Enviando comando para o processor do dispositivo
+                protocol_type = redis_client.hget(f"tracker:{self.dev_id}", "protocol")
+                if not protocol_type:
+                    logger.error(f"Comando de hodometro pendente: Erro ao obter o protocolo de entrada do dispositivo, para rotear ao seu process_command, retornando.")
+                    return
+                
+                target_module = importlib.import_module(f"app.src.input.{protocol_type}.builder")
+                processor_func = getattr(target_module, "process_command")
+
+                if not processor_func:
+                    logger.error(f"Processador de comando para o protocolo '{str(protocol_type).upper()}' não encontrado.")
+                    return
+
+                logger.info(f"Roteando comando para o processador do protocolo: '{str(protocol_type).upper()}'.")
+                processor_func(self.dev_id, self.serial, new_command)
+
+                self.pending_odometer_command = {}
+
     def _reader_loop(self):
         while self._is_connected:
             with logger.contextualize(log_label=self.dev_id):
@@ -126,6 +181,33 @@ class MainServerSession:
                     
                     redis_client.hset(f"tracker:{self.dev_id}", "last_command", universal_command)
                     
+                    # Se for um comando de hodometro e o rastreador não estiver conectado no momento (estiver fora de área)
+                    # Salvamos alguns dados importantes para que esse comando seja enviado novamente assim que o rastreador conectar novamente
+                    if str(universal_command).startswith("HODOMETRO:") and not input_sessions_manager.exists(self.dev_id):
+                        last_location_str = redis_client.hget(f"tracker:{self.dev_id}", "last_packet_data")
+                        last_location = json.loads(last_location_str)
+
+                        last_odometer = last_location.get("gps_odometer", 0)
+                        mapping = {
+                            "command": universal_command,
+                            "last_odometer": last_odometer
+                        }
+                        self.pending_odometer_command.update(mapping)
+
+                        # Atualizando GPS Hodometer de last_packet_data
+                        meters = str(universal_command).split(":")[-1]
+                        if not meters or not meters.isdigit():
+                            logger.error(f"Não foi possível atualizar o hodometro de 'last_packet_data' no redis.")
+                            continue
+
+                        last_location["gps_odometer"] = meters
+
+                        redis_client.hset(f"tracker:{self.dev_id}", "last_packet_data", json.dumps(last_location))
+
+                        logger.success(f"Hodometro de 'last_packet_data' no redis alterado com sucesso!")
+
+                        continue
+
                     target_module = importlib.import_module(f"app.src.input.{protocol_type}.builder")
                     processor_func = getattr(target_module, "process_command")
 
@@ -175,6 +257,11 @@ class MainServerSession:
                 self.device_type = "SAT"
             else:
                 self.device_type = "GSM"
+            
+            # Lógica para lidar com comandos de hodometro pendentes para dispositivos GSM
+            # Que saem de área (disconectam-se do server, consequentemente não tem mais uma sessão em input_sessions_manager)
+            # mas essa instância ainda está recebendo comandos, o salvamos e então o roteamos novamente ao aparelho
+            self.handle_pending_odometer_command(int(packet_data.get("gps_odometer", 0) if packet_data else 0))
             
             # Atualizando protocolo de saída da instância
             if current_output_protocol and current_output_protocol.lower() != self.output_protocol:
