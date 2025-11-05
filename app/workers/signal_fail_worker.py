@@ -3,6 +3,7 @@ import schedule
 import time
 
 from app.services.redis_service import get_redis
+from app.utils.api_client import get_vehicle_data_from_tracker_id
 from app.core.logger import get_logger
 from app.src.output.utils import get_output_dev_id
 from . import utils
@@ -127,7 +128,7 @@ def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
             output_protocol, is_hybrid, hybrid_id = redis_client_gateway.hmget(tracker_label_norm, "output_protocol", "is_hybrid", "hybrid_id")
             output_tracker_id = get_output_dev_id(tracker_id, output_protocol)
 
-            vehicle_data = utils.get_vehicle_data_from_tracker_id(output_tracker_id)
+            vehicle_data = get_vehicle_data_from_tracker_id(output_tracker_id)
 
             if not vehicle_data:
                 logger.error(f"Não foi possível adicionar o rastreador (dev_id={tracker_id}) aos registros de falha, não foi encontrado dados do veículo no sistema.")
