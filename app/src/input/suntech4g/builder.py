@@ -31,7 +31,7 @@ def process_command(dev_id: str, serial: str, universal_command: str):
     tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
     if tracker_socket:
         try:
-            tracker_socket.sendall(suntech4g_command.encode('ascii') + b"\r")
+            tracker_socket.sendall(suntech4g_command.encode('ascii'))
             logger.info(f"Comando Suntech4g enviado com sucesso device_id={dev_id}, comando='{suntech4g_command}'")
         except Exception as e:
             logger.error(f"Erro ao enviar comando Suntech4g device_id={dev_id}, comando='{suntech4g_command}': {e}")
