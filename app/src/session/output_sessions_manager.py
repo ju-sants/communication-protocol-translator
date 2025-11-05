@@ -97,24 +97,25 @@ class MainServerSession:
                 
                 # Verificação do hodometro atual
                 if not actual_odometer or not isinstance(actual_odometer, int):
-                    logger.error(f"Comando de hodometro pendente: o hodometro atual provido não é um inteiro: {actual_odometer} class: {type(actual_odometer).__name__}")
+                    logger.error(f"Comando de hodometro pendente; o hodometro atual provido não é um inteiro: {actual_odometer} class: {type(actual_odometer).__name__}")
                     return
                 
                 # Verificação do hodometro enviado no comando
                 command = str(self.pending_odometer_command.get("command"))
                 target_odometer_str = command.split(":")[-1]
                 if not target_odometer_str or not target_odometer_str.isdigit():
-                    logger.error(f"Comando de hodometro pendente: o hodometro enviado no comando de hodometro não é um inteiro: {target_odometer_str}")
+                    logger.error(f"Comando de hodometro pendente; o hodometro enviado no comando de hodometro não é um inteiro: {target_odometer_str}")
                     return
                 target_odometer = int(target_odometer_str)
                 
                 # Verificação do hodometro salvo no momento em que o comando foi recebido
                 last_odometer_str = str(self.pending_odometer_command.get("last_odometer"))
                 if not last_odometer_str or not last_odometer_str.isdigit():
-                    logger.error(f"Comando de hodometro pendente: o último hodometro salvo não é um inteiro: {last_odometer_str}")
+                    logger.error(f"Comando de hodometro pendente; o último hodometro salvo não é um inteiro: {last_odometer_str}")
                     return
                 last_odometer = int(last_odometer_str)
                 
+                logger.info("Comando de hodometro pendente; Valores checados, criando comando.")
                 # =============================================================================
                 # Criando novo comando
                 difference = actual_odometer - last_odometer
@@ -125,10 +126,12 @@ class MainServerSession:
                 
                 # ============================================================================
 
+                logger.info("Comando de hodometro pendente; Comando criando, roteando para o dispositivo.")
+
                 # Enviando comando para o processor do dispositivo
                 protocol_type = redis_client.hget(f"tracker:{self.dev_id}", "protocol")
                 if not protocol_type:
-                    logger.error(f"Comando de hodometro pendente: Erro ao obter o protocolo de entrada do dispositivo, para rotear ao seu process_command, retornando.")
+                    logger.error(f"Comando de hodometro pendente; Erro ao obter o protocolo de entrada do dispositivo, para rotear ao seu process_command, retornando.")
                     return
                 
                 target_module = importlib.import_module(f"app.src.input.{protocol_type}.builder")
@@ -138,7 +141,7 @@ class MainServerSession:
                     logger.error(f"Processador de comando para o protocolo '{str(protocol_type).upper()}' não encontrado.")
                     return
 
-                logger.info(f"Roteando comando para o processador do protocolo: '{str(protocol_type).upper()}'.")
+                logger.info(f"Comando de hodometro pendente; Roteando comando para o processador do protocolo: '{str(protocol_type).upper()}'.")
                 processor_func(self.dev_id, self.serial, new_command)
 
                 self.pending_odometer_command = {}
