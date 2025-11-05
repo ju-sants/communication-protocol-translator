@@ -266,7 +266,7 @@ class MainServerSession:
                 self.device_type = "GSM"
 
             packet_type = packet_data.get("packet_type") if packet_data else None
-            if packet_type is not None and packet_type == "location" and self._is_realtime:
+            if packet_type is not None and packet_type == "location" and self._is_realtime and self.device_type == "GSM":
                 self._is_sending_realtime_location = True
             
             # Lógica para lidar com comandos de hodometro pendentes para dispositivos GSM
