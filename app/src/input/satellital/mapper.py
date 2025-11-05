@@ -7,6 +7,7 @@ from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from ..utils import handle_ignition_change, haversine
 from app.src.session.input_sessions_manager import input_sessions_manager
+from app.src.session.output_sessions_manager import output_sessions_manager
 
 
 logger = get_logger(__name__)
@@ -58,11 +59,16 @@ def handle_satelite_data(raw_satellite_data: bytes):
             logger.info("Satellite tracker with a GSM pair, initiating hybrid location.")
             pipe.hset(f"tracker:{esn}", "mode", "hybrid")
 
-            # Obtendo a última localização GSM conhecida
-            last_serial, last_location_str, speed_filter = redis_client.hmget(f"tracker:{gsm_dev_id}", "last_serial", "last_packet_data", "speed_filter")
-
+            last_serial, last_location_str, last_merged_location_str, speed_filter = redis_client.hmget(f"tracker:{gsm_dev_id}", "last_serial", "last_packet_data", "last_merged_location", "speed_filter")
+            
             last_serial = int(last_serial) if last_serial else 0
-            last_location = json.loads(last_location_str) if last_location_str else {}
+
+            # Obtendo a última localização GSM conhecida
+            if input_sessions_manager.exists(gsm_dev_id) and output_sessions_manager.is_sending_realtime_location(gsm_dev_id):
+                last_location = json.loads(last_location_str) if last_location_str else {}
+            else:
+                last_location = json.loads(last_merged_location_str) if last_merged_location_str else {}
+
             last_location["connection_type"] = "gsm"
 
             if not input_sessions_manager.exists(gsm_dev_id):
