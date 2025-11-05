@@ -6,6 +6,7 @@ from dateutil import parser
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
 from ..utils import handle_ignition_change, haversine
+from . import utils
 from app.src.session.input_sessions_manager import input_sessions_manager
 from app.src.session.output_sessions_manager import output_sessions_manager
 
@@ -95,13 +96,15 @@ def handle_satelite_data(raw_satellite_data: bytes):
             last_location_str, speed_filter = redis_client.hmget(f"tracker:{esn}", "last_merged_location", "speed_filter")
             if not last_location_str:
                 # Não há um pacote salvo, iniciando com pacote padrão
+                gps_odometer = utils.get_sat_odometer_from_previous_host()
                 last_location = {
                     "gps_fixed": 1,
                     "is_realtime": False,
                     "output_status": 0,
-                    "gps_odometer": 0,
+                    "gps_odometer": gps_odometer if gps_odometer else 0,
                     "connection_type": "satellital",
                 }
+                
             else:
                 last_location = json.loads(last_location_str)
                 last_lat, last_long = last_location.get("latitude"), last_location.get("longitude")
