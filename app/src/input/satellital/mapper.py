@@ -66,7 +66,7 @@ def handle_satelite_data(raw_satellite_data: bytes):
             last_location["connection_type"] = "gsm"
 
             if not input_sessions_manager.exists(gsm_dev_id):
-                last_odometer = last_location.get("gps_odometer")
+                last_odometer = float(last_location.get("gps_odometer")) if last_location.get("gps_odometer") else 0.0
 
                 last_lat, last_long = last_location.get("latitude"), last_location.get("longitude")
                 new_lat, new_long = satellite_data.get("latitude"), satellite_data.get("longitude")
@@ -102,7 +102,7 @@ def handle_satelite_data(raw_satellite_data: bytes):
                 new_lat, new_long = satellite_data.get("latitude"), satellite_data.get("longitude")
 
                 if all([last_lat, new_lat, last_long, new_long]):
-                    last_odometer = last_location.get("gps_odometer") or 0
+                    last_odometer = float(last_location.get("gps_odometer")) if last_location.get("gps_odometer") else 0.0
                     to_add_odometer = haversine(last_lat, last_long, new_lat, new_long)
 
                     odometer = last_odometer + (to_add_odometer * 1000)
