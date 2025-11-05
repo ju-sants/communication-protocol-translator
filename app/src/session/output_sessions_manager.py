@@ -185,8 +185,9 @@ class MainServerSession:
                     # Se for um comando de hodometro e o rastreador não estiver conectado no momento (estiver fora de área)
                     # Salvamos alguns dados importantes para que esse comando seja enviado novamente assim que o rastreador conectar novamente
                     if str(universal_command).startswith("HODOMETRO:") and not input_sessions_manager.exists(self.dev_id):
-                        last_location_str = redis_client.hget(f"tracker:{self.dev_id}", "last_packet_data")
-                        last_location = json.loads(last_location_str)
+                        last_location_str, last_merged_location_str = redis_client.hmget(f"tracker:{self.dev_id}", "last_packet_data", "last_merged_location")
+                        last_location = json.loads(last_location_str) if last_location_str else {}
+                        last_merged_location = json.loads(last_merged_location_str) if last_merged_location_str else {}
 
                         last_odometer = last_location.get("gps_odometer", 0)
                         mapping = {
@@ -198,14 +199,19 @@ class MainServerSession:
                         # Atualizando GPS Hodometer de last_packet_data
                         meters = str(universal_command).split(":")[-1]
                         if not meters or not meters.isdigit():
-                            logger.error(f"Não foi possível atualizar o hodometro de 'last_packet_data' no redis.")
+                            logger.error(f"Não foi possível atualizar o hodometro de 'last_packet_data' e 'last_merged_location' no redis.")
                             continue
 
                         last_location["gps_odometer"] = meters
+                        last_merged_location["gps_odometer"] = meters
 
-                        redis_client.hset(f"tracker:{self.dev_id}", "last_packet_data", json.dumps(last_location))
+                        mapping = {
+                            "last_packet_data": json.dumps(last_location),
+                            "last_merged_location": json.dumps(last_merged_location)
+                        }
+                        redis_client.hmset(f"tracker:{self.dev_id}", mapping)
 
-                        logger.success(f"Hodometro de 'last_packet_data' no redis alterado com sucesso!")
+                        logger.success(f"Hodometro de 'last_packet_data' e 'last_merged_location' no redis alterado com sucesso!")
 
                         continue
 
