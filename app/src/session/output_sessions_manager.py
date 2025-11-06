@@ -17,7 +17,8 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 class MainServerSession:
-    def __init__(self, dev_id: str, serial: str, output_protocol: str):
+    def __init__(self, dev_id: str, serial: str, input_protocol: str, output_protocol: str):
+        self.input_protocol = input_protocol
         self.output_protocol = output_protocol
         self.dev_id = dev_id
         self.serial = serial
@@ -165,17 +166,13 @@ class MainServerSession:
                         self.handle_gt06_login(data)
                         continue
                     
-                    device_info = redis_client.hgetall(f"tracker:{self.dev_id}")
-                    protocol_type = device_info.get("protocol")
-                    output_protocol = device_info.get("output_protocol")
-
-                    if not protocol_type:
-                        logger.error(f"Protocolo não encontrado no Redis para o device_id={self.dev_id}. Impossível traduzir comando. dev_id={self.dev_id}")
+                    if not self.input_protocol:
+                        logger.error(f"Protocolo não disponível para o device_id={self.dev_id}. Impossível traduzir comando. dev_id={self.dev_id}")
                         continue
 
-                    mapper_func = output_protocol_settings.OUTPUT_PROTOCOL_COMMAND_MAPPERS.get(output_protocol)
+                    mapper_func = output_protocol_settings.OUTPUT_PROTOCOL_COMMAND_MAPPERS.get(self.output_protocol)
                     if not mapper_func:
-                        logger.error(f"Mapeador de comandos universais para o protocolo de saida '{str(output_protocol).upper()}' não encontrado. dev_id={self.dev_id}")
+                        logger.error(f"Mapeador de comandos universais para o protocolo de saida '{str(self.output_protocol).upper()}' não encontrado. dev_id={self.dev_id}")
                         return
                     
                     universal_command = mapper_func(self.dev_id, data)
@@ -216,14 +213,14 @@ class MainServerSession:
 
                         continue
 
-                    target_module = importlib.import_module(f"app.src.input.{protocol_type}.builder")
+                    target_module = importlib.import_module(f"app.src.input.{self.input_protocol}.builder")
                     processor_func = getattr(target_module, "process_command")
 
                     if not processor_func:
-                        logger.error(f"Processador de comando para o protocolo '{str(protocol_type).upper()}' com o protocolo de saida '{str(output_protocol).upper()}' não encontrado.")
+                        logger.error(f"Processador de comando para o protocolo '{str(self.input_protocol).upper()}' não encontrado.")
                         continue
 
-                    logger.info(f"Roteando comando para o processador do protocolo: '{str(protocol_type).upper()}' com protocolo de saida '{str(output_protocol).upper()}'")
+                    logger.info(f"Roteando comando para o processador do protocolo: '{str(self.input_protocol).upper()}'")
                     processor_func(self.dev_id, self.serial, universal_command)
 
 
@@ -361,11 +358,11 @@ class OutputSessionsManager:
 
         return cls._instance
 
-    def get_session(self, dev_id: str, serial: str, output_protocol) -> MainServerSession:
+    def get_session(self, dev_id: str, input_protocol: str, output_protocol: str, serial: str) -> MainServerSession:
         with self.lock:
             if dev_id not in self._sessions:
                 logger.info(f"Nenhuma sessão encontrada no MainServerSessionsManager. Criando uma nova. dev_id={dev_id}")
-                self._sessions[dev_id] = MainServerSession(dev_id, serial, output_protocol)
+                self._sessions[dev_id] = MainServerSession(dev_id, input_protocol, output_protocol, serial)
                 redis_client.sadd("output_sessions:active_trackers", dev_id)
             
             session = self._sessions[dev_id]
