@@ -287,7 +287,11 @@ class MainServerSession:
                         time.sleep(1)
                     
                     logger.info(f"Resposta do server principal recebida, continuando a entrega de pacotes. dev_id={self.dev_id}")
+            
 
+            # =============================================== Lógica de Envios =================================================================
+            # ==================================================================================================================================
+            try:
                 # Apenas para GT06:
                 # Enviando pacote de info de voltagem antes de qualquer pacote de localização/alerta em tempo real
                 if self.output_protocol == "gt06" and packet_data and packet_data.get("packet_type") in ("location", "alert"):
