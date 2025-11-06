@@ -203,6 +203,8 @@ class MainServerSession:
             logger.error(f"O hodometro atualizado não está presente em 'last_merged_location'.")
             return
         
+        odometer = int(float(odometer))
+        
         # Criando comando de hodometro
         command = f"HODOMETRO:{odometer}"
 
