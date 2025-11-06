@@ -204,7 +204,7 @@ class MainServerSession:
             return
         
         odometer = int(float(odometer))
-        
+
         # Criando comando de hodometro
         command = f"HODOMETRO:{odometer}"
 
@@ -234,22 +234,23 @@ class MainServerSession:
 
             # - Para híbridos, em que um GSM e um equipamento SATELITAL se comunicam pela mesma conexão de saída
             # atualizamos qual o dispositivo está usando essa instância
-            device_type = packet_data.get("device_type") if packet_data else None
-            if device_type and device_type == "satellital":
-                self.device_type = "SAT"
-            else:
-                self.device_type = "GSM"
+            if packet_data:
+                device_type = packet_data.get("device_type")
+                if device_type == "satellital":
+                    self.device_type = "SAT"
+                else:
+                    self.device_type = "GSM"
             
-            # Variáveis que só podem ser setadas pelo dispositivo GSM conectado
-            if self.device_type == "GSM":
+                # Variáveis que só podem ser setadas pelo dispositivo GSM conectado
+                if self.device_type == "GSM":
 
-                # Equipamentos satelitais sempre mandam posições do passado (técnicamente todas as posições de todos os dispositivos estão no passado).
-                self._is_realtime = packet_data.get("is_realtime") if packet_data else False
+                    # Equipamentos satelitais sempre mandam posições do passado (técnicamente todas as posições de todos os dispositivos estão no passado).
+                    self._is_realtime = packet_data.get("is_realtime") if packet_data else False
 
-                # Flag para descobrir se o equipamento GSM está mandando localização em tempo real
-                packet_type = packet_data.get("packet_type") if packet_data else None
-                if packet_type is not None and packet_type == "location" and self._is_realtime:
-                    self._is_sending_realtime_location = True
+                    # Flag para descobrir se o equipamento GSM está mandando localização em tempo real
+                    packet_type = packet_data.get("packet_type") if packet_data else None
+                    if packet_type is not None and packet_type == "location" and self._is_realtime:
+                        self._is_sending_realtime_location = True
             
             # Atualizando protocolo de saída da instância
             if current_output_protocol and current_output_protocol.lower() != self.output_protocol:
