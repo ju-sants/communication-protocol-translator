@@ -47,10 +47,10 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
             location_packet_data, ign_alert_packet_data = mapper.handle_location_packet(dev_id_str, serial_number, content_body, protocol_number)
             if location_packet_data:
                 utils.log_mapped_packet(location_packet_data, "J16X-J16")
-                send_to_main_server(dev_id_str, location_packet_data, serial_number, packet_body.hex(), "J16X-J16")
+                send_to_main_server(dev_id_str, location_packet_data, serial_number, packet_body.hex(), "J16X_J16")
 
             if ign_alert_packet_data:
-                send_to_main_server(dev_id_str, ign_alert_packet_data, serial_number, packet_body.hex(), "J16X-J16", "alert", True)
+                send_to_main_server(dev_id_str, ign_alert_packet_data, serial_number, packet_body.hex(), "J16X_J16", "alert", True)
                 
         else:
             logger.warning(f"Pacote de localização J16X-J16 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
@@ -59,7 +59,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
     elif protocol_number == 0x13: # Pacote de Heartbeat/Status
         if dev_id_str:
             mapper.handle_heartbeat_packet(dev_id_str, serial_number, content_body)
-            send_to_main_server(dev_id_str, serial=serial_number, raw_packet_hex=packet_body.hex(), original_protocol="J16X-J16", type="heartbeat")
+            send_to_main_server(dev_id_str, serial=serial_number, raw_packet_hex=packet_body.hex(), original_protocol="J16X_J16", type="heartbeat")
 
         else:
             logger.warning(f"Pacote de heartbeat J16X-J16 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
@@ -70,7 +70,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
             alarm_packet_data = mapper.handle_alarm_packet(dev_id_str, content_body)
             if alarm_packet_data:
                 utils.log_mapped_packet(alarm_packet_data, "NT40")
-                send_to_main_server(dev_id_str, alarm_packet_data, serial_number, packet_body.hex(), "J16X-J16", type="alert")
+                send_to_main_server(dev_id_str, alarm_packet_data, serial_number, packet_body.hex(), "J16X_J16", type="alert")
 
         else:
             logger.warning(f"Pacote de alarme J16X-J16 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
@@ -89,7 +89,7 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
             reply_command_packet_data = mapper.handle_reply_command_packet(dev_id_str, content_body)
             if reply_command_packet_data:
                 utils.log_mapped_packet(reply_command_packet_data, "NT40")
-                send_to_main_server(dev_id_str, reply_command_packet_data, serial_number, packet_body.hex(), type="command_reply", original_protocol="J16X-J16")
+                send_to_main_server(dev_id_str, reply_command_packet_data, serial_number, packet_body.hex(), type="command_reply", original_protocol="J16X_J16")
 
         else:
             logger.warning(f"Pacote de reply command J16X-J16 recebido antes do login. Ignorando. pacote={packet_body.hex()}")
