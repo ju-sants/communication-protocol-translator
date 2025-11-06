@@ -276,7 +276,7 @@ class MainServerSession:
                 self._odometer_changed_while_off = True
             
             # Se o dispositivo foi um GSM ou estiver conectado e enviando pacotes em tempo real, verificamos se o odometro foi alterado
-            elif self._odometer_changed_while_off:
+            elif self._odometer_changed_while_off and not self.device_type == "SAT":
                 # Em caso positivo, alteramos o odometro do GSM, e resetamos a flag
                 self._odometer_changed_while_off = False
 
