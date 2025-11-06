@@ -96,7 +96,7 @@ def handle_satelite_data(raw_satellite_data: bytes):
             last_location_str, speed_filter = redis_client.hmget(f"tracker:{esn}", "last_merged_location", "speed_filter")
             if not last_location_str:
                 # Não há um pacote salvo, iniciando com pacote padrão
-                gps_odometer = utils.get_sat_odometer_from_previous_host()
+                gps_odometer = utils.get_sat_odometer_from_previous_host(esn)
                 last_location = {
                     "gps_fixed": 1,
                     "is_realtime": False,
