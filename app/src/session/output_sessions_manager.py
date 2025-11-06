@@ -252,25 +252,27 @@ class MainServerSession:
                     logger.error(f"Não foi possível conectar ao servidor principal. Pacote descartado. dev_id={self.dev_id}")
                     return
             
-            # Atualizando variáveis de instância
-            is_realtime = packet_data.get("is_realtime") if packet_data else None
-            if is_realtime is not None:
-                self._is_realtime = is_realtime
+            # ====================================== Atualizando variáveis de instância ========================================================
+            # ==================================================================================================================================
 
+            # - Para híbridos, em que um GSM e um equipamento SATELITAL se comunicam pela mesma conexão de saída
+            # atualizamos qual o dispositivo está usando essa instância
             device_type = packet_data.get("device_type") if packet_data else None
             if device_type and device_type == "satellital":
                 self.device_type = "SAT"
             else:
                 self.device_type = "GSM"
-
-            packet_type = packet_data.get("packet_type") if packet_data else None
-            if packet_type is not None and packet_type == "location" and self._is_realtime and self.device_type == "GSM":
-                self._is_sending_realtime_location = True
             
-            # Lógica para lidar com comandos de hodometro pendentes para dispositivos GSM
-            # Que saem de área (disconectam-se do server, consequentemente não tem mais uma sessão em input_sessions_manager)
-            # mas essa instância ainda está recebendo comandos, o salvamos e então o roteamos novamente ao aparelho
-            self.handle_pending_odometer_command(int(packet_data.get("gps_odometer", 0) if packet_data else 0))
+            # Variáveis que só podem ser setadas pelo dispositivo GSM conectado
+            if self.device_type == "GSM":
+
+                # Equipamentos satelitais sempre mandam posições do passado (técnicamente todas as posições de todos os dispositivos estão no passado).
+                self._is_realtime = packet_data.get("is_realtime") if packet_data else False
+
+                # Flag para descobrir se o equipamento GSM está mandando localização em tempo real
+                packet_type = packet_data.get("packet_type") if packet_data else None
+                if packet_type is not None and packet_type == "location" and self._is_realtime:
+                    self._is_sending_realtime_location = True
             
             # Atualizando protocolo de saída da instância
             if current_output_protocol and current_output_protocol.lower() != self.output_protocol:
