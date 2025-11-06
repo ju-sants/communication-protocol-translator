@@ -33,6 +33,7 @@ class MainServerSession:
         self._is_gt06_login_step = False
         self._is_realtime = False
         self._is_sending_realtime_location = False
+        self._odometer_changed_while_off = False
     
     def connect(self):
         with self.lock:
