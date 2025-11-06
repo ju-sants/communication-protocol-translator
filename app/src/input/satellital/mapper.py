@@ -107,7 +107,6 @@ def handle_satelite_data(raw_satellite_data: bytes):
                     "is_realtime": False,
                     "output_status": 0,
                     "gps_odometer": gps_odometer if gps_odometer else 0,
-                    "connection_type": "satellital",
                 }
                 
             else:
