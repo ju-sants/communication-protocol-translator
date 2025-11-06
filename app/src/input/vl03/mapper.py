@@ -114,7 +114,7 @@ def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
             current_lat = packet_data["latitude"]
             current_lon = packet_data["longitude"]
 
-            distance = haversine(last_lat, last_lon, current_lat, current_lon) * 1000  # Convert to meters
+            distance = haversine(last_lat, last_lon, current_lat, current_lon)
             current_odometer += distance
             logger.info(f"Odometer for {dev_id_str}: {current_odometer/1000:.2f} km (distance added: {distance/1000:.2f} km)")
         else:
