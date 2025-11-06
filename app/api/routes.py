@@ -41,8 +41,8 @@ def get_gateway_info():
                 "port_protocol_mapping": {
                     protocol: settings.INPUT_PROTOCOL_HANDLERS[protocol]["port"] for protocol in settings.INPUT_PROTOCOL_HANDLERS
                 },
-                "total_active_translator_sessions": len(input_sessions_manager.get_active_trackers()),
-                "total_active_main_server_sessions": len(output_sessions_manager.get_active_trackers()),
+                "total_active_translator_sessions": len(input_sessions_manager.get_sessions()),
+                "total_active_main_server_sessions": len(output_sessions_manager.get_sessions()),
             }
         }
         return jsonify(info)
@@ -120,7 +120,7 @@ def send_tracker_command(dev_id):
         with logger.contextualize(log_label=dev_id):
             command_packet = builder_func(command_str, serial)
             
-            tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
+            tracker_socket = input_sessions_manager.get_session(dev_id)
             if tracker_socket:
                 # Limpando estado da variável "last_command_reply" antes de enviar o comando 
                 redis_client.hdel(f"tracker:{dev_id}", "last_command_reply")
@@ -180,7 +180,7 @@ def get_tracker_sessions():
     """
     Returns a list of device IDs with active socket connections to the translator.
     """
-    active_sessions = list(input_sessions_manager.get_active_trackers())
+    active_sessions = list(input_sessions_manager.get_sessions())
     return jsonify(active_sessions)
 
 @app.route('/sessions/main-server', methods=['GET'])
@@ -188,7 +188,7 @@ def get_main_server_sessions():
     """
     Returns a list of device IDs with active sessions to the main Suntech4G server.
     """
-    active_sessions = list(output_sessions_manager.get_active_trackers())
+    active_sessions = list(output_sessions_manager.get_sessions())
     return jsonify(active_sessions)
 
 @app.route('/trackers/<string:dev_id>/details', methods=['GET'])

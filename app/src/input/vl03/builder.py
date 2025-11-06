@@ -106,7 +106,7 @@ def process_command(dev_id: str, serial: int, universal_command: str):
 
     vl01_binary_command = build_command(vl01_text_command, serial)
 
-    tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
+    tracker_socket = input_sessions_manager.get_session(dev_id)
     if tracker_socket:
         try:
             tracker_socket.sendall(vl01_binary_command)

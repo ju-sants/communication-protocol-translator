@@ -28,7 +28,7 @@ def process_command(dev_id: str, serial: str, universal_command: str):
         logger.warning(f"Nenhum mapeamento Suntech4g encontrado para o comando Universal comando={universal_command}")
         return
 
-    tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
+    tracker_socket = input_sessions_manager.get_session(dev_id)
     if tracker_socket:
         try:
             tracker_socket.sendall(suntech4g_command.encode('ascii'))

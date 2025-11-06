@@ -398,7 +398,7 @@ class OutputSessionsManager:
             except OSError:
                 return False
     
-    def get_active_trackers(self, use_redis: bool = False):
+    def get_sessions(self, use_redis: bool = False):
         if use_redis:
             return redis_client.smembers("output_sessions:active_trackers")
         
@@ -466,7 +466,7 @@ def send_to_main_server(
 
         add_packet_to_history(dev_id, raw_packet_hex, str_output_packet)
         
-        session = output_sessions_manager.get_session(dev_id, serial, output_protocol)
+        session = output_sessions_manager.get_session(dev_id, original_protocol.lower(), output_protocol, serial)
         session.send(output_packet, output_protocol, packet_data)
 
         # Heartbeats para GT06

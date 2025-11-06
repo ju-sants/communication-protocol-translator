@@ -40,7 +40,7 @@ class InputSessionsManager:
             time.sleep(5)
 
 
-    def register_tracker_client(self, dev_id: str, conn: socket.socket, ex: int = -1):
+    def register_session(self, dev_id: str, conn: socket.socket, ex: int = -1):
         with self._lock:
             self.active_trackers[str(dev_id)] = conn
             redis_client.sadd("input_sessions:active_trackers", dev_id)
@@ -51,7 +51,7 @@ class InputSessionsManager:
             logger.info(f"Rastreador registrado na sessão: dev_id={dev_id}")
             
 
-    def remove_tracker_client(self, dev_id: str):
+    def remove_session(self, dev_id: str):
         with self._lock:
             dev_id_str = str(dev_id)
             if dev_id_str in self.active_trackers:
@@ -59,7 +59,7 @@ class InputSessionsManager:
                 logger.info(f"Rastreador removido de sua sessão: dev_id={dev_id_str}")
                 redis_client.srem("input_sessions:active_trackers", dev_id_str)
 
-    def get_tracker_client_socket(self, dev_id: str):
+    def get_session(self, dev_id: str) -> socket.socket:
         with self._lock:
             return self.active_trackers.get(dev_id)
 
@@ -77,7 +77,7 @@ class InputSessionsManager:
             except OSError:
                 return False
     
-    def get_active_trackers(self, use_redis: bool = False):
+    def get_sessions(self, use_redis: bool = False):
         if use_redis:
             return redis_client.smembers("input_sessions:active_trackers")
         

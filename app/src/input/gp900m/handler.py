@@ -69,7 +69,7 @@ def handle_connection(conn: socket.socket, addr):
                                 dev_id_session = newly_logged_in_dev_id
 
                             if dev_id_session and not input_sessions_manager.exists(dev_id_session):
-                                input_sessions_manager.register_tracker_client(dev_id_session, conn)
+                                input_sessions_manager.register_session(dev_id_session, conn)
                                 redis_client.hset(f"tracker:{dev_id_session}", "protocol", "gp900m")
                                 logger.info(f"Dispositivo GP900M autenticado na sessão device_id={dev_id_session}, endereco={addr}")
 
@@ -97,7 +97,7 @@ def handle_connection(conn: socket.socket, addr):
             with logger.contextualize(log_label=dev_id_session):
                 logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}", log_label="SERVIDOR")
                 output_sessions_manager.delete_session(dev_id_session)
-                input_sessions_manager.remove_tracker_client(dev_id_session)
+                input_sessions_manager.remove_session(dev_id_session)
         
         logger.info(f"Fechando conexão e thread GP900M endereco={addr}, device_id={dev_id_session}", log_label="SERVIDOR")
 

@@ -43,7 +43,7 @@ def process_command(dev_id: str, serial: str, universal_command: str):
 
     logger.info(f"Comando Suntech2g gerado com sucesso: {suntech2g_complete_command}")
 
-    tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
+    tracker_socket = input_sessions_manager.get_session(dev_id)
     if tracker_socket:
         try:
             tracker_socket.sendall(suntech2g_complete_command.encode('ascii') + b"\r")

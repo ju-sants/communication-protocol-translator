@@ -45,7 +45,7 @@ def handle_connection(conn: socket.socket, addr):
             with logger.contextualize(log_label=esn_id):
 
                 if esn_id and not input_sessions_manager.exists(esn_id):
-                    input_sessions_manager.register_tracker_client(esn_id, conn, ex=3600 * 24)
+                    input_sessions_manager.register_session(esn_id, conn, ex=3600 * 24)
                     logger.info(f"Rastreador satelital {esn_id}, registrado na seção.")
 
                 if data:

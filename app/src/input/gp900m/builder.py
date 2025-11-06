@@ -32,7 +32,7 @@ def process_command(dev_id: str, _, universal_command: str):
 
     gp900m_binary_command = gp900m_text_command.encode("ASCII")
 
-    tracker_socket = input_sessions_manager.get_tracker_client_socket(dev_id)
+    tracker_socket = input_sessions_manager.get_session(dev_id)
     if tracker_socket:
         try:
             tracker_socket.sendall(gp900m_binary_command)

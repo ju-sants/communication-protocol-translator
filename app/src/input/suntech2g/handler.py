@@ -37,7 +37,7 @@ def handle_connection(conn: socket.socket, addr):
                         dev_id = new_dev_id
                         
                         if not input_sessions_manager.exists(dev_id):
-                            input_sessions_manager.register_tracker_client(dev_id, conn)
+                            input_sessions_manager.register_session(dev_id, conn)
                             redis_client.hset(f"tracker:{dev_id}", "protocol", "suntech2g")
 
 
@@ -51,7 +51,7 @@ def handle_connection(conn: socket.socket, addr):
         if dev_id:
             with logger.contextualize(log_label=dev_id):
                 logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id}", log_label="SERVIDOR")
-                input_sessions_manager.remove_tracker_client(dev_id)
+                input_sessions_manager.remove_session(dev_id)
                 output_sessions_manager.delete_session(dev_id)
 
         try:
