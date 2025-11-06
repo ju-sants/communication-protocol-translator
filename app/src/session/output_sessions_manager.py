@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 class MainServerSession:
-    def __init__(self, dev_id: str, serial: str, input_protocol: str, output_protocol: str):
+    def __init__(self, dev_id: str, input_protocol: str, output_protocol: str, serial: str):
         self.input_protocol = input_protocol
         self.output_protocol = output_protocol
         self.dev_id = dev_id
