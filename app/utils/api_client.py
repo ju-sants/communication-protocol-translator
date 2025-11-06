@@ -81,7 +81,7 @@ def get_vehicle_data_from_tracker_id(dev_id: str):
     if len(search) == 1: vehicle_id = search[0].get("id")
     else:
         for item in search:
-            imei = item.get("imei")
+            imei = str(item.get("imei")).lstrip("0")
             if imei == dev_id:
                 vehicle_id = item.get("id")
     
