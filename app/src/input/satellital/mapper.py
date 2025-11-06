@@ -63,16 +63,21 @@ def handle_satelite_data(raw_satellite_data: bytes):
             last_serial, last_location_str, last_merged_location_str, speed_filter = redis_client.hmget(f"tracker:{gsm_dev_id}", "last_serial", "last_packet_data", "last_merged_location", "speed_filter")
             
             last_serial = int(last_serial) if last_serial else 0
+            gsm_last_location = json.loads(last_location_str)
 
-            # Obtendo a última localização GSM conhecida
-            if input_sessions_manager.exists(gsm_dev_id) and output_sessions_manager.is_sending_realtime_location(gsm_dev_id):
-                last_location = json.loads(last_location_str) if last_location_str else {}
+            # Obtendo a última localização GSM/SAT conhecida
+            # Se o GSM está conectado e enviando pacotes em tempo real, usaremos o pacote do GSM. Caso o GSM não esteja conectado nem mandando pacotes em tempo real
+            # Mas Ainda não temos um "last_merged_location" (que seria um pacote do SAT) também usaremos o pacote do GSM.
+            gsm_connection_condition = input_sessions_manager.exists(gsm_dev_id) and output_sessions_manager.is_sending_realtime_location(gsm_dev_id)
+            if gsm_connection_condition or not last_merged_location_str:
+                last_location = gsm_last_location
             else:
-                last_location = json.loads(last_merged_location_str) if last_merged_location_str else {}
+                # Caso o GSM esteja offline ou sem mandar pacotes em tempo real, E, temos um pacote do SAT salvo "last_merged_location" usamos ele.
+                last_location = json.loads(last_merged_location_str)
 
-            last_location["connection_type"] = "gsm"
-
-            if not input_sessions_manager.exists(gsm_dev_id):
+            # Caso o GSM não esteja conectado, ou não esteja enviando pacotes em tempo real
+            # Calculemos o odometro a partir da diferença entre pares de LAT E LONG
+            if not gsm_connection_condition:
                 last_odometer = float(last_location.get("gps_odometer")) if last_location.get("gps_odometer") else 0.0
 
                 last_lat, last_long = last_location.get("latitude"), last_location.get("longitude")
