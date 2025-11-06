@@ -209,7 +209,8 @@ class MainServerSession:
                         }
                         redis_client.hmset(f"tracker:{self.dev_id}", mapping)
 
-                        logger.success(f"Hodometro de 'last_packet_data' e 'last_merged_location' no redis alterado com sucesso!")
+                            # Atualizando flag para alterar o hodometro do GSM
+                            self._odometer_changed_while_off = True
 
                         continue
 
@@ -283,10 +284,31 @@ class MainServerSession:
                 if not self.connect():
                     logger.error(f"Não foi possível conectar ao servidor principal com o novo protocolo. Pacote descartado. dev_id={self.dev_id}")
                     return
-                
-            try:
-                if self._is_gt06_login_step:
-                    logger.info(f"Aguardadndo resposta do server principal sobre o pacote de login. dev_id={self.dev_id}")
+            
+            # =============================================== Checagem de variaveis ============================================================
+            # ==================================================================================================================================
+            
+            # Essa lógica foi desenvolvida com o objetivo de que, se o GSM estiver offline ou não estiver mandando posições em tempo real ainda
+            # e se o SAT tiver alterado o hodometro nesse meio tempo, que o GSM receba um comando com o novo hodometro alterado pelo SAT.
+
+            # Primeiro verificamos se o GSM está conectado ou mandando pacotes em tempo real
+            gsm_connection_condition = input_sessions_manager.exists(self.dev_id) and self._is_sending_realtime_location
+
+            # Em caso de quem mandou o pacote atual for um SAT e o GSM não estiver conectado 
+            # ou estiver despejando memória setamos a flag que sinaliza a troca de odometro como True
+            if self.device_type == "SAT" and not gsm_connection_condition:
+                self._odometer_changed_while_off = True
+            
+            # Se o dispositivo foi um GSM ou estiver conectado e enviando pacotes em tempo real, verificamos se o odometro foi alterado
+            elif self._odometer_changed_while_off:
+                # Em caso positivo, alteramos o odometro do GSM, e resetamos a flag
+                self._odometer_changed_while_off = False
+
+                self.update_gsm_odometer()
+
+            # Verificando se estamos na etapa de login GT06
+            if self._is_gt06_login_step:
+                    logger.info(f"Aguardando resposta do server principal sobre o pacote de login. dev_id={self.dev_id}")
 
                     while self._is_gt06_login_step:
                         time.sleep(1)
