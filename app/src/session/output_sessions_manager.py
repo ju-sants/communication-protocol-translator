@@ -17,7 +17,9 @@ logger = get_logger(__name__)
 redis_client = get_redis()
 
 class MainServerSession:
-    def __init__(self, dev_id: str, input_protocol: str, output_protocol: str, serial: str):
+    def __init__(self, dev_id: str, output_protocol: str, serial: str):
+        input_protocol = redis_client.hget(f"tracker:{dev_id}", "protocol")
+
         self.input_protocol = input_protocol
         self.output_protocol = output_protocol
         self.dev_id = dev_id
@@ -363,11 +365,11 @@ class OutputSessionsManager:
 
         return cls._instance
 
-    def get_session(self, dev_id: str, input_protocol: str, output_protocol: str, serial: str) -> MainServerSession:
+    def get_session(self, dev_id: str, output_protocol: str, serial: str) -> MainServerSession:
         with self.lock:
             if dev_id not in self._sessions:
                 logger.info(f"Nenhuma sessão encontrada no MainServerSessionsManager. Criando uma nova. dev_id={dev_id}")
-                self._sessions[dev_id] = MainServerSession(dev_id, input_protocol, output_protocol, serial)
+                self._sessions[dev_id] = MainServerSession(dev_id, output_protocol, serial)
                 redis_client.sadd("output_sessions:active_trackers", dev_id)
             
             session = self._sessions[dev_id]
@@ -468,7 +470,7 @@ def send_to_main_server(
 
         add_packet_to_history(dev_id, raw_packet_hex, str_output_packet)
         
-        session = output_sessions_manager.get_session(dev_id, original_protocol.lower(), output_protocol, serial)
+        session = output_sessions_manager.get_session(dev_id, output_protocol, serial)
         session.send(output_packet, output_protocol, packet_data)
 
         # Heartbeats para GT06
