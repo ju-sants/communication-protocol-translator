@@ -64,7 +64,7 @@ def handle_satelite_data(raw_satellite_data: bytes):
             last_serial, last_location_str, last_merged_location_str, speed_filter = redis_client.hmget(f"tracker:{gsm_dev_id}", "last_serial", "last_packet_data", "last_merged_location", "speed_filter")
             
             last_serial = int(last_serial) if last_serial else 0
-            gsm_last_location = json.loads(last_location_str)
+            gsm_last_location = json.loads(last_location_str) if last_location_str else {}
 
             # Obtendo a última localização GSM/SAT conhecida
             # Se o GSM está conectado e enviando pacotes em tempo real, usaremos o pacote do GSM. Caso o GSM não esteja conectado nem mandando pacotes em tempo real
@@ -76,6 +76,15 @@ def handle_satelite_data(raw_satellite_data: bytes):
                 # Caso o GSM esteja offline ou sem mandar pacotes em tempo real, E, temos um pacote do SAT salvo "last_merged_location" usamos ele.
                 last_location = json.loads(last_merged_location_str)
 
+            if not last_location:
+                gps_odometer = utils.get_odometer_from_previous_host(str(gsm_dev_id).lstrip("0"))
+                last_location = {
+                    "gps_fixed": 1,
+                    "is_realtime": False,
+                    "output_status": 0,
+                    "gps_odometer": gps_odometer if gps_odometer else 0,
+                }
+                
             # Caso o GSM não esteja conectado, ou não esteja enviando pacotes em tempo real
             # Calculemos o odometro a partir da diferença entre pares de LAT E LONG
             if not gsm_connection_condition:
