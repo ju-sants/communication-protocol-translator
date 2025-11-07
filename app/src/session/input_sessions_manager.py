@@ -3,6 +3,7 @@ import socket
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import time
+import errno
 
 from app.core.logger import get_logger
 from app.services.redis_service import get_redis
@@ -73,8 +74,50 @@ class InputSessionsManager:
                 return False
             
             try:
-                return socket_obj.fileno() != -1
-            except OSError:
+                # Tenta verificar o descritor de arquivo
+                if socket_obj.fileno() == -1:
+                    return False
+
+                data = socket_obj.recv(16, socket.MSG_PEEK | socket.MSG_DONTWAIT)
+                
+                if data == b'':
+                    if dev_id in self.active_trackers:
+                        del self.active_trackers[dev_id]
+
+                    logger.info(f"Tracker {dev_id} fechou a conexão de forma elegante (recv(0) retornou b'').")
+                    return False 
+                
+                return True 
+                
+            except BlockingIOError:
+                # Não havia dados para ler, mas o socket está aberto e não houve erro
+                return True
+                
+            except ConnectionResetError:
+                # Conexão resetada de forma abrupta (RST)
+                if dev_id in self.active_trackers:
+                    del self.active_trackers[dev_id]
+
+                logger.info(f"Tracker {dev_id} sofreu um ConnectionResetError.")
+                return False
+                
+            except BrokenPipeError:
+                # Tentativa de escrita em um socket fechado
+                if dev_id in self.active_trackers:
+                    del self.active_trackers[dev_id]
+
+                logger.info(f"Tracker {dev_id} sofreu um BrokenPipeError.")
+                return False
+
+            except OSError as e:
+                # Outros erros de SO, como o socket ter sido fechado (errno.EBADF, etc.)
+                if e.errno == errno.EBADF: # Bad file descriptor
+                    return False
+                
+                if dev_id in self.active_trackers:
+                    del self.active_trackers[dev_id]
+
+                logger.info(f"Tracker {dev_id} sofreu um OSError: {e}.")
                 return False
     
     def get_sessions(self, use_redis: bool = False):
