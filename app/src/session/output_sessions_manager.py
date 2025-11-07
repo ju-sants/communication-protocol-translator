@@ -242,7 +242,9 @@ class MainServerSession:
                     self.device_type = "SAT"
                 else:
                     self.device_type = "GSM"
-            
+
+                logger.info(f"Tipo do dispositivo usando a instãncia de saída: {self.device_type} - {self.dev_id}")
+
                 # Variáveis que só podem ser setadas pelo dispositivo GSM conectado
                 if self.device_type == "GSM":
 
@@ -253,6 +255,10 @@ class MainServerSession:
                     packet_type = packet_data.get("packet_type") if packet_data else None
                     if packet_type is not None and packet_type == "location" and self._is_realtime:
                         self._is_sending_realtime_location = True
+                        logger.info(f"O dispositivo GSM usando essa instância de saída está mandando localização em tempo real. {self.dev_id}")
+
+                    else:
+                        self._is_sending_realtime_location = False
             
             # Atualizando protocolo de saída da instância
             if current_output_protocol and current_output_protocol.lower() != self.output_protocol:
@@ -277,12 +283,14 @@ class MainServerSession:
             # ou estiver despejando memória setamos a flag que sinaliza a troca de odometro como True
             if self.device_type == "SAT" and not gsm_connection_condition:
                 self._odometer_changed_while_off = True
+                logger.info(f"Hodometro foi alterado pelo dispositivo satelital enquanto o GSM está Off. {self.dev_id}")
             
             # Se o dispositivo foi um GSM ou estiver conectado e enviando pacotes em tempo real, verificamos se o odometro foi alterado
             elif self._odometer_changed_while_off and not self.device_type == "SAT":
                 # Em caso positivo, alteramos o odometro do GSM, e resetamos a flag
                 self._odometer_changed_while_off = False
-
+                
+                logger.info(f"O hodometro foi alterado por um SAT enquanto o GSM estava Off. E agora o GSM está conectado. Atualizando o hodometro do GSM.")
                 self.update_gsm_odometer()
 
             # Verificando se estamos na etapa de login GT06
