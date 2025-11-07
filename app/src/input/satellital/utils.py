@@ -5,7 +5,7 @@ from app.utils.api_client import get_vehicle_data_from_tracker_id
 
 logger = get_logger(__name__)
 
-def get_sat_odometer_from_previous_host(esn):
+def get_odometer_from_previous_host(esn):
     """
     Função que performa uma ação de negócio, onde obtemos o valor de hodometro do antigo host do dispositivo.
     """
