@@ -45,7 +45,7 @@ def handle_satelite_data(raw_satellite_data: bytes):
 
             # Apenas enviamos pacotes de heartbeat se não for híbrido, pois se for quem manda é o GSM.
             if not is_hybrid:
-                satellite_data["device_type"] = "satellite"
+                satellite_data["device_type"] = "satellital"
                 return output_dev_id, satellite_data, None, 0        
             else: return None, None, None, None
 
