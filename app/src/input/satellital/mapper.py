@@ -88,16 +88,17 @@ def handle_satelite_data(raw_satellite_data: bytes):
             # Caso o GSM não esteja conectado, ou não esteja enviando pacotes em tempo real
             # Calculemos o odometro a partir da diferença entre pares de LAT E LONG
             if not gsm_connection_condition:
-                last_odometer = float(last_location.get("gps_odometer")) if last_location.get("gps_odometer") else 0.0
+                if last_location.get("latitude") and last_location.get("longitude"):
+                    last_odometer = float(last_location.get("gps_odometer")) if last_location.get("gps_odometer") else 0.0
 
-                last_lat, last_long = last_location.get("latitude"), last_location.get("longitude")
-                new_lat, new_long = satellite_data.get("latitude"), satellite_data.get("longitude")
-                
-                to_add_odometer = haversine(last_lat, last_long, new_lat, new_long)
+                    last_lat, last_long = last_location.get("latitude"), last_location.get("longitude")
+                    new_lat, new_long = satellite_data.get("latitude"), satellite_data.get("longitude")
+                    
+                    to_add_odometer = haversine(last_lat, last_long, new_lat, new_long)
 
-                new_odometer = last_odometer + to_add_odometer
+                    new_odometer = last_odometer + to_add_odometer
 
-                last_location["gps_odometer"] = new_odometer
+                    last_location["gps_odometer"] = new_odometer
                 
         else:
             logger.info("Standalone satellital tracker, initiating standalone location.")
