@@ -4,6 +4,20 @@ from app.src.session.input_sessions_manager import input_sessions_manager
 
 logger = get_logger(__name__)
 redis_client = get_redis()
+
+def build_command(dev_id: str, _, suntech2g_command: str):
+    if len(dev_id) <= 6:
+        prefix = "SA200"
+    else:
+        prefix = "ST300"
+
+    if len(dev_id) <= 6:
+        fill = 6
+    else:
+        fill = 9
+
+    return f"{prefix}CMD;{dev_id.zfill(fill)};02;{suntech2g_command}".encode('ascii') + b'\r'
+
 def process_command(dev_id: str, serial: str, universal_command: str):
     logger.info(f"Iniciando tradução de comando Universal para NT40 device_id={dev_id}, comando={universal_command}")
 
@@ -25,28 +39,18 @@ def process_command(dev_id: str, serial: str, universal_command: str):
     else:
         suntech2g_command = command_mapping.get(universal_command)
 
-    if len(dev_id) <= 6:
-        prefix = "SA200"
-    else:
-        prefix = "ST300"
-
-    if len(dev_id) <= 6:
-        fill = 6
-    else:
-        fill = 9
-
-    suntech2g_complete_command = f"{prefix}CMD;{dev_id.zfill(fill)};02;{suntech2g_command}"
-
     if not suntech2g_command:
         logger.warning(f"Nenhum mapeamento Suntech2g encontrado para o comando Universal comando={universal_command}")
         return
+
+    suntech2g_complete_command = build_command(dev_id, serial, suntech2g_command)
 
     logger.info(f"Comando Suntech2g gerado com sucesso: {suntech2g_complete_command}")
 
     tracker_socket = input_sessions_manager.get_session(dev_id)
     if tracker_socket:
         try:
-            tracker_socket.sendall(suntech2g_complete_command.encode('ascii') + b"\r")
+            tracker_socket.sendall(suntech2g_complete_command)
             logger.info(f"Comando Suntech2g enviado com sucesso device_id={dev_id}, comando='{suntech2g_complete_command}'")
         except Exception as e:
             logger.error(f"Erro ao enviar comando Suntech2g device_id={dev_id}, comando='{suntech2g_complete_command}': {e}")

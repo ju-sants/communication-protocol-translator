@@ -15,6 +15,8 @@ from app.src.input.j16x_j16.builder import build_command as build_j16x_j16_comma
 from app.src.input.j16w.builder import build_command as build_j16w_command
 from app.src.input.vl01.builder import build_command as build_vl01_command
 from app.src.input.nt40.builder import build_command as build_nt40_command
+from app.src.input.suntech2g.builder import build_command as build_suntech2g_command
+from app.src.input.suntech4g.builder import build_command as build_suntech4g_command
 # from app.src.input.jt808.builder import build_command as build_jt808_command
 
 redis_client = get_redis()
@@ -25,6 +27,8 @@ COMMAND_BUILDERS = {
     "vl01": build_vl01_command,
     "nt40": build_nt40_command,
     "j16w": build_j16w_command,
+    "suntech2g": build_suntech2g_command,
+    "suntech4g": build_suntech4g_command,
     # "jt808": build_jt808_command
 }
 
@@ -118,7 +122,7 @@ def send_tracker_command(dev_id):
 
     try:
         with logger.contextualize(log_label=dev_id):
-            command_packet = builder_func(command_str, serial)
+            command_packet = builder_func(dev_id, serial, command_str)
             
             tracker_socket = input_sessions_manager.get_session(dev_id)
             if tracker_socket:

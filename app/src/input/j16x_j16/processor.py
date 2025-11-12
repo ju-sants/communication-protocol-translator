@@ -98,8 +98,8 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         logger.warning(f"Protocolo J16X-J16 não mapeado: {hex(protocol_number)} device_id={dev_id_str}")
         if protocol_number == 0x12:
             logger.info(f"Dispositivo J16X-J16 comunicando na variação x12, enviando comando de alteração.")
-            switch_command = builder.build_command("SZCS#GT06SEL=1", serial_number)
-            odometer_report_command = builder.build_command("SZCS#GT06METER=1", serial_number)
+            switch_command = builder.build_command(dev_id_str, serial_number, "SZCS#GT06SEL=1")
+            odometer_report_command = builder.build_command(dev_id_str, serial_number, "SZCS#GT06METER=1")
 
             conn.sendall(switch_command)
             conn.sendall(odometer_report_command)

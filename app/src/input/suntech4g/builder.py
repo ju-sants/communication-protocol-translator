@@ -3,6 +3,9 @@ from app.src.session.input_sessions_manager import input_sessions_manager
 
 logger = get_logger(__name__)
 
+def build_command(_, __, suntech4g_command: str):
+    return suntech4g_command.encode('ascii')
+
 def process_command(dev_id: str, serial: str, universal_command: str):
     logger.info(f"Iniciando tradução de comando Universal para NT40 device_id={dev_id}, comando={universal_command}")
 
@@ -31,7 +34,7 @@ def process_command(dev_id: str, serial: str, universal_command: str):
     tracker_socket = input_sessions_manager.get_session(dev_id)
     if tracker_socket:
         try:
-            tracker_socket.sendall(suntech4g_command.encode('ascii'))
+            tracker_socket.sendall(suntech4g_command)
             logger.info(f"Comando Suntech4g enviado com sucesso device_id={dev_id}, comando='{suntech4g_command}'")
         except Exception as e:
             logger.error(f"Erro ao enviar comando Suntech4g device_id={dev_id}, comando='{suntech4g_command}': {e}")

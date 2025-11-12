@@ -34,7 +34,7 @@ def build_generic_response(protocol_number: str, serial_number: int):
 
     return response_packet
 
-def build_command(command_content_str: str, serial_number: int):
+def build_command(_, serial_number: int, command_content_str: str):
     """
     Cria comandos no padrão VL01 para envio ao dispositivo
     """
@@ -104,7 +104,7 @@ def process_command(dev_id: str, serial: int, universal_command: str):
         logger.warning(f"Nenhum mapeamento VL01 encontrado para o comando Universal comando={universal_command}")
         return
 
-    vl01_binary_command = build_command(vl01_text_command, serial)
+    vl01_binary_command = build_command(dev_id, serial, vl01_text_command)
 
     tracker_socket = input_sessions_manager.get_session(dev_id)
     if tracker_socket:
