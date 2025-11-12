@@ -165,6 +165,7 @@ def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
                 "hybridImei": hybrid_id,
                 "hybridProtocolId": 10 if hybrid_id and is_hybrid else None,
                 "isHybridVehicle": 1 if hybrid_id and is_hybrid else 0,
+                "owner_id": owner_info.get("id"),
             }
 
             if "satellite|" in tracker_label:
