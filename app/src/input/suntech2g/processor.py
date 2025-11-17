@@ -50,16 +50,6 @@ def process_packet(packet_str: str):
         packet_data, ign_alert_packet_data = mapper.handle_alt_packet(fields, standard)
         type = "alert"
 
-    elif hdr == "EMG":
-        logger.info("Emergency packet (EMG) received.")
-        packet_data = mapper.handle_emg_packet(fields, standard)
-        type = "location"
-
-    elif hdr == "EVT":
-        logger.info("Event packet (EVT) received.")
-        packet_data = mapper.handle_evt_packet(fields, standard)
-        type = "alert"
-
     elif hdr == "CMD":
         logger.info("Command response packet (CMD) received.")
         packet_data = mapper.handle_reply_packet(dev_id, fields)
