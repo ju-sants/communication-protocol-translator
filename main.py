@@ -43,7 +43,7 @@ def run_workers():
             module_name = item.removesuffix(".py")
             module = importlib.import_module(f"app.workers.{module_name}")
             for attr in dir(module):
-                if "worker" in attr:
+                if "orchestrator" in attr:
                     worker_func = getattr(module, attr)
                     threading.Thread(target=worker_func, daemon=True).start()
 
