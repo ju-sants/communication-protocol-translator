@@ -71,8 +71,9 @@ def get_vehicle_data(vehicle_id):
     
 
 def get_vehicle_data_from_tracker_id(dev_id: str):
-    
-    search = search_vehicles(dev_id)
+    dev_id_norm = str(dev_id).lstrip("0")
+
+    search = search_vehicles(dev_id_norm)
     if not search:
         logger.error(f"Não foi possível realizar uma busca com o dev_id={dev_id}")
         return {}
@@ -82,7 +83,7 @@ def get_vehicle_data_from_tracker_id(dev_id: str):
     else:
         for item in search:
             imei = str(item.get("imei")).lstrip("0")
-            if imei == dev_id:
+            if imei == dev_id_norm:
                 vehicle_id = item.get("id")
     
     if not vehicle_id:
