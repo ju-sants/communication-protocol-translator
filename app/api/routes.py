@@ -1,8 +1,9 @@
 import json
-from flask import current_app as app, jsonify, request
-from datetime import datetime, timezone
+from flask import current_app as app, jsonify, request, make_response
+from datetime import datetime
 import os
 import time
+import zlib
 
 from . import utils
 from app.services.redis_service import get_redis
@@ -54,39 +55,40 @@ def get_gateway_info():
         return jsonify({"error": str(e)}), 500
     
 @app.route('/trackers', methods=['GET'])
-def get_trackers_data_efficiently():
+def get_trackers_data():
     try:
-        ignored_keys = {"global_data", "universal_data", "SAT_GSM_MAPPING"}
-        
-        keys_to_fetch = []
+        args = request.args
+
         keys = list(redis_client.scan_iter('tracker:*', count=1000) )
-        processed_count = 0
-        for key in keys:
-            if key in ignored_keys:
-                continue
-            
-            keys_to_fetch.append(key)
-
-            processed_count += 1
-
-        if not keys_to_fetch:
+        if not keys:
             return jsonify({"data": {}, "message": "Nenhum rastreador encontrado para esta página."})
 
         pipe = redis_client.pipeline()
-        for key in keys_to_fetch:
+        for key in keys:
             pipe.hgetall(key)
         
         results = pipe.execute()
 
         all_data = {}
-        for i, key in enumerate(keys_to_fetch):
+        for i, key in enumerate(keys):
             device_data = results[i]
             
             key_normalized = key.split("tracker:")[-1]
             device_data['is_connected'] = input_sessions_manager.exists(key_normalized)
             device_data["output_protocol"] = device_data.get("output_protocol") or "suntech4g"
             all_data[key_normalized] = device_data
-            
+
+        if args:
+            if args.get("zlib_compress"):
+                json_bytes = json.dumps(all_data).encode("utf-8")
+                zlib_compressed = zlib.compress(json_bytes)
+
+                response = make_response(zlib_compressed)
+                response["Content-Encoding"] = "deflate"
+                response.headers['Content-Type'] = 'application/json'
+
+                return response
+               
         return jsonify(all_data)
 
     except Exception as e:
