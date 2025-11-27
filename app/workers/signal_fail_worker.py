@@ -157,7 +157,10 @@ def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
             tracker_id = tracker_label.split(":")[-1]
             tracker_label_norm = tracker_label.replace("satellite|", "")
 
-            output_protocol, is_hybrid, hybrid_id = redis_client_gateway.hmget(tracker_label_norm, "output_protocol", "is_hybrid", "hybrid_id")
+            output_protocol, is_hybrid, hybrid_id, last_sat_location_str, last_gsm_position_str = redis_client_gateway.hmget(tracker_label_norm, "output_protocol", "is_hybrid", "hybrid_id", "last_merged_location", "last_packet_data")
+            last_location_str = last_sat_location_str if "satellite" in tracker_label else last_gsm_position_str
+            last_location = json.loads(last_location_str) if last_location_str else None # Pegando a última localização do servidor para esse rastreador
+
             output_tracker_id = get_output_dev_id(tracker_id, output_protocol)
 
             vehicle_data = get_vehicle_data_from_tracker_id(output_tracker_id)
@@ -167,7 +170,7 @@ def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
                 continue
             
             vehicle_details = vehicle_data.get("vehicle", {})
-            last_position = vehicle_data.get("lastPosition", {})
+            last_position = last_location if last_location else vehicle_data.get("lastPosition", {})
             if not vehicle_details or not last_position:
                 logger.error(f"Campo de dados importante para a operação não presente nos dados do veículo, dev_id={tracker_id} campo(s): {'vehicle' if not vehicle_details else 'lastPosition'}")
                 continue
@@ -177,19 +180,19 @@ def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
                 "id": vehicle_details.get("id"),
                 "rastreador": vehicle_details.get("imei"),
                 "fabricanteRastreador": vehicle_details.get("manufacturer_id"),
-                "telefone": vehicle_details.get("chip_number"),
+                "telefone": vehicle_details.get("chip_number") if not "satellite" in tracker_label else "9999",
                 "features": vehicle_details.get("features"),
                 "placas": vehicle_details.get("license_plate"),
                 "marca": vehicle_details.get("brand"),
                 "model": vehicle_details.get("model"),
                 "nome": owner_info.get("name"),
-                "dataHora": last_position.get("datetime"),
+                "dataHora": last_position.get("timestamp") or last_position.get("datetime"),
                 "latitude": last_position.get("latitude"),
                 "longitude": last_position.get("longitude"),
                 "satGps": last_position.get("satellites"),
-                "ign": last_position.get("ignition"),
-                "tensao": last_position.get("tension"),
-                "vel": last_position.get("velocity"),
+                "ign": last_position.get("acc_status") or last_position.get("ignition"),
+                "tensao": last_position.get("voltage") or last_position.get("tension"),
+                "vel": last_position.get("speed_kmh") or last_position.get("velocity"),
                 "tracker_label": tracker_label,
                 "fcel": owner_info.get("phone_number"),
                 "fres": owner_info.get("residencial_number"), 
