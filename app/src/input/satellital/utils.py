@@ -1,7 +1,7 @@
 import requests
 
 from app.core.logger import get_logger
-from app.utils.api_client import get_vehicle_data_from_tracker_id
+from app.services.extrernal_api_service import get_vehicle_data_from_tracker_id
 
 logger = get_logger(__name__)
 

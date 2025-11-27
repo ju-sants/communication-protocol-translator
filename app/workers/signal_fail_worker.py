@@ -4,7 +4,7 @@ import time
 import concurrent.futures
 
 from app.services.redis_service import get_redis
-from app.utils.api_client import get_vehicle_data_from_tracker_id
+from app.services.extrernal_api_service import get_vehicle_data_from_tracker_id
 from app.core.logger import get_logger
 from app.src.output.utils import get_output_dev_id
 from . import utils
