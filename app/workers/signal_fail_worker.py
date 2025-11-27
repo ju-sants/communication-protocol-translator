@@ -1,6 +1,7 @@
 import json
 import schedule
 import time
+import concurrent.futures
 
 from app.services.redis_service import get_redis
 from app.utils.api_client import get_vehicle_data_from_tracker_id
@@ -16,6 +17,7 @@ def signal_fail_worker():
     orchestrator()
 
     schedule.every(2).hours.do(orchestrator)
+    schedule.every(1).days.at("00:00").do(clean_signal_fail)
 
     while True:
         schedule.run_pending()
@@ -71,16 +73,23 @@ def single_satellites_fail_worker(key: str, tracker_data: tuple, failing_tracker
         key = "satellite|" + key # Normalizando keys de satelitais
 
         is_signal_fail = utils.is_signal_fail(satellite_last_timestamp)
-        if is_signal_fail and not any(key == fail.get("tracker_label") for fail in failing_trackers):
-            to_add_to_failing.add(key)
-            logger.info(f"Tracker {key} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
+        if is_signal_fail:
+            # Verificando se o mesmo não está comunicando diretamente no server principal
+            tracker_id = key.split(":")[-1]
+            flag = utils.is_communicating_on_principal_server(tracker_id)
+            if flag is not None and flag:
+                logger.info(f"Rastreador {tracker_id} comunicando no server principal, descartando registro de falha.")
+                return
+
+            if not any(key == fail.get("tracker_label") for fail in failing_trackers):
+                to_add_to_failing.add(key)
+                logger.info(f"Tracker {key} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
 
         elif not is_signal_fail:
             if any(key == fail.get("tracker_label") for fail in failing_trackers):
                 to_remove_from_failing.add(key)
                 logger.info(f"Tracker {key} voltou a comunicar. Marcando para retirar dos registros de falha.")
-
-    
+ 
 def hybrids_fail_worker(key: str, tracker_data: tuple, failing_trackers: set, to_add_to_failing: set, to_remove_from_failing: set):
     try:
         last_gsm_location_str = tracker_data[2]
@@ -112,12 +121,19 @@ def hybrids_fail_worker(key: str, tracker_data: tuple, failing_trackers: set, to
                     
                     if timestamp_str:
                         if float(packet.get("voltage", 0.0)) == 2.22 and int(packet.get("satellites", 0)) == 2:
-                            key = "satellite|" + key
+                            key = "hybrid_satellite|" + key
 
                         is_signal_fail = utils.is_signal_fail(timestamp_str)
-                        if is_signal_fail and not any(key == fail.get("tracker_label") for fail in failing_trackers):
-                            to_add_to_failing.add(key)
-                            logger.info(f"Tracker {key} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
+                        if is_signal_fail:
+                            # Verificando se o mesmo não está comunicando diretamente no server principal
+                            tracker_id = key.split(":")[-1]
+                            if utils.is_communicating_on_principal_server(tracker_id):
+                                logger.info(f"Rastreador {tracker_id} comunicando no server principal, descartando registro de falha.")
+                                continue
+
+                            if not any(key == fail.get("tracker_label") for fail in failing_trackers):
+                                to_add_to_failing.add(key)
+                                logger.info(f"Tracker {key} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
 
                         elif not is_signal_fail:
                             if any(key == fail.get("tracker_label") for fail in failing_trackers):
@@ -130,7 +146,6 @@ def hybrids_fail_worker(key: str, tracker_data: tuple, failing_trackers: set, to
 
     except Exception as e:
         logger.error(f"An error occurred in the signal fail worker: {e}")
-
 
 def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
 
@@ -153,11 +168,26 @@ def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
 
     if to_add_to_failing:
         added_count = 0
-        for tracker_label in to_add_to_failing:
-            tracker_id = tracker_label.split(":")[-1]
-            tracker_label_norm = tracker_label.replace("satellite|", "")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(add_to_failing, tracker_label) for tracker_label in to_add_to_failing]
 
-            output_protocol, is_hybrid, hybrid_id, last_sat_location_str, last_gsm_position_str = redis_client_gateway.hmget(tracker_label_norm, "output_protocol", "is_hybrid", "hybrid_id", "last_merged_location", "last_packet_data")
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        added_count += 1
+                except Exception as e:
+                    logger.error(f"add_to_failing levantou uma excessão: {e}")
+                    
+        logger.info(f"Adicionados {added_count} registros de falha nessa rodada.")
+
+def add_to_failing(tracker_label: str):
+    with logger.contextualize(log_label="SIGNAL FAIL WORKER"):
+        try:
+            tracker_id = tracker_label.split(":")[-1]
+            tracker_label_norm = tracker_label.replace("hybrid_satellite|", "").replace("satellite|", "")
+
+            input_protocol, output_protocol, is_hybrid, hybrid_id, last_sat_location_str, last_gsm_position_str = redis_client_gateway.hmget(tracker_label_norm, "protocol", "output_protocol", "is_hybrid", "hybrid_id", "last_merged_location", "last_packet_data")
             last_location_str = last_sat_location_str if "satellite" in tracker_label else last_gsm_position_str
             last_location = json.loads(last_location_str) if last_location_str else None # Pegando a última localização do servidor para esse rastreador
 
@@ -167,19 +197,20 @@ def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
 
             if not vehicle_data:
                 logger.error(f"Não foi possível adicionar o rastreador (dev_id={tracker_id}) aos registros de falha, não foi encontrado dados do veículo no sistema.")
-                continue
+                return
             
             vehicle_details = vehicle_data.get("vehicle", {})
             last_position = last_location if last_location else vehicle_data.get("lastPosition", {})
             if not vehicle_details or not last_position:
                 logger.error(f"Campo de dados importante para a operação não presente nos dados do veículo, dev_id={tracker_id} campo(s): {'vehicle' if not vehicle_details else 'lastPosition'}")
-                continue
+                return
             
             owner_info = vehicle_details.get("owner", {})
             fail_register = {
                 "id": vehicle_details.get("id"),
-                "rastreador": vehicle_details.get("imei"),
-                "fabricanteRastreador": vehicle_details.get("manufacturer_id"),
+                "rastreador": vehicle_details.get("imei"),          # Se for um satelital de um híbrido mandamos o fabricante do cadastro, senão 10 para satelitais puros
+                "fabricanteRastreador": utils.get_manufacturer_id(input_protocol) if "hybrid_satellite" in tracker_label or \
+                                                                                    not "satellite|" in tracker_label else 10,  
                 "telefone": vehicle_details.get("chip_number") if not "satellite" in tracker_label else "9999",
                 "features": vehicle_details.get("features"),
                 "placas": vehicle_details.get("license_plate"),
@@ -199,16 +230,23 @@ def update_failing_trackers_list(to_add_to_failing, to_remove_from_failing):
                 "fcom": owner_info.get("comercial_number"),
                 "hybridImei": hybrid_id,
                 "hybridProtocolId": 10 if hybrid_id and is_hybrid else None,
-                "isHybridVehicle": 1 if hybrid_id and is_hybrid else 0,
+                "isHybridVehicle": True if is_hybrid else False,
                 "owner_id": owner_info.get("id"),
             }
 
-            if "satellite|" in tracker_label:
+            if "satellite|" in tracker_label and is_hybrid:
                 fail_register["isHybridPosition"] = True
 
             fail_register_str = json.dumps({k: v for k, v in fail_register.items() if v is not None})
             redis_client_data.sadd("translator_server:failing_trackers", fail_register_str)
             logger.info(f"Registro de falha adicionado ao set com sucesso! dev_id={tracker_id}, tracker_label={tracker_label}")
-            added_count += 1
+            return True
         
-        logger.info(f"Adicionados {added_count} registros de falha nessa rodada.")
+        except Exception as e:
+            logger.error(f"Houve um erro ao adicionar o registro: {e}")
+            return False
+
+def clean_signal_fail():
+    """Limpa os dados de falha para mantê-los atualizados"""
+
+    redis_client_data.delete("translator_server:failing_trackers")
