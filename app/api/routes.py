@@ -84,7 +84,7 @@ def get_trackers_data():
                 zlib_compressed = zlib.compress(json_bytes)
 
                 response = make_response(zlib_compressed)
-                response["Content-Encoding"] = "deflate"
+                response.headers["Content-Encoding"] = "deflate"
                 response.headers['Content-Type'] = 'application/json'
 
                 return response
