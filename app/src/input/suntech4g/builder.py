@@ -31,10 +31,11 @@ def process_command(dev_id: str, serial: str, universal_command: str):
         logger.warning(f"Nenhum mapeamento Suntech4g encontrado para o comando Universal comando={universal_command}")
         return
 
+    suntech4g_command_bytes = build_command(dev_id, serial, suntech4g_command)
     tracker_socket = input_sessions_manager.get_session(dev_id)
     if tracker_socket:
         try:
-            tracker_socket.sendall(suntech4g_command)
+            tracker_socket.sendall(suntech4g_command_bytes)
             logger.info(f"Comando Suntech4g enviado com sucesso device_id={dev_id}, comando='{suntech4g_command}'")
         except Exception as e:
             logger.error(f"Erro ao enviar comando Suntech4g device_id={dev_id}, comando='{suntech4g_command}': {e}")
