@@ -28,8 +28,10 @@ logger = get_logger(__name__)
 COMMAND_BUILDERS = {
     "j16x_j16": build_j16x_j16_command,
     "vl01": build_vl01_command,
+    "vl03": build_vl03_command,
     "nt40": build_nt40_command,
     "j16w": build_j16w_command,
+    "gp900m": build_gp900m_command,
     "suntech2g": build_suntech2g_command,
     "suntech4g": build_suntech4g_command,
     # "jt808": build_jt808_command
