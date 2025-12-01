@@ -15,9 +15,11 @@ from app.services.history_service import get_packet_history
 from app.src.input.j16x_j16.builder import build_command as build_j16x_j16_command
 from app.src.input.j16w.builder import build_command as build_j16w_command
 from app.src.input.vl01.builder import build_command as build_vl01_command
+from app.src.input.vl03.builder import build_command as build_vl03_command
 from app.src.input.nt40.builder import build_command as build_nt40_command
 from app.src.input.suntech2g.builder import build_command as build_suntech2g_command
 from app.src.input.suntech4g.builder import build_command as build_suntech4g_command
+from app.src.input.gp900m.builder import build_command as build_gp900m_command
 # from app.src.input.jt808.builder import build_command as build_jt808_command
 
 redis_client = get_redis()
