@@ -73,7 +73,7 @@ def single_satellites_fail_worker(key: str, tracker_data: tuple, failing_tracker
         key = "satellite|" + key # Normalizando keys de satelitais
 
         is_signal_fail = utils.is_signal_fail(satellite_last_timestamp)
-        if is_signal_fail:
+        if is_signal_fail and not any(key == fail.get("tracker_label") for fail in failing_trackers):
             # Verificando se o mesmo não está comunicando diretamente no server principal
             tracker_id = key.split(":")[-1]
             flag = utils.is_communicating_on_principal_server(tracker_id)
@@ -81,9 +81,8 @@ def single_satellites_fail_worker(key: str, tracker_data: tuple, failing_tracker
                 logger.info(f"Rastreador {tracker_id} comunicando no server principal, descartando registro de falha.")
                 return
 
-            if not any(key == fail.get("tracker_label") for fail in failing_trackers):
-                to_add_to_failing.add(key)
-                logger.info(f"Tracker {key} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
+            to_add_to_failing.add(key)
+            logger.info(f"Tracker {key} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
 
         elif not is_signal_fail:
             if any(key == fail.get("tracker_label") for fail in failing_trackers):
@@ -124,16 +123,15 @@ def hybrids_fail_worker(key: str, tracker_data: tuple, failing_trackers: set, to
                             key = "hybrid_satellite|" + key
 
                         is_signal_fail = utils.is_signal_fail(timestamp_str)
-                        if is_signal_fail:
+                        if is_signal_fail and not any(key == fail.get("tracker_label") for fail in failing_trackers):
                             # Verificando se o mesmo não está comunicando diretamente no server principal
                             tracker_id = key.split(":")[-1]
                             if utils.is_communicating_on_principal_server(tracker_id):
                                 logger.info(f"Rastreador {tracker_id} comunicando no server principal, descartando registro de falha.")
                                 continue
 
-                            if not any(key == fail.get("tracker_label") for fail in failing_trackers):
-                                to_add_to_failing.add(key)
-                                logger.info(f"Tracker {key} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
+                            to_add_to_failing.add(key)
+                            logger.info(f"Tracker {key} está a mais de 24horas sem comunicar. Marcando para adicionar aos registros de falha.")
 
                         elif not is_signal_fail:
                             if any(key == fail.get("tracker_label") for fail in failing_trackers):
