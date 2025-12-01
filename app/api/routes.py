@@ -140,19 +140,15 @@ def get_tracker_history(dev_id):
     Fetches the packet history for a specific tracker.
     """
     try:
-        args = request.args
-        history = get_packet_history(dev_id)
+        compress = request.args.get("zlib_compress")
+        history = get_packet_history(dev_id, return_compressed=True if compress else False)
 
-        if args:
-            if args.get("zlib_compress"):
-                history_bytes = json.dumps(history).encode("utf-8")
-                history_compressed = zlib.compress(history_bytes)
+        if compress:
+            response = make_response(history)
+            response.headers["Content-Encoding"] = "deflate"
+            response.headers["Content-Type"] = "application/json"
 
-                response = make_response(history_compressed)
-                response.headers["Content-Encoding"] = "deflate"
-                response.headers["Content-Type"] = "Application/json"
-
-                return response
+            return response
         
         return jsonify(history)
     except Exception as e:
