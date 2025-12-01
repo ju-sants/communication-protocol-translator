@@ -342,6 +342,7 @@ def resend_last_packet(dev_id: str):
     
     # Sending packet if it exists
     if packet:
+        packet["timestamp"] = datetime.now()
         send_to_main_server(dev_id, packet, 00, "API SENT REQUEST", input_protocol)
 
         return jsonify({"status": "ok", "message": "sent"})
