@@ -213,7 +213,7 @@ def add_to_failing(tracker_label: str):
                 "features": vehicle_details.get("features"),
                 "placas": vehicle_details.get("license_plate"),
                 "marca": vehicle_details.get("brand"),
-                "model": vehicle_details.get("model"),
+                "modelo": vehicle_details.get("model"),
                 "nome": owner_info.get("name"),
                 "dataHora": last_position.get("timestamp") or last_position.get("datetime"),
                 "latitude": last_position.get("latitude"),
