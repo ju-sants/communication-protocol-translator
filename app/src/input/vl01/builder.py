@@ -90,9 +90,9 @@ def process_command(dev_id: str, serial: int, universal_command: str):
             logger.info(f"Comando com metragem incorreta: {universal_command}")
             return
         
-        # kilometers = int(meters) / 1000
+        kilometers = int(meters) / 1000
 
-        # vl01_text_command = f"MILEAGE,ON,{kilometers}#"
+        vl01_text_command = f"MILEAGE,ON,{kilometers}#"
 
         # NO MOMENTO ESTAMOS USANDO HODOMETRO GERENCIADO PELO PRÓPRIO SERVIDOR
         redis_client.hset(f"tracker:{dev_id}", "odometer", meters)
