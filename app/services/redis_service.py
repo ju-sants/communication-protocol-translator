@@ -8,7 +8,7 @@ from functools import lru_cache
 logger = get_logger(__name__)
 
 @lru_cache(maxsize=1)
-def get_redis(db: int | None = None, host: str | None = None, port: int | None = None, password: str | None = None):
+def get_redis(db: int | None = None, host: str | None = None, port: int | None = None, password: str | None = None, decode_responses: bool = True):
     redis_conn = None
 
     db = db if db is not None else settings.REDIS_DB_MAIN
@@ -18,7 +18,7 @@ def get_redis(db: int | None = None, host: str | None = None, port: int | None =
     logger.info(f"Connecting to Redis DB {db} at {host}:{port} with ConnectionPool", log_label="SERVIDOR")
 
     try:
-        connection_pool = redis.ConnectionPool(max_connections=20, db=db, host=host, port=port, password=password, decode_responses=True)
+        connection_pool = redis.ConnectionPool(max_connections=20, db=db, host=host, port=port, password=password, decode_responses=decode_responses)
         redis_conn = redis.Redis(connection_pool=connection_pool)
         redis_conn.ping()
         logger.info(f"Successfully connected to Redis DB {db} at {host}:{port}", log_label="SERVIDOR")

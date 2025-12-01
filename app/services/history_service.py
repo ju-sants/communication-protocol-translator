@@ -2,7 +2,7 @@ import json
 import zlib
 from app.services.redis_service import get_redis
 
-redis_client = get_redis()
+redis_client = get_redis(decode_responses=False)
 HISTORY_LIMIT = 10000  # Limite de entradas no histórico por dispositivo
 
 def add_packet_to_history(dev_id: str, raw_packet_hex: str, translated_packet: str):
