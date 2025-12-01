@@ -305,47 +305,48 @@ def resend_last_packet(dev_id: str):
         logger.error("Device id empty in resend last packet request.")
         return jsonify({"status": "error", "message": "please provide a valid device id."})
     
-    tracker_key = f"tracker:{dev_id}"
-    if not redis_client.exists(tracker_key):
-        logger.error(f"Device not found in Database for {dev_id}. Cannot send last packet.")
-        return jsonify({"status": "error", "message": "device not found in Database."})
-    
-    # Obtaining data
-    last_packet_data_str, last_merged_location_str, input_protocol = redis_client.hmget(tracker_key, "last_packet_data", "last_merged_location", "protocol")
-    last_packet_data, last_merged_location = utils.parse_json_safe(last_packet_data_str), utils.parse_json_safe(last_merged_location_str)
-    
-    # Date parsing
-    if last_packet_data:
-        last_packet_data["timestamp"] = parser.parse(last_packet_data.get("timestamp"))
-    if last_merged_location:
-        last_merged_location["timestamp"] = parser.parse(last_merged_location.get("timestamp"))
+    with logger.contextualize(log_label=dev_id):
+        tracker_key = f"tracker:{dev_id}"
+        if not redis_client.exists(tracker_key):
+            logger.error(f"Device not found in Database for {dev_id}. Cannot send last packet.")
+            return jsonify({"status": "error", "message": "device not found in Database."})
+        
+        # Obtaining data
+        last_packet_data_str, last_merged_location_str, input_protocol = redis_client.hmget(tracker_key, "last_packet_data", "last_merged_location", "protocol")
+        last_packet_data, last_merged_location = utils.parse_json_safe(last_packet_data_str), utils.parse_json_safe(last_merged_location_str)
+        
+        # Date parsing
+        if last_packet_data:
+            last_packet_data["timestamp"] = parser.parse(last_packet_data.get("timestamp"))
+        if last_merged_location:
+            last_merged_location["timestamp"] = parser.parse(last_merged_location.get("timestamp"))
 
 
-    # Logic to know what packet to send
-    packet_to_send = args.get("packet_to_send") or "last"
-    packet = None
+        # Logic to know what packet to send
+        packet_to_send = args.get("packet_to_send") or "last"
+        packet = None
 
-    if packet_to_send == "last":
-        if packet is None or last_packet_data["timestamp"] > packet["timestamp"]:
+        if packet_to_send == "last":
+            if packet is None or last_packet_data["timestamp"] > packet["timestamp"]:
+                packet = last_packet_data
+
+
+            if packet is None or last_merged_location["timestamp"] > packet["timestamp"]:
+                packet = last_merged_location
+        
+        elif packet_to_send == "gsm":
             packet = last_packet_data
-
-
-        if packet is None or last_merged_location["timestamp"] > packet["timestamp"]:
+        
+        elif packet_to_send == "sat":
             packet = last_merged_location
-    
-    elif packet_to_send == "gsm":
-        packet = last_packet_data
-    
-    elif packet_to_send == "sat":
-        packet = last_merged_location
-    
-    
-    # Sending packet if it exists
-    if packet:
-        packet["timestamp"] = datetime.now()
-        send_to_main_server(dev_id, packet, 00, "API SENT REQUEST", input_protocol)
+        
+        
+        # Sending packet if it exists
+        if packet:
+            packet["timestamp"] = datetime.now()
+            send_to_main_server(dev_id, packet, 00, "API SENT REQUEST", input_protocol)
 
-        return jsonify({"status": "ok", "message": "sent"})
-    
-    return jsonify({"status": "ok", "message": "no packet available"})
+            return jsonify({"status": "ok", "message": "sent"})
+        
+        return jsonify({"status": "ok", "message": "no packet available"})
     
