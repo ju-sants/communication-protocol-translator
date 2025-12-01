@@ -18,3 +18,12 @@ def get_mapping_cached(mapping):
         data = json.loads(cached_data)
 
     return data
+
+def parse_json_safe(json_str: str):
+    """Parse a json string with error handling"""
+
+    try:
+        return json.loads(json_str)
+    
+    except Exception as e:
+        logger.error(f"Não foi possível parsear a string json: {e}\n{json_str}")
