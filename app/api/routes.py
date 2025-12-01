@@ -37,6 +37,10 @@ COMMAND_BUILDERS = {
     # "jt808": build_jt808_command
 }
 
+# ==================================================================================================
+# GATEWAY INFO, STATS AND TECHNICAL DATA
+# ==================================================================================================
+
 @app.route('/gateway_info', methods=['GET'])
 def get_gateway_info():
     """
@@ -57,7 +61,28 @@ def get_gateway_info():
         return jsonify(info)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+
+@app.route('/sessions/trackers', methods=['GET'])
+def get_tracker_sessions():
+    """
+    Returns a list of device IDs with active socket connections to the translator.
+    """
+    active_sessions = list(input_sessions_manager.get_sessions())
+    return jsonify(active_sessions)
+
+@app.route('/sessions/main-server', methods=['GET'])
+def get_main_server_sessions():
+    """
+    Returns a list of device IDs with active sessions to the main Suntech4G server.
+    """
+    active_sessions = list(output_sessions_manager.get_sessions())
+    return jsonify(active_sessions)
+
+
+# ==================================================================================================
+# GATEWAY TRACKERS INFORMATION
+# ==================================================================================================
+  
 @app.route('/trackers', methods=['GET'])
 def get_trackers_data():
     try:
@@ -98,6 +123,89 @@ def get_trackers_data():
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+@app.route("/satellite_trackers", methods=["GET"])
+def get_satellite_trackers():
+    """
+    Obtem os IDs dos dispositivos satelitais conectados ao server
+    """
+    satellite_set = redis_client.smembers("satellite_trackers:set") or set()
+
+    return jsonify(list(satellite_set))
+
+@app.route('/trackers/<string:dev_id>/history', methods=['GET'])
+def get_tracker_history(dev_id):
+    """
+    Fetches the packet history for a specific tracker.
+    """
+    try:
+        history = get_packet_history(dev_id)
+        return jsonify(history)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/trackers/<string:dev_id>/details', methods=['GET'])
+def get_tracker_details(dev_id):
+    """
+    Returns comprehensive details for a specific tracker, including Redis data and connection status.
+    """
+    try:
+        id_type = request.args.get("id_type")
+        if id_type == "output":
+            output_input_ids_0Padded = utils.get_mapping_cached("output_input_ids:mapping") or {}
+            output_input_ids_notPadded = {k.lstrip("0"): v for k, v in output_input_ids_0Padded.items()}
+
+            mapped_id = output_input_ids_0Padded.get(dev_id) or output_input_ids_notPadded.get(dev_id.lstrip("0"))
+            if mapped_id:
+                dev_id = mapped_id
+
+        device_data = redis_client.hgetall(f"tracker:{dev_id}")
+        if not device_data:
+            return jsonify({"error": "Device not found in Redis"}), 404
+
+        status_info = {
+            "device_id": dev_id,
+            "imei": device_data.get('imei', dev_id),
+            "protocol": device_data.get('protocol'),
+            "output_protocol": device_data.get("output_protocol") or "suntech4g",
+            "is_connected_translator": input_sessions_manager.exists(dev_id),
+            "is_connected_main_server": dev_id in output_sessions_manager._sessions,
+            "last_active_timestamp": device_data.get('last_active_timestamp'),
+            "last_event_type": device_data.get('last_event_type'),
+            "total_packets_received": int(device_data.get('total_packets_received', 0)),
+            "last_packet_data": json.loads(device_data.get('last_packet_data', '{}')),
+            "last_full_location": json.loads(device_data.get('last_full_location', '{}')),
+            "odometer": float(device_data.get('odometer', 0.0)),
+            "acc_status": int(device_data.get('acc_status', 0)),
+            "power_status": int(device_data.get('power_status', 0)),
+            "last_voltage": float(device_data.get('last_voltage', 0.0)),
+            "last_command_sent": json.loads(device_data.get('last_command_sent', '{}')),
+            "last_command_response": json.loads(device_data.get('last_command_response', '{}'))
+        }
+
+        status_info = {**device_data, **status_info}
+
+        # Determine a more descriptive device_status
+        if status_info["is_connected_translator"]:
+            if status_info["acc_status"] == 1:
+                if status_info["last_full_location"].get("speed_kmh", 0) > 0:
+                    status_info["device_status"] = "Moving (Ignition On)"
+                else:
+                    status_info["device_status"] = "Stopped (Ignition On)"
+            else:
+                status_info["device_status"] = "Parked (Ignition Off)"
+        else:
+            status_info["device_status"] = "Offline"
+        
+        return jsonify(status_info)
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+
+# ==================================================================================================
+# GATEWAY TRACKERS ACTIONS
+# ==================================================================================================
 
 @app.route('/trackers/<string:dev_id>/command', methods=['POST'])
 def send_tracker_command(dev_id):
@@ -173,97 +281,3 @@ def send_tracker_command(dev_id):
             
     except Exception as e:
         return jsonify({"error": f"Failed to send command: {str(e)}"}), 500
-
-@app.route('/trackers/<string:dev_id>/history', methods=['GET'])
-def get_tracker_history(dev_id):
-    """
-    Fetches the packet history for a specific tracker.
-    """
-    try:
-        history = get_packet_history(dev_id)
-        return jsonify(history)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/sessions/trackers', methods=['GET'])
-def get_tracker_sessions():
-    """
-    Returns a list of device IDs with active socket connections to the translator.
-    """
-    active_sessions = list(input_sessions_manager.get_sessions())
-    return jsonify(active_sessions)
-
-@app.route('/sessions/main-server', methods=['GET'])
-def get_main_server_sessions():
-    """
-    Returns a list of device IDs with active sessions to the main Suntech4G server.
-    """
-    active_sessions = list(output_sessions_manager.get_sessions())
-    return jsonify(active_sessions)
-
-@app.route('/trackers/<string:dev_id>/details', methods=['GET'])
-def get_tracker_details(dev_id):
-    """
-    Returns comprehensive details for a specific tracker, including Redis data and connection status.
-    """
-    try:
-        id_type = request.args.get("id_type")
-        if id_type == "output":
-            output_input_ids_0Padded = utils.get_mapping_cached("output_input_ids:mapping") or {}
-            output_input_ids_notPadded = {k.lstrip("0"): v for k, v in output_input_ids_0Padded.items()}
-
-            mapped_id = output_input_ids_0Padded.get(dev_id) or output_input_ids_notPadded.get(dev_id.lstrip("0"))
-            if mapped_id:
-                dev_id = mapped_id
-
-        device_data = redis_client.hgetall(f"tracker:{dev_id}")
-        if not device_data:
-            return jsonify({"error": "Device not found in Redis"}), 404
-
-        status_info = {
-            "device_id": dev_id,
-            "imei": device_data.get('imei', dev_id),
-            "protocol": device_data.get('protocol'),
-            "output_protocol": device_data.get("output_protocol") or "suntech4g",
-            "is_connected_translator": input_sessions_manager.exists(dev_id),
-            "is_connected_main_server": dev_id in output_sessions_manager._sessions,
-            "last_active_timestamp": device_data.get('last_active_timestamp'),
-            "last_event_type": device_data.get('last_event_type'),
-            "total_packets_received": int(device_data.get('total_packets_received', 0)),
-            "last_packet_data": json.loads(device_data.get('last_packet_data', '{}')),
-            "last_full_location": json.loads(device_data.get('last_full_location', '{}')),
-            "odometer": float(device_data.get('odometer', 0.0)),
-            "acc_status": int(device_data.get('acc_status', 0)),
-            "power_status": int(device_data.get('power_status', 0)),
-            "last_voltage": float(device_data.get('last_voltage', 0.0)),
-            "last_command_sent": json.loads(device_data.get('last_command_sent', '{}')),
-            "last_command_response": json.loads(device_data.get('last_command_response', '{}'))
-        }
-
-        status_info = {**device_data, **status_info}
-
-        # Determine a more descriptive device_status
-        if status_info["is_connected_translator"]:
-            if status_info["acc_status"] == 1:
-                if status_info["last_full_location"].get("speed_kmh", 0) > 0:
-                    status_info["device_status"] = "Moving (Ignition On)"
-                else:
-                    status_info["device_status"] = "Stopped (Ignition On)"
-            else:
-                status_info["device_status"] = "Parked (Ignition Off)"
-        else:
-            status_info["device_status"] = "Offline"
-        
-        return jsonify(status_info)
-    except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
-
-@app.route("/satellite_trackers", methods=["GET"])
-def get_satellite_trackers():
-    """
-    Obtem os IDs dos dispositivos satelitais conectados ao server
-    """
-    satellite_set = redis_client.smembers("satellite_trackers:set") or set()
-
-    return jsonify(list(satellite_set))
