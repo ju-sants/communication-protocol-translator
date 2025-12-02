@@ -12,7 +12,7 @@ from ..utils import handle_ignition_change, haversine
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-def _decode_location_packet(body: bytes):
+def _decode_location_packet_xA0(body: bytes):
 
     try:
         data = {}

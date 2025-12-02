@@ -13,7 +13,7 @@ from app.config.settings import settings
 logger = get_logger(__name__)
 redis_client = get_redis()
 
-def decode_location_packet_v3(body: bytes):
+def _decode_location_packet_x22(body: bytes):
 
     try:
         data = {}
@@ -83,7 +83,7 @@ def decode_location_packet_v3(body: bytes):
 
 def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int):
     if protocol_number == 0x22:
-        packet_data = decode_location_packet_v3(body)
+        packet_data = _decode_location_packet_x22(body)
     else:
         logger.info("Tipo de protocolo não mapeado")
         packet_data = None
@@ -146,7 +146,7 @@ def handle_alarm_packet(dev_id_str: str, body: bytes):
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
     
-    alarm_packet_data = decode_location_packet_v3(body[0:18])
+    alarm_packet_data = _decode_location_packet_x22(body[0:18])
     
     alarm_datetime = alarm_packet_data.get("timestamp")
     if not alarm_datetime:
