@@ -83,7 +83,7 @@ def process_command(dev_id: str, serial: int, universal_command: str):
         "PING": "GPRS,GET,LOCATION#",
     }
 
-    vl01_text_command = None
+    vl03_text_command = None
     if universal_command.startswith("HODOMETRO"):
         meters = universal_command.split(":")[-1]
         if not meters.isdigit():
@@ -98,19 +98,19 @@ def process_command(dev_id: str, serial: int, universal_command: str):
         redis_client.hset(f"tracker:{dev_id}", "odometer", meters)
 
     else:
-        vl01_text_command = command_mapping.get(universal_command)
+        vl03_text_command = command_mapping.get(universal_command)
 
-    if not vl01_text_command:
+    if not vl03_text_command:
         logger.warning(f"Nenhum mapeamento VL03 encontrado para o comando Universal comando={universal_command}")
         return
 
-    vl01_binary_command = build_command(dev_id, serial, vl01_text_command)
+    vl03_binary_command = build_command(dev_id, serial, vl03_text_command)
 
     tracker_socket = input_sessions_manager.get_session(dev_id)
     if tracker_socket:
         try:
-            tracker_socket.sendall(vl01_binary_command)
-            logger.info(f"Comando VL03 enviado com sucesso device_id={dev_id}, comando_hex={vl01_binary_command.hex()}")
+            tracker_socket.sendall(vl03_binary_command)
+            logger.info(f"Comando VL03 enviado com sucesso device_id={dev_id}, comando_hex={vl03_binary_command.hex()}")
         except Exception:
             logger.exception(f"Falha ao enviar comando para o rastreador VL03 device_id={dev_id}")
     else:

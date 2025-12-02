@@ -216,12 +216,12 @@ def handle_alarm_packet(dev_id_str: str, body: bytes):
     if not definitive_packet_data:
         return
     
-    alarm_code = body[16]
+    alarm_code = body[37]
 
     universal_alert_id = settings.UNIVERSAL_ALERT_ID_DICTIONARY.get("vl03").get(alarm_code)
 
     if universal_alert_id:
-        logger.info(f"Alarme VL01 (0x{alarm_code:02X}) traduzido para Global ID {universal_alert_id} device_id={dev_id_str}")
+        logger.info(f"Alarme VL03 (0x{alarm_code:02X}) traduzido para Global ID {universal_alert_id} device_id={dev_id_str}")
 
         definitive_packet_data["universal_alert_id"] = universal_alert_id
         definitive_packet_data["is_realtime"] = True
@@ -229,7 +229,7 @@ def handle_alarm_packet(dev_id_str: str, body: bytes):
         return definitive_packet_data
     
     else:
-        logger.warning(f"Alarme VL01 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
+        logger.warning(f"Alarme VL03 não mapeado recebido device_id={dev_id_str}, alarm_code={hex(alarm_code)}")
 
 def handle_heartbeat_packet(dev_id_str: str, serial: int, body: bytes):
     logger.info(f"Pacote de heartbeat recebido de {dev_id_str}, body={body.hex()}")
