@@ -67,7 +67,75 @@ def _decode_location_packet_xA0(body: bytes):
         return data
 
     except Exception as e:
-        logger.exception(f"Falha ao decodificar pacote de localização VL01 body_hex={body.hex()}")
+        logger.exception(f"Falha ao decodificar pacote de localização VL03 body_hex={body.hex()}")
+        return None
+
+def _decode_location_packet_x22(body: bytes):
+
+    try:
+        data = {}
+
+        year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
+        data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second)
+
+        sats_byte = body[6]
+        data["satellites"] = sats_byte & 0x0F
+
+        lat_raw, lon_raw = struct.unpack(">II", body[7:15])
+        lat = lat_raw / 1800000.0
+        lon = lon_raw / 1800000.0
+
+        data["speed_kmh"] = body[15]
+
+        course_status = struct.unpack(">H", body[16:18])[0]
+
+        # Hemisférios (Bit 11 para Latitude Sul, Bit 12 para Longitude Oeste)
+        is_latitude_north = (course_status >> 10) & 1
+        is_longitude_west = (course_status >> 11) & 1
+        
+        data['latitude'] = -abs(lat) if not is_latitude_north else abs(lat)
+        data['longitude'] = -abs(lon) if is_longitude_west else abs(lon)
+            
+        data["direction"] = course_status & 0x03FF
+
+        gps_fixed = (course_status >> 12) & 1
+        data["gps_fixed"] = gps_fixed
+
+        try: # Colocando dentro de um try except pois essa funcao tbm recebe chamadas para decodificar pacotes de alerta, que não tem as infos abaixo, 
+            # Na ordem em que estão abaixo
+            
+            # LBS INFORMATION
+            mcc = struct.unpack(">H", body[18:20])[0]
+            mnc = body[20]
+            lac = struct.unpack(">H", body[21:23])[0]
+            cell_id = int.from_bytes(body[23:26], "big")
+
+            # Saving LBS information universally
+            universal_data = {
+                "mcc": mcc,
+                "mnc": mnc,
+                "lac": lac,
+                "cell_id": cell_id
+            }
+            redis_client.hmset("universal_data", universal_data)
+
+            acc_status = body[26]
+            data["acc_status"] = acc_status
+
+            is_realtime = body[28] == 0x00
+
+            data["is_realtime"] = is_realtime
+
+            mileage_at = 29
+            mileage_km = struct.unpack(">I", body[mileage_at:mileage_at + 4])[0]
+            data["gps_odometer"] = mileage_km
+        except Exception:
+            pass
+
+        return data
+
+    except Exception as e:
+        logger.exception(f"Falha ao decodificar pacote de localização J16W body_hex={body.hex()}")
         return None
 
 def _decode_alarm_location_packet(body: bytes):
@@ -93,8 +161,11 @@ def _decode_alarm_location_packet(body: bytes):
      
     return data
 
-def handle_location_packet(dev_id_str: str, serial: int, body: bytes):
-    packet_data = _decode_location_packet(body)
+def handle_location_packet(dev_id_str: str, serial: int, body: bytes, protocol_number: int):
+    if protocol_number == 0xA0:
+        packet_data = _decode_location_packet_xA0(body)
+    elif protocol_number == 0x22:
+        packet_data = _decode_location_packet_x22(body)
 
     if not packet_data:
         return

@@ -43,9 +43,9 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         response_to_device = builder.build_generic_response(protocol_number, serial_number)
     
 
-    elif protocol_number == 0xA0: # Location Packet
+    elif protocol_number in (0xA0, 0x22): # Location Packet
         if dev_id_str:
-            location_packet_data, ign_alert_packet_data = mapper.handle_location_packet(dev_id_str, serial_number, content_body)
+            location_packet_data, ign_alert_packet_data = mapper.handle_location_packet(dev_id_str, serial_number, content_body, protocol_number)
             if location_packet_data:
                 utils.log_mapped_packet(location_packet_data, "VL03")
                 send_to_main_server(dev_id_str, location_packet_data, serial_number, packet_body.hex(), "VL03")
@@ -59,9 +59,9 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
         response_to_device = builder.build_generic_response(protocol_number, serial_number)
 
 
-    elif protocol_number == 0x26: # Alarm Packet
+    elif protocol_number in (0x26, 0xA4): # Alarm Packet
         if dev_id_str:
-            alarm_packet_data = mapper.handle_alarm_packet(dev_id_str, serial_number, content_body)
+            alarm_packet_data = mapper.handle_alarm_packet(dev_id_str, content_body)
             if alarm_packet_data:
                 utils.log_mapped_packet(alarm_packet_data, "VL03")
                 send_to_main_server(dev_id_str, alarm_packet_data, serial_number, packet_body.hex(), original_protocol="VL03", type="alert")
