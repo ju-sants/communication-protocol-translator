@@ -94,7 +94,7 @@ def process_command(dev_id: str, serial: int, universal_command: str):
 
         vl01_text_command = f"MILEAGE,ON,{kilometers}#"
 
-        # NO MOMENTO ESTAMOS USANDO HODOMETRO GERENCIADO PELO PRÓPRIO SERVIDOR
+        # Alterando hodometro gerenciado pelo servidor
         redis_client.hset(f"tracker:{dev_id}", "odometer", meters)
 
     else:
