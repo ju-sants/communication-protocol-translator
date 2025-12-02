@@ -144,11 +144,16 @@ def _decode_alarm_location_packet(body: bytes):
     year, month, day, hour, minute, second = struct.unpack(">BBBBBB", body[0:6])
     data["timestamp"] = datetime(2000 + year, month, day, hour, minute, second)
 
-    lat_raw, lon_raw = struct.unpack(">II", body[6:14])
+    satellites = body[6] & 0x0F
+    data["satellites"] = satellites
+
+    lat_raw, lon_raw = struct.unpack(">II", body[7:15])
     lat = lat_raw / 1800000.0
     lon = lon_raw / 1800000.0
 
-    course_status = struct.unpack(">H", body[14:])[0]
+    data["speed_kmh"] = body[15]
+
+    course_status = struct.unpack(">H", body[16:])[0]
 
     # Hemisférios (Bit 11 para Latitude Sul, Bit 12 para Longitude Oeste)
     is_latitude_north = (course_status >> 10) & 1
@@ -264,7 +269,7 @@ def handle_alarm_packet(dev_id_str: str, body: bytes):
         logger.info(f"Pacote de dados de alarme recebido com um tamanho menor do que o esperado, body={body.hex()}")
         return
     
-    alarm_packet_data = _decode_alarm_location_packet(body[0:16])
+    alarm_packet_data = _decode_alarm_location_packet(body[0:18])
     if not alarm_packet_data:
         logger.info(f"Pacote de alarme sem dados de localização, descartando... dev_id={dev_id_str}, packet={body}")
         return
