@@ -13,17 +13,17 @@ logger = get_logger(__name__)
 redis_client_gateway = get_redis()
 redis_client_data = get_redis(db=3)
 
-def signal_fail_worker():
-    orchestrator()
+def orchestrator():
+    signal_fail_worker()
 
-    schedule.every(2).hours.do(orchestrator)
+    schedule.every(2).hours.do(signal_fail_worker)
     schedule.every(1).days.at("00:00").do(clean_signal_fail)
 
     while True:
         schedule.run_pending()
         time.sleep(60)
 
-def orchestrator():
+def signal_fail_worker():
     with logger.contextualize(log_label="SIGNAL FAIL WORKER"):
         tracker_keys = list(redis_client_gateway.scan_iter("tracker:*", count=1000))
             
