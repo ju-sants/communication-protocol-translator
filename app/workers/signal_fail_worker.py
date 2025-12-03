@@ -209,7 +209,8 @@ def add_to_failing(tracker_label: str):
                 "rastreador": vehicle_details.get("imei"),          # Se for um satelital de um híbrido mandamos o fabricante do cadastro, senão 10 para satelitais puros
                 "fabricanteRastreador": utils.get_manufacturer_id(input_protocol) if "hybrid_satellite" in tracker_label or \
                                                                                     not "satellite|" in tracker_label else 10,  
-                "telefone": vehicle_details.get("chip_number") if not "satellite" in tracker_label else "9999",
+                "telefone": vehicle_details.get("chip_number") if "hybrid_satellite" in tracker_label or \
+                                                                                    not "satellite|" in tracker_label else "9999",
                 "features": vehicle_details.get("features"),
                 "placas": vehicle_details.get("license_plate"),
                 "marca": vehicle_details.get("brand"),
