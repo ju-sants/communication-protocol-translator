@@ -323,11 +323,11 @@ def resend_last_packet(dev_id: str):
         packet = None
 
         if packet_to_send == "last":
-            if packet is None or last_packet_data["timestamp"] > packet["timestamp"]:
+            if packet is None or (last_packet_data and last_packet_data["timestamp"] > packet["timestamp"]):
                 packet = last_packet_data
 
 
-            if packet is None or last_merged_location["timestamp"] > packet["timestamp"]:
+            if packet is None or (last_merged_location and last_merged_location["timestamp"] > packet["timestamp"]):
                 packet = last_merged_location
         
         elif packet_to_send == "gsm":
