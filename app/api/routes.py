@@ -345,4 +345,29 @@ def resend_last_packet(dev_id: str):
             return jsonify({"status": "ok", "message": "sent"})
         
         return jsonify({"status": "ok", "message": "no packet available"})
+
+@app.route("/trackers/<string:dev_id>/get_info", methods=["POST"])
+def get_info(dev_id: str):
+    """EP to serve specific field data from the device stored data on redis."""
     
+    if not dev_id:
+        logger.error("Device id empty in resend last packet request.", log_label="API")
+        return jsonify({"status": "error", "message": "please provide a valid device id."})
+    
+    with logger.contextualize(log_label=dev_id):
+        data = request.get_json()
+        if not data or not data.get("fields", []):
+            logger.error(f"No field was requested in the 'get_info' request for {dev_id}.")
+            return jsonify({"status": "ok", "message": "no data field was requested"})
+                
+        tracker_key = f"tracker:{dev_id}"
+        if not redis_client.exists(tracker_key):
+            logger.error(f"Device not found in Database for {dev_id}. Cannot retrieve data for {dev_id}.")
+            return jsonify({"status": "error", "message": "device not found in Database."})
+        
+        fields_requested = data["fields"]
+
+        device_data = redis_client.hmget(tracker_key, fields_requested)
+
+        logger.success("Success! Device data retrieved from redis.")
+        return jsonify({"values": device_data})
