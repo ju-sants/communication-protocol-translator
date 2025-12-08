@@ -55,15 +55,37 @@ def handle_connection(conn: socket.socket, addr):
                             logger.info(f"Recebido pacote J16W (x79: {is_x79}): {packet_body.hex()}")
 
                             # Chama o processador, passando o ID da sessão
-                            newly_logged_in_dev_id = process_packet(dev_id_session, packet_body, conn, is_x79)
+                            new_dev_id = process_packet(dev_id_session, packet_body, conn, is_x79)
                             
-                            if newly_logged_in_dev_id and newly_logged_in_dev_id != dev_id_session:
-                                dev_id_session = newly_logged_in_dev_id
+                            if new_dev_id and new_dev_id != dev_id_session:
+                                dev_id_session = new_dev_id
 
-                            if dev_id_session and not input_sessions_manager.exists(dev_id_session):
-                                input_sessions_manager.register_session(dev_id_session, conn)
-                                redis_client.hset(f"tracker:{dev_id_session}", "protocol", "j16w")
-                                logger.info(f"Dispositivo J16W autenticado na sessão device_id={dev_id_session}, endereco={addr}")
+                            if dev_id_session:
+                                # Verificando se já existe um registro desse device id com um socket
+                                if input_sessions_manager.exists(dev_id_session):
+                                    old_conn = input_sessions_manager.get_session(dev_id_session)
+
+                                    if old_conn and old_conn != conn:
+                                        logger.warning(f"Conexão Duplicada. Fechando conexão antiga: {old_conn.getpeername()}", log_label="SERVIDOR")
+                                        try:
+                                            old_conn.shutdown(socket.SHUT_RDWR)
+                                            old_conn.close()
+                                        except Exception:
+                                            pass
+                                        
+                                        # Removendo o registro antigo
+                                        input_sessions_manager.remove_session(dev_id_session)
+
+                                        # Criando o novo
+                                        input_sessions_manager.register_session(dev_id_session, conn)
+                                        redis_client.hset(f"tracker:{dev_id_session}", "protocol", "j16w")
+                                        logger.info(f"Dispositivo J16W autenticado na sessão, endereco={addr}")
+
+                                else:     
+                                    # Caso não exista, o registramos
+                                    input_sessions_manager.register_session(dev_id_session, conn)
+                                    redis_client.hset(f"tracker:{dev_id_session}", "protocol", "j16w")
+                                    logger.info(f"Dispositivo J16W autenticado na sessão, endereco={addr}")
 
                         else:
                             break

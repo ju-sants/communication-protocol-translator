@@ -35,11 +35,11 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
     content_body = packet_body[2:-4] if not is_x79 else packet_body[3:-4]
     
     response_to_device = None
-    newly_logged_in_dev_id = None
+    new_dev_id = None
 
     if protocol_number == 0x01: # Pacote de Login
         imei_bytes = content_body
-        newly_logged_in_dev_id = imei_bytes.hex()
+        new_dev_id = imei_bytes.hex()
         response_to_device = builder.build_generic_response(protocol_number, serial_number)
     
 
@@ -107,4 +107,4 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
     if response_to_device:
         conn.sendall(response_to_device)
 
-    return newly_logged_in_dev_id
+    return new_dev_id

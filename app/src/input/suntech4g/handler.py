@@ -11,11 +11,11 @@ redis_client = get_redis()
 def handle_connection(conn: socket.socket, addr):
     logger.info(f"New connection from {addr}", log_label="SERVIDOR")
     buffer = b''
-    dev_id = None
+    dev_id_session = None
 
     try:
         while True:
-            with logger.contextualize(log_label=dev_id):
+            with logger.contextualize(log_label=dev_id_session):
                 data = conn.recv(1024)
                 if not data:
                     logger.info(f"Connection with {addr} closed by client.")
@@ -33,12 +33,35 @@ def handle_connection(conn: socket.socket, addr):
                     logger.info(f"Recebido pacote SUNTECH4G: {packet_str}")
 
                     new_dev_id = processor.process_packet(packet_str)
-                    if new_dev_id and new_dev_id != dev_id:
-                        dev_id = new_dev_id
-                        
-                        if not input_sessions_manager.exists(dev_id):
-                            input_sessions_manager.register_session(dev_id, conn)
-                            redis_client.hset(f"tracker:{dev_id}", "protocol", "suntech4g")
+
+                    if new_dev_id and new_dev_id != dev_id_session:
+                        dev_id_session = new_dev_id
+
+                    if dev_id_session:
+                        # Verificando se já existe um registro desse device id com um socket
+                        if input_sessions_manager.exists(dev_id_session):
+                            old_conn = input_sessions_manager.get_session(dev_id_session)
+
+                            if old_conn and old_conn != conn:
+                                logger.warning(f"Conexão Duplicada. Fechando conexão antiga: {old_conn.getpeername()}", log_label="SERVIDOR")
+                                try:
+                                    old_conn.shutdown(socket.SHUT_RDWR)
+                                    old_conn.close()
+                                except Exception:
+                                    pass
+
+                                # Removendo o registro antigo
+                                input_sessions_manager.remove_session(dev_id_session)
+
+                                # Criando o novo
+                                input_sessions_manager.register_session(dev_id_session, conn)
+                                redis_client.hset(f"tracker:{dev_id_session}", "protocol", "suntech4g")
+                                logger.info(f"Dispositivo SUNTECH4G autenticado na sessão")
+                        else:
+                            # Caso não exista, o registramos
+                            input_sessions_manager.register_session(dev_id_session, conn)
+                            redis_client.hset(f"tracker:{dev_id_session}", "protocol", "suntech4g")
+                            logger.info(f"Dispositivo SUNTECH4G autenticado na sessão")
 
 
     except ConnectionResetError:
