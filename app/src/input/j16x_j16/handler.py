@@ -23,7 +23,7 @@ def handle_connection(conn: socket.socket, addr):
             with logger.contextualize(log_label=dev_id_session):
                 data = conn.recv(1024)
                 if not data:
-                    logger.info(f"Conexão J16X-J16 fechada pelo cliente endereco={addr}, device_id={dev_id_session}")
+                    logger.info(f"Conexão J16X-J16 fechada pelo cliente endereco={addr}")
                     break
                 
                 buffer += data

@@ -23,7 +23,7 @@ def handle_connection(conn: socket.socket, addr):
             with logger.contextualize(log_label=dev_id_session):
                 data = conn.recv(1024)
                 if not data:
-                    logger.info(f"Conexão GP900M fechada pelo cliente endereco={addr}, device_id={dev_id_session}")
+                    logger.info(f"Conexão GP900M fechada pelo cliente endereco={addr}")
                     break
                 
                 buffer += data
@@ -118,7 +118,7 @@ def handle_connection(conn: socket.socket, addr):
         logger.debug(f"[DIAGNOSTIC] Entering finally block for GP900M handler (addr={addr}, dev_id={dev_id_session}", log_label="SERVIDOR")
         if dev_id_session:
             with logger.contextualize(log_label=dev_id_session):
-                logger.info(f"Deletando Sessões em ambos os lados para esse rastreador dev_id={dev_id_session}", log_label="SERVIDOR")
+                logger.info(f"Deletando Sessões em ambos os lados para esse rastreador")
                 output_sessions_manager.delete_session(dev_id_session)
                 input_sessions_manager.remove_session(dev_id_session)
         
