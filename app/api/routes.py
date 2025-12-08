@@ -298,7 +298,7 @@ def resend_last_packet(dev_id: str):
     args = request.args
 
     if not dev_id:
-        logger.error("Device id empty in resend last packet request.")
+        logger.error("Device id empty in resend last packet request.", log_label="API")
         return jsonify({"status": "error", "message": "please provide a valid device id."})
     
     with logger.contextualize(log_label=dev_id):
