@@ -58,7 +58,7 @@ def handle_connection(conn: socket.socket, addr):
                                     old_conn = input_sessions_manager.get_session(dev_id_session)
 
                                     if old_conn and old_conn != conn:
-                                        logger.warning(f"Conexão Duplicada. Fechando conexão antiga: {old_conn.getpeername()}", log_label="SERVIDOR")
+                                        logger.warning(f"Conexão Duplicada. Fechando conexão antiga: {old_conn.getpeername()}")
                                         try:
                                             old_conn.shutdown(socket.SHUT_RDWR)
                                             old_conn.close()
