@@ -1,4 +1,5 @@
 import json
+from typing import Tuple
 
 from app.services.redis_service import get_redis
 from app.services.cache_service import get_cache
@@ -27,3 +28,20 @@ def parse_json_safe(json_str: str):
     
     except Exception as e:
         logger.error(f"Não foi possível parsear a string json: {e}\n{json_str}")
+
+def get_output_input_ids_map() -> Tuple[dict]:
+    """
+    Obtém o mapeamento de ids de entrada e saída com 0s a esquerda
+    e sem 0s a esquerda.
+    
+    :return: Description
+    :rtype: Tuple[dict]
+    """
+
+    try:
+        output_input_ids_0Padded = redis_client.hgetall("output_input_ids:mapping")
+        output_input_ids_notPadded = {str(k).lstrip("0"): v for k, v in output_input_ids_0Padded.items()}
+
+        return output_input_ids_0Padded, output_input_ids_notPadded
+    except Exception as e:
+        logger.error(f"Houve um erro ao tentar obter o mapeamento de ids. {e}")
