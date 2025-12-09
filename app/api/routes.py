@@ -420,13 +420,14 @@ def turn_hybrid():
                 input_id = output_input_ids_0Padded.get(base_tracker) or output_input_ids_notPadded.get(base_tracker.lstrip("0"))
                 if input_id:
                     tracker_key = f"tracker:{input_id}"
+                    base_tracker = input_id
 
             if not redis_client.exists(tracker_key):
                 logger.error(f"{base_tracker} device not found in database.")
                 return jsonify({"status": "ok", "message": "base tracker device not found."}), 404
             
             # Obtendo o novo ID de saída do dispositivo
-            new_output_id = get_output_dev_id(input_id, settings.STANDARD_HYBRID_OUTPUT_PROTOCOL)
+            new_output_id = get_output_dev_id(base_tracker, settings.STANDARD_HYBRID_OUTPUT_PROTOCOL)
             
             # Criando mapeamento de dados para salvar no redis.
             mapp = {
