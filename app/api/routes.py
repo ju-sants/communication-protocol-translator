@@ -387,59 +387,65 @@ def turn_hybrid():
     And updating the "SAT_GSM:MAPPING" Hash.
     """
 
-    request_data = request.get_json()
-    args = request.args
-    if not request_data:
-        logger.error(f"Request with no data received.")
-        return jsonify({"status": "error", "message": "request with no data received."}), 400
-    
-    # Obtendo os dados iniciais
-    base_tracker = str(request_data.get("base_tracker"))
-    sat_tracker = str(request_data.get("sat_tracker"))
+    with logger.contextualize(log_label="API"):
+        try:
+            request_data = request.get_json()
+            args = request.args
+            if not request_data:
+                logger.error(f"Request with no data received.")
+                return jsonify({"status": "error", "message": "request with no data received."}), 400
+            
+            # Obtendo os dados iniciais
+            base_tracker = str(request_data.get("base_tracker"))
+            sat_tracker = str(request_data.get("sat_tracker"))
 
-    if not base_tracker or not sat_tracker:
-        logger.error("Request without the necessary fields.")
-        return jsonify({"status": "error", "message": "Please provide all the necessary data to perform the action. 'base_tracker' or 'sat_tracker' field missing"}), 400
-    
-    # Verificando se o satelital já não está atrelado a outro registro de rastreador
-    sat_gsm_mapping = redis_client.hgetall("SAT_GSM_MAPPING") or {}
-    if sat_tracker in sat_gsm_mapping:
-        logger.error(f"Satellite tracker already attached to another device.")
-        return jsonify({"status": "ok", "message": "Satellite tracker already attached to another device."}), 409
+            if not base_tracker or not sat_tracker:
+                logger.error("Request without the necessary fields.")
+                return jsonify({"status": "error", "message": "Please provide all the necessary data to perform the action. 'base_tracker' or 'sat_tracker' field missing"}), 400
+            
+            # Verificando se o satelital já não está atrelado a outro registro de rastreador
+            sat_gsm_mapping = redis_client.hgetall("SAT_GSM_MAPPING") or {}
+            if sat_tracker in sat_gsm_mapping:
+                logger.error(f"Satellite tracker already attached to another device.")
+                return jsonify({"status": "ok", "message": "Satellite tracker already attached to another device."}), 409
 
-    # Se o cliente fez essa requisição e enviou um ID de saída para "base_tracker"
-    # Precisamos obter o ID de entrada do dispositivo.
-    # Muitas vezes os IDs de saída vez com 0s a esquerda, por isso precisamos lidar com isso.
-    tracker_key = f"tracker:{base_tracker}"
-    if args.get("id_type") == "output":
-        # Robustez na verificação do ID do rastreador base, para lidar com IDs com 0s a esquerda e sem 0s a esquerda
-        output_input_ids_0Padded, output_input_ids_notPadded = utils.get_output_input_ids_map()
+            # Se o cliente fez essa requisição e enviou um ID de saída para "base_tracker"
+            # Precisamos obter o ID de entrada do dispositivo.
+            # Muitas vezes os IDs de saída vez com 0s a esquerda, por isso precisamos lidar com isso.
+            tracker_key = f"tracker:{base_tracker}"
+            if args.get("id_type") == "output":
+                # Robustez na verificação do ID do rastreador base, para lidar com IDs com 0s a esquerda e sem 0s a esquerda
+                output_input_ids_0Padded, output_input_ids_notPadded = utils.get_output_input_ids_map()
 
-        input_id = output_input_ids_0Padded.get(base_tracker) or output_input_ids_notPadded.get(base_tracker.lstrip("0"))
-        if input_id:
-            tracker_key = f"tracker:{input_id}"
+                input_id = output_input_ids_0Padded.get(base_tracker) or output_input_ids_notPadded.get(base_tracker.lstrip("0"))
+                if input_id:
+                    tracker_key = f"tracker:{input_id}"
 
-    if not redis_client.exists(tracker_key):
-        logger.error(f"{base_tracker} device not found in database.")
-        return jsonify({"status": "ok", "message": "base tracker device not found."}), 404
-    
-    # Obtendo o novo ID de saída do dispositivo
-    new_output_id = get_output_dev_id(input_id, settings.STANDARD_HYBRID_OUTPUT_PROTOCOL)
-    
-    # Criando mapeamento de dados para salvar no redis.
-    mapp = {
-        "is_hybrid": "1",
-        "hybrid_id": sat_tracker,
-        "output_protocol": settings.STANDARD_HYBRID_OUTPUT_PROTOCOL,
-        "output_id": new_output_id
-    }
-    pipe = redis_client.pipeline()
+            if not redis_client.exists(tracker_key):
+                logger.error(f"{base_tracker} device not found in database.")
+                return jsonify({"status": "ok", "message": "base tracker device not found."}), 404
+            
+            # Obtendo o novo ID de saída do dispositivo
+            new_output_id = get_output_dev_id(input_id, settings.STANDARD_HYBRID_OUTPUT_PROTOCOL)
+            
+            # Criando mapeamento de dados para salvar no redis.
+            mapp = {
+                "is_hybrid": "1",
+                "hybrid_id": sat_tracker,
+                "output_protocol": settings.STANDARD_HYBRID_OUTPUT_PROTOCOL,
+                "output_id": new_output_id
+            }
+            pipe = redis_client.pipeline()
 
-    # Setando dados no hash do dispositivo base
-    pipe.hmset(tracker_key, mapp)
+            # Setando dados no hash do dispositivo base
+            pipe.hmset(tracker_key, mapp)
 
-    # Setando o novo par híbrido num mapeamento de IDs SAT <-> GSM
-    pipe.set("SAT_GSM_MAPPING", sat_tracker, base_tracker)
+            # Setando o novo par híbrido num mapeamento de IDs SAT <-> GSM
+            pipe.set("SAT_GSM_MAPPING", sat_tracker, base_tracker)
 
-    logger.success("Hybrid Created!")
-    return jsonify({"status": "ok", "message": "created.", "return_data": {"new_output_id": new_output_id}}), 200
+            logger.success("Hybrid Created!")
+            return jsonify({"status": "ok", "message": "created.", "return_data": {"new_output_id": new_output_id}}), 200
+        
+        except Exception as e:
+            logger.error(f"There was an error: {e}")
+            return jsonify({"status": "error", "message": "there was an error on the service."})
