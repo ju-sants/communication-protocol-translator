@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     CACHE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/cache"
+    # --- Configurações Gerais do Servidor ---
+    STANDARD_HYBRID_OUTPUT_PROTOCOL: str = "gt06" # Protocolo de Saída padrão para dispositivos híbridos
 
     API_BASE_URL: str = "..."
     API_X_TOKEN: str = "..."
