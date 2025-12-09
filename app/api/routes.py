@@ -410,16 +410,16 @@ def turn_hybrid():
     # Se o cliente fez essa requisição e enviou um ID de saída para "base_tracker"
     # Precisamos obter o ID de entrada do dispositivo.
     # Muitas vezes os IDs de saída vez com 0s a esquerda, por isso precisamos lidar com isso.
-    input_id = base_tracker
+    tracker_key = f"tracker:{base_tracker}"
     if args.get("id_type") == "output":
         # Robustez na verificação do ID do rastreador base, para lidar com IDs com 0s a esquerda e sem 0s a esquerda
         output_input_ids_0Padded, output_input_ids_notPadded = utils.get_output_input_ids_map()
 
         input_id = output_input_ids_0Padded.get(base_tracker) or output_input_ids_notPadded.get(base_tracker.lstrip("0"))
-    
-    tracker_key = f"tracker:{input_id}"
+        if input_id:
+            tracker_key = f"tracker:{input_id}"
 
-    if not input_id or not redis_client.exists(tracker_key):
+    if not redis_client.exists(tracker_key):
         logger.error(f"{base_tracker} device not found in database.")
         return jsonify({"status": "ok", "message": "base tracker device not found."}), 404
     
