@@ -59,9 +59,11 @@ def get_gateway_info():
                 "total_active_main_server_sessions": len(output_sessions_manager.get_sessions()),
             }
         }
-        return jsonify(info)
+    
+        return jsonify(info), 200
+    
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/sessions/trackers', methods=['GET'])
 def get_tracker_sessions():
@@ -69,7 +71,7 @@ def get_tracker_sessions():
     Returns a list of device IDs with active socket connections to the translator.
     """
     active_sessions = list(input_sessions_manager.get_sessions())
-    return jsonify(active_sessions)
+    return jsonify(active_sessions), 200
 
 @app.route('/sessions/main-server', methods=['GET'])
 def get_main_server_sessions():
@@ -77,7 +79,7 @@ def get_main_server_sessions():
     Returns a list of device IDs with active sessions to the main Suntech4G server.
     """
     active_sessions = list(output_sessions_manager.get_sessions())
-    return jsonify(active_sessions)
+    return jsonify(active_sessions), 200
 
 
 # ==================================================================================================
@@ -91,7 +93,7 @@ def get_trackers_data():
 
         keys = list(redis_client.scan_iter('tracker:*', count=1000) )
         if not keys:
-            return jsonify({"data": {}, "message": "Nenhum rastreador encontrado para esta página."})
+            return jsonify({"data": {}, "message": "Nenhum rastreador encontrado."}), 204
 
         pipe = redis_client.pipeline()
         for key in keys:
@@ -117,9 +119,9 @@ def get_trackers_data():
                 response.headers["Content-Encoding"] = "deflate"
                 response.headers["Content-Type"] = "application/json"
 
-                return response
+                return response, 200
                
-        return jsonify(all_data)
+        return jsonify(all_data), 200
 
     except Exception as e:
         import traceback
@@ -132,7 +134,7 @@ def get_satellite_trackers():
     """
     satellite_set = redis_client.smembers("satellite_trackers:set") or set()
 
-    return jsonify(list(satellite_set))
+    return jsonify(list(satellite_set)), 200
 
 @app.route('/trackers/<string:dev_id>/history', methods=['GET'])
 def get_tracker_history(dev_id):
@@ -148,11 +150,12 @@ def get_tracker_history(dev_id):
             response.headers["Content-Encoding"] = "deflate"
             response.headers["Content-Type"] = "application/json"
 
-            return response
+            return response, 200
         
-        return jsonify(history)
+        return jsonify(history), 200
+    
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/trackers/<string:dev_id>/details', methods=['GET'])
 def get_tracker_details(dev_id):
@@ -207,7 +210,8 @@ def get_tracker_details(dev_id):
         else:
             status_info["device_status"] = "Offline"
         
-        return jsonify(status_info)
+        return jsonify(status_info), 200
+    
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
@@ -285,9 +289,10 @@ def send_tracker_command(dev_id):
                     "device_id": dev_id,
                     "command": command_str,
                     "packet_hex": command_packet.hex()
-                })
+                }), 200
+            
             else:
-                return jsonify({"error": "Tracker is not connected"}), 404
+                return jsonify({"error": "Tracker is not connected"}), 503
             
     except Exception as e:
         return jsonify({"error": f"Failed to send command: {str(e)}"}), 500
@@ -299,13 +304,13 @@ def resend_last_packet(dev_id: str):
 
     if not dev_id:
         logger.error("Device id empty in resend last packet request.", log_label="API")
-        return jsonify({"status": "error", "message": "please provide a valid device id."})
+        return jsonify({"status": "error", "message": "please provide a valid device id."}), 400
     
     with logger.contextualize(log_label=dev_id):
         tracker_key = f"tracker:{dev_id}"
         if not redis_client.exists(tracker_key):
             logger.error(f"Device not found in Database for {dev_id}. Cannot send last packet.")
-            return jsonify({"status": "error", "message": "device not found in Database."})
+            return jsonify({"status": "error", "message": "device not found in Database."}), 404
         
         # Obtaining data
         last_packet_data_str, last_merged_location_str, input_protocol = redis_client.hmget(tracker_key, "last_packet_data", "last_merged_location", "protocol")
@@ -342,9 +347,9 @@ def resend_last_packet(dev_id: str):
             packet["timestamp"] = datetime.now()
             send_to_main_server(dev_id, packet, 00, "API SENT REQUEST", input_protocol)
 
-            return jsonify({"status": "ok", "message": "sent"})
+            return jsonify({"status": "ok", "message": "sent"}), 200
         
-        return jsonify({"status": "ok", "message": "no packet available"})
+        return jsonify({"status": "ok", "message": "no packet available"}), 204
 
 @app.route("/trackers/<string:dev_id>/get_info", methods=["POST"])
 def get_info(dev_id: str):
@@ -370,4 +375,4 @@ def get_info(dev_id: str):
         device_data = redis_client.hmget(tracker_key, fields_requested)
 
         logger.success("Success! Device data retrieved from redis.")
-        return jsonify({"values": device_data})
+        return jsonify({"values": device_data}), 200
