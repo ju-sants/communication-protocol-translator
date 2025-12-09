@@ -376,3 +376,50 @@ def get_info(dev_id: str):
 
         logger.success("Success! Device data retrieved from redis.")
         return jsonify({"values": device_data}), 200
+    
+# ==================================================================================================
+# OTHER GATEWAY FEATURES
+# ==================================================================================================
+
+@app.route("/turn_hybrid", methods=["POST"])
+def turn_hybrid():
+    """
+    Turns a tracker hybrid (with a satellite tracker communicating using its connection)
+    by adding the fields "is_hybrid" and "hybrid_id" to the tracker Hash in redis
+    And updating the "SAT_GSM:MAPPING" Hash.
+    """
+
+    request_data = request.get_json()
+    if not request_data:
+        logger.error(f"Request with no data received.")
+        return jsonify({"status": "error", "message": "request with no data received."}), 400
+    
+    base_tracker = str(request_data.get("base_tracker"))
+    sat_tracker = str(request_data.get("sat_tracker"))
+
+    if not base_tracker or not sat_tracker:
+        logger.error("Request without the necessary fields.")
+        return jsonify({"status": "error", "message": "Please provide all the necessary data to perform the action. 'base_tracker' or 'sat_tracker' field missing"}), 400
+    
+    sat_gsm_mapping = redis_client.hgetall("SAT_GSM_MAPPING") or {}
+    if sat_tracker in sat_gsm_mapping:
+        logger.error(f"Satellite tracker already attached to another device.")
+        return jsonify({"status": "ok", "message": "Satellite tracker already attached to another device."}), 409
+
+    tracker_key = f"tracker:{base_tracker}"
+    if not redis_client.exists(tracker_key):
+        logger.error(f"{base_tracker} device not found in database.")
+        return jsonify({"status": "ok", "message": "base tracker device not found."}), 404
+    
+    mapp = {
+        "is_hybrid": "1",
+        "hybrid_id": sat_tracker,
+        "output_protocol": "gt06"
+    }
+    pipe = redis_client.pipeline()
+
+    pipe.hmset(tracker_key, mapp)
+    pipe.set("SAT_GSM_MAPPING", sat_tracker, base_tracker)
+
+    logger.success("Hybrid Created!")
+    return jsonify({"status": "ok", "message": "created."}), 200
