@@ -12,6 +12,7 @@ from app.core.logger import get_logger
 from app.config.settings import settings
 from app.src.session.input_sessions_manager import input_sessions_manager
 from app.src.session.output_sessions_manager import output_sessions_manager, send_to_main_server
+from app.src.output.utils import get_output_dev_id
 from app.services.history_service import get_packet_history
 from app.src.input.j16x_j16.builder import build_command as build_j16x_j16_command
 from app.src.input.j16w.builder import build_command as build_j16w_command
@@ -422,10 +423,15 @@ def turn_hybrid():
         logger.error(f"{base_tracker} device not found in database.")
         return jsonify({"status": "ok", "message": "base tracker device not found."}), 404
     
+    # Obtendo o novo ID de saída do dispositivo
+    new_output_id = get_output_dev_id(input_id, settings.STANDARD_HYBRID_OUTPUT_PROTOCOL)
+    
+    # Criando mapeamento de dados para salvar no redis.
     mapp = {
         "is_hybrid": "1",
         "hybrid_id": sat_tracker,
-        "output_protocol": "gt06"
+        "output_protocol": settings.STANDARD_HYBRID_OUTPUT_PROTOCOL,
+        "output_id": new_output_id
     }
     pipe = redis_client.pipeline()
 
@@ -433,4 +439,4 @@ def turn_hybrid():
     pipe.set("SAT_GSM_MAPPING", sat_tracker, base_tracker)
 
     logger.success("Hybrid Created!")
-    return jsonify({"status": "ok", "message": "created."}), 200
+    return jsonify({"status": "ok", "message": "created.", "return_data": {"new_output_id": new_output_id}}), 200
