@@ -444,6 +444,8 @@ def turn_hybrid():
             # Setando o novo par híbrido num mapeamento de IDs SAT <-> GSM
             pipe.set("SAT_GSM_MAPPING", sat_tracker, base_tracker)
 
+            pipe.execute()
+            
             logger.success("Hybrid Created!")
             return jsonify({"status": "ok", "message": "created.", "return_data": {"new_output_id": new_output_id}}), 200
         
