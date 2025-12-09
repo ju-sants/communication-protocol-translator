@@ -435,7 +435,10 @@ def turn_hybrid():
     }
     pipe = redis_client.pipeline()
 
+    # Setando dados no hash do dispositivo base
     pipe.hmset(tracker_key, mapp)
+
+    # Setando o novo par híbrido num mapeamento de IDs SAT <-> GSM
     pipe.set("SAT_GSM_MAPPING", sat_tracker, base_tracker)
 
     logger.success("Hybrid Created!")
