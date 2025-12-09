@@ -400,6 +400,7 @@ def turn_hybrid():
         logger.error("Request without the necessary fields.")
         return jsonify({"status": "error", "message": "Please provide all the necessary data to perform the action. 'base_tracker' or 'sat_tracker' field missing"}), 400
     
+    # Verificando se o satelital já não está atrelado a outro registro de rastreador
     sat_gsm_mapping = redis_client.hgetall("SAT_GSM_MAPPING") or {}
     if sat_tracker in sat_gsm_mapping:
         logger.error(f"Satellite tracker already attached to another device.")

@@ -442,8 +442,9 @@ def send_to_main_server(
     # Obtendo dados necessários do redis
     output_protocol, protocol, is_hybrid = redis_client.hmget(f"tracker:{dev_id}", "output_protocol", "protocol", "is_hybrid")
     
-    # Verificação de protocolo de saída + setagem de valores padrão
-    if not output_protocol:  # VL01 apenas se comunicará como GT06
+    # Verificação de protocolo de saída + setagem de valores padrão para o protocolo de saída
+    if not output_protocol:  
+                                # VL01 apenas se comunicará como GT06
         if is_hybrid or (protocol and protocol in ("vl01", "gp900m")):
             output_protocol = "gt06"
         else:
@@ -451,7 +452,7 @@ def send_to_main_server(
         
         redis_client.hset(f"tracker:{dev_id}", "output_protocol", output_protocol)
     
-    # Construção do pacote de saída, de acordo com o protocolo especificado
+    # Construção do pacote de saída, usando o builder de pacote do procolo de saída anteriormente especificado
     output_packet_builder = output_protocol_settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get(type)
 
     if not managed_alert:
@@ -461,27 +462,36 @@ def send_to_main_server(
 
     # Lógica de envios
     if output_packet:
+
+        # Preparando os pacotes printáveis, para log.
         if output_protocol == "suntech4g":
             str_output_packet = output_packet.decode("ascii")
         else:
             str_output_packet = output_packet.hex()
 
+        # Refinando alguns dados no dicionário de dados
         if packet_data is not None:
+            # Salvando tipo do pacote
             packet_data["packet_type"] = type
 
+            # Caso o dicionário de dados não tenha voltagem explícita, mas o dispositivo a tiver
+            # Armazenada, use-a.
             if not packet_data.get("voltage"):
                 last_voltage = redis_client.hget(f"tracker:{dev_id}", "last_voltage")
                 packet_data["last_voltage"] = last_voltage if last_voltage else "1.11"
 
+        # Logging
         logger.info(f"Pacote de {type.upper()} {output_protocol.upper()} traduzido de pacote {str(original_protocol).upper()}:")
         logger.info(f"{str_output_packet}")
 
+        # Adicionando o pacote ao histórico do dispositivo
         add_packet_to_history(dev_id, raw_packet_hex, str_output_packet)
         
+        # Obtendo a sessão de saída do dispositivo
         session = output_sessions_manager.get_session(dev_id, output_protocol, serial)
         session.send(output_packet, output_protocol, packet_data)
 
-        # Heartbeats para GT06
+        # Heartbeats para GT06 - Após o envio de qualquer pacote gt06, enviamos um heartbeat
         if output_protocol == 'gt06':
             heartbeat_packet_builder = output_protocol_settings.OUTPUT_PROTOCOL_PACKET_BUILDERS.get(output_protocol).get('heartbeat')
             heartbeat_packet = heartbeat_packet_builder(dev_id, packet_data, serial)
