@@ -16,10 +16,6 @@ class Settings(BaseSettings):
     # --- Configurações Gerais do Servidor ---
     STANDARD_HYBRID_OUTPUT_PROTOCOL: str = "gt06" # Protocolo de Saída padrão para dispositivos híbridos
 
-    API_BASE_URL: str = "..."
-    API_X_TOKEN: str = "..."
-    API_ORIGIN: str = "..."
-    API_REFERER: str = "..."
 
     # --- Configurações de Rede e Credenciais ---
     SUNTECH_MAIN_SERVER_HOST: str = '127.0.0.1'
@@ -32,6 +28,11 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = '...'
     REDIS_HOST: str = '127.0.0.1'
     REDIS_PORT: int = 6379
+
+    API_BASE_URL: str = "..."
+    API_X_TOKEN: str = "..."
+    API_ORIGIN: str = "..."
+    API_REFERER: str = "..."
 
     # --- Módulos de Protocolo a serem Carregados ---
     INPUT_PROTOCOL_HANDLERS: Dict[str, Dict[str, Any]] = {
