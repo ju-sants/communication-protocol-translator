@@ -9,17 +9,6 @@ redis_client = get_redis()
 logger = get_logger(__name__)
 cache = get_cache()
 
-def get_mapping_cached(mapping):
-    cached_data = cache.get(mapping)
-
-    if not cached_data:
-        data = redis_client.hgetall(mapping)
-        cache.set(mapping, json.dumps(data), expire=3600 * 6)
-    else:
-        data = json.loads(cached_data)
-
-    return data
-
 def parse_json_safe(json_str: str):
     """Parse a json string with error handling"""
 
