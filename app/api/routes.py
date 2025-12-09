@@ -387,10 +387,12 @@ def turn_hybrid():
     """
 
     request_data = request.get_json()
+    args = request.args
     if not request_data:
         logger.error(f"Request with no data received.")
         return jsonify({"status": "error", "message": "request with no data received."}), 400
     
+    # Obtendo os dados iniciais
     base_tracker = str(request_data.get("base_tracker"))
     sat_tracker = str(request_data.get("sat_tracker"))
 
@@ -403,8 +405,19 @@ def turn_hybrid():
         logger.error(f"Satellite tracker already attached to another device.")
         return jsonify({"status": "ok", "message": "Satellite tracker already attached to another device."}), 409
 
-    tracker_key = f"tracker:{base_tracker}"
-    if not redis_client.exists(tracker_key):
+    # Se o cliente fez essa requisição e enviou um ID de saída para "base_tracker"
+    # Precisamos obter o ID de entrada do dispositivo.
+    # Muitas vezes os IDs de saída vez com 0s a esquerda, por isso precisamos lidar com isso.
+    input_id = base_tracker
+    if args.get("id_type") == "output":
+        # Robustez na verificação do ID do rastreador base, para lidar com IDs com 0s a esquerda e sem 0s a esquerda
+        output_input_ids_0Padded, output_input_ids_notPadded = utils.get_output_input_ids_map()
+
+        input_id = output_input_ids_0Padded.get(base_tracker) or output_input_ids_notPadded.get(base_tracker.lstrip("0"))
+    
+    tracker_key = f"tracker:{input_id}"
+
+    if not input_id or not redis_client.exists(tracker_key):
         logger.error(f"{base_tracker} device not found in database.")
         return jsonify({"status": "ok", "message": "base tracker device not found."}), 404
     
