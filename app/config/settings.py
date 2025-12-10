@@ -12,10 +12,14 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
 
-    CACHE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/cache"
     # --- Configurações Gerais do Servidor ---
     STANDARD_HYBRID_OUTPUT_PROTOCOL: str = "gt06" # Protocolo de Saída padrão para dispositivos híbridos
 
+    # --- Configurações para history service ---
+    HISTORY_LIMIT: int = 10000
+    DISK_BATCH_SIZE: int = 200
+    CACHE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/cache"
+    HISTORY_SERVICE_QUEUE: str = "history_service:packet_queue"
 
     # --- Configurações de Rede e Credenciais ---
     SUNTECH_MAIN_SERVER_HOST: str = '127.0.0.1'

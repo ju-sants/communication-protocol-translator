@@ -8,6 +8,7 @@ load_dotenv()
 
 from app.config.settings import settings
 from app.core.logger import get_logger
+from app.services import history_service
 
 logger = get_logger(__name__)
 
@@ -65,7 +66,10 @@ def main():
     workers_thread.start()
     logger.info("✅ Workers Iniciados!", log_label="SERVIDOR")
 
-    
+    # Inicializar worker de histórico
+    # Trabalha em um PROCESSO dedicado
+    history_service_process = history_service.start_history_service()
+
     for protocol_name, config in settings.INPUT_PROTOCOL_HANDLERS.items():
         try:
             port = config['port']
