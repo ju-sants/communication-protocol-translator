@@ -51,8 +51,14 @@ def get_packet_history(dev_id: str, return_compressed: bool = False) -> list:
             if return_compressed:
                 return compressed_history
             
-            decompressed_history = zlib.decompress(compressed_history)
-            return json.loads(decompressed_history.decode('utf-8'))
+            try:
+                decompressed_history = zlib.decompress(compressed_history)
+                history = json.loads(decompressed_history.decode('utf-8'))
+            except Exception as e:
+                logger.error(f"Houve um erro ao tentar descomprimir. Descartando histórico.")
+                history = []
+
+            return history
         
         return []
     
@@ -72,8 +78,14 @@ def _merge_disk_to_redis(dev_id: str, new_packets: list = None) -> bool:
         redis_client = get_redis(decode_responses=False)
         compressed_history = redis_client.get(history_key)
         if compressed_history:
-            decompressed_history = zlib.decompress(compressed_history)
-            current_history = json.loads(decompressed_history.decode('utf-8'))
+            try:
+                decompressed_history = zlib.decompress(compressed_history)
+                current_history = json.loads(decompressed_history.decode('utf-8'))
+
+            except Exception as e:
+                logger.error(f"Houve um erro ao tentar descomprimir. Descartando histórico.")
+                current_history = []
+
         else:
             current_history = []
 
