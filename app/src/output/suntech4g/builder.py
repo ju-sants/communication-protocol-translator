@@ -56,6 +56,13 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
     output_dev_id = get_output_dev_id(dev_id, "suntech4g")
     redis_client.hset(f"tracker:{dev_id}", "output_id", output_dev_id)
 
+    acc_status = packet_data.get("acc_status")
+    if hdr == "ALT":
+        if suntech_alert_id == 33:
+            acc_status = 1
+        elif suntech_alert_id == 34:
+            acc_status = 0
+
     # Campos básicos (comuns a todos)
     base_fields = [
         hdr,
@@ -72,7 +79,7 @@ def build_location_alarm_packet(dev_id: str, packet_data: dict, serial: int, typ
         f"{packet_data['direction']:.2f}",
         str(packet_data.get('satellites', 15)),
         "1" if packet_data.get('gps_fixed') else "0",
-        f"0000000{int(packet_data.get('acc_status', 0))}",
+        f"0000000{int(acc_status)}",
         f"0000000{device_info.get('last_output_status', 0)}"
     ]
 
