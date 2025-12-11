@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # --- Configurações para history service ---
     HISTORY_LIMIT: int = 10000
-    DISK_BATCH_SIZE: int = 200
+    DISK_BATCH_SIZE: int = 500
     CACHE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/cache"
     HISTORY_SERVICE_QUEUE: str = "history_service:packet_queue"
 
