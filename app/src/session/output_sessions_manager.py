@@ -445,7 +445,7 @@ def send_to_main_server(
     # Verificação de protocolo de saída + setagem de valores padrão para o protocolo de saída
     if not output_protocol:  
                                 # VL01 apenas se comunicará como GT06
-        if is_hybrid or (protocol and protocol in ("vl01", "gp900m")):
+        if is_hybrid or (protocol and protocol in ("gp900m", "j16w", "j16x-j16", "j16x_j16", "vl01", "vl03")):
             output_protocol = "gt06"
         else:
             output_protocol = "suntech4g"
