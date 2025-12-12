@@ -56,6 +56,10 @@ def get_gateway_info():
                 "port_protocol_mapping": {
                     protocol: settings.INPUT_PROTOCOL_HANDLERS[protocol]["port"] for protocol in settings.INPUT_PROTOCOL_HANDLERS
                 },
+                "standard_output_protocol_mapping": {
+                    "GT06": settings.AUTO_GT06_OUTPUT_PROTOCOLS,
+                    "SUNTECH4G": settings.AUTO_SUNTECH_OUTPUT_PROTOCOLS,
+                },
                 "total_active_translator_sessions": len(input_sessions_manager.get_sessions()),
                 "total_active_main_server_sessions": len(output_sessions_manager.get_sessions()),
             }
