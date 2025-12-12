@@ -14,6 +14,9 @@ class Settings(BaseSettings):
 
     # --- Configurações Gerais do Servidor ---
     STANDARD_HYBRID_OUTPUT_PROTOCOL: str = "gt06" # Protocolo de Saída padrão para dispositivos híbridos
+    
+    AUTO_GT06_OUTPUT_PROTOCOLS: list = ["gp900m", "j16w", "j16x-j16", "j16x_j16", "vl01", "vl03"]
+    AUTO_SUNTECH_OUTPUT_PROTOCOLS: list = ["satellital", "nt40", "suntech2g", "suntech4g"]
 
     # --- Configurações para history service ---
     HISTORY_LIMIT: int = 10000

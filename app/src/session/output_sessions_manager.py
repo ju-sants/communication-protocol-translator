@@ -12,6 +12,7 @@ from app.config.output_protocol_settings import output_protocol_settings
 from app.src.output.suntech4g.builder import build_login_packet as build_suntech_login_packet
 from app.src.output.gt06.builder import build_login_packet as build_gt06_login_packet, build_voltage_info_packet as build_gt06_voltage_info_packet
 from .input_sessions_manager import input_sessions_manager
+from app.config.settings import settings
 
 logger = get_logger(__name__)
 redis_client = get_redis()
@@ -445,7 +446,7 @@ def send_to_main_server(
     # Verificação de protocolo de saída + setagem de valores padrão para o protocolo de saída
     if not output_protocol:  
                                 # VL01 apenas se comunicará como GT06
-        if is_hybrid or (protocol and protocol in ("gp900m", "j16w", "j16x-j16", "j16x_j16", "vl01", "vl03")):
+        if is_hybrid or (protocol and protocol in settings.AUTO_GT06_OUTPUT_PROTOCOLS):
             output_protocol = "gt06"
         else:
             output_protocol = "suntech4g"
