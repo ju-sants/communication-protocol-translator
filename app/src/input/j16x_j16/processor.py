@@ -39,7 +39,10 @@ def process_packet(dev_id_str: str | None, packet_body: bytes, conn: socket.sock
 
     if protocol_number == 0x01: # Pacote de Login
         imei_bytes = content_body
-        new_dev_id = imei_bytes.hex()
+        
+        raw_dev_id = imei_bytes.hex()
+        new_dev_id = raw_dev_id.lstrip("0")[:15] # Normalizing device id
+
         response_to_device = builder.build_generic_response(protocol_number, serial_number)
     
     elif protocol_number in [0x22, 0xA0, 0x32]: # Pacotes de Localização
